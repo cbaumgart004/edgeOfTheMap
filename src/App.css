@@ -1,55 +1,85 @@
 /* App.css */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
+
+:root {
+  --violet: #7a4de7;
+  --gold: #ffd34d;
+  --ghost-blue: #a1e7f5;
+  --deep-black: #0c0c0e;
+  --fog: #b5b5b5;
+  --keeper-bg: #2a2c34;
+  --storyteller-bg: #1d1f24;
+}
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top center, #100010 0%, #000000 100%);
-  color: #d0bfff;
-  font-family: 'Cinzel Decorative', cursive;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 100vh;
+  font-family: 'Lato', sans-serif;
+  background-color: var(--deep-black);
+  color: var(--fog);
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 .container {
-  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 2rem;
+  text-align: center;
 }
 
 .logo {
-  max-width: 600px;
-  width: 90%;
-  filter: drop-shadow(0 0 15px #a065ff);
+  max-width: 180px;
+  margin: 1rem auto;
 }
 
 .tagline {
-  font-size: 1.5rem;
-  margin-top: 1rem;
-  color: #ffffffaa;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
 }
 
-.qr-section {
-  margin: 3rem 0;
+.toggle-button {
+  background: var(--violet);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 2rem;
 }
 
-.qr-image {
-  max-width: 300px;
-  width: 80%;
-  filter: drop-shadow(0 0 10px #d57eff);
+.dual-panels {
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.panel {
+  flex: 1;
+  padding: 2rem;
+  border-radius: 10px;
+  transition: all 0.4s ease;
+}
+
+.keeper {
+  background: var(--keeper-bg);
+  color: var(--ghost-blue);
+}
+
+.storyteller {
+  background: var(--storyteller-bg);
+  color: var(--gold);
 }
 
 .glow-button {
-  margin-top: 2rem;
-  padding: 1rem 2rem;
-  font-size: 1.25rem;
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  font-weight: bold;
+  color: var(--deep-black);
+  background: var(--gold);
   border: none;
-  border-radius: 8px;
-  background: #9c5df7;
-  color: white;
+  border-radius: 5px;
   cursor: pointer;
-  box-shadow: 0 0 10px #b871ff, 0 0 40px #d57eff;
+  box-shadow: 0 0 10px var(--gold);
   transition: transform 0.2s ease;
 }
 
@@ -57,48 +87,32 @@ body {
   transform: scale(1.05);
 }
 
+/* MYSTIC MODE STYLING */
+.mystic-mode body,
+.mystic-mode {
+  background-color: #111118;
+  color: var(--ghost-blue);
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.mystic-mode .panel {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  background-image: radial-gradient(
+    circle at center,
+    rgba(122, 77, 231, 0.2),
+    transparent
+  );
+  text-shadow: 0 0 5px var(--violet);
+}
+
+.mystic-mode .glow-button {
+  background: var(--ghost-blue);
+  color: var(--deep-black);
+  box-shadow: 0 0 12px var(--ghost-blue);
+}
+
 footer {
-  margin-top: auto;
-  padding: 1rem;
-  color: #666;
-  font-size: 0.85rem;
-}
-
-/* Animations */
-.shimmer {
-  animation: shimmer 4s infinite ease-in-out;
-}
-
-@keyframes shimmer {
-  0% {
-    filter: drop-shadow(0 0 5px #c996ff);
-  }
-  50% {
-    filter: drop-shadow(0 0 25px #ffffff);
-  }
-  100% {
-    filter: drop-shadow(0 0 5px #c996ff);
-  }
-}
-
-.glow-ring {
-  padding: 1.5rem;
-  border-radius: 50%;
-  border: 4px solid #d57eff;
-  box-shadow: 0 0 25px #d57eff, 0 0 45px #aa55ff inset;
-  display: inline-block;
-  margin-bottom: 1rem;
-}
-
-/* index.css */
-html,
-body,
-#root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-}
-
-* {
-  box-sizing: border-box;
+  margin-top: 4rem;
+  font-size: 0.9rem;
+  color: var(--fog);
 }
