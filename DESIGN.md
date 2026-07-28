@@ -54,8 +54,11 @@ src/
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
 ```
 
-There is no `public/` directory. Every asset is imported through the bundler so it
-gets content-hashed and cache-busted.
+`public/` holds exactly two files — `banner.webp` (1536×512, 3:1) and `og.webp`
+(1200×630) — because both need **stable URLs**: the social card is referenced by
+absolute URL from `index.html`, and a content-hashed filename would break every time
+the bundle rebuilt. Everything else is imported through the bundler so it gets
+hashed and cache-busted. Add to `public/` only when a URL has to survive a rebuild.
 
 ---
 
@@ -218,6 +221,12 @@ it cools to violet and offers the way back.
   artwork's width, so downscaling eats into it fast. Every candidate size was decoded
   before being accepted, and `.qr-code` is set to 340px for the same reason — at
   220px the code renders ~57px wide and becomes unreliable to scan.
+- **The domain is not connected yet.** `theedgeofthemap.com` resolves to Porkbun's
+  parking IPs (`207.207.210.36/.50`) and 302s to `theedgeofthemap-com.l.ink` — their
+  "A Brand New Domain!" page. `www` is a CNAME to `uixie.porkbun.com`. To go live:
+  add the custom domain in Railway, then in Porkbun **delete the URL forward and the
+  parking A records** before pointing an ALIAS (apex) and CNAME (`www`) at the target
+  Railway gives you. Leaving the forward in place will keep overriding the records.
 - **`filter` applies before `mask`.** The burn's displacement filter therefore sits
   on `.burn-warp`, the *parent* of the masked layers — filtering the masked element
   directly would displace its contents but leave a clean circular mask edge. That
@@ -262,13 +271,27 @@ it cools to violet and offers the way back.
 
 ## 7. Deployment
 
-Railway, serving `dist/` as static files.
+Railway project **Edge of the Map**, service `edgeOfTheMap`, region US West.
+Generated URL: `edgeofthemap-production.up.railway.app`.
 
-- `nixpacks.toml` — setup installs `nodejs` + `npm`; build runs `npm install && vite build`; start command is empty.
-- `railway.json` — `buildCommand: npm run build`, `outputDirectory: dist`.
+- `nixpacks.toml` — build only: setup installs `nodejs` + `npm`, then `npm install`
+  and `npm run build`.
+- `railway.json` — `startCommand: npx serve -s dist -l $PORT`, restart on failure.
 
-There is no server process. Because `dist/` is no longer committed, the host build is
-the only source of deployed output.
+**A static build still needs a process.** The original config had `[start] cmd = ""`
+in `nixpacks.toml` and `outputDirectory` in `railway.json` — the latter is a Vercel
+field that Railway ignores. The build succeeded, nothing listened on `$PORT`, and
+every request returned `502 Application failed to respond` with `Starting Container`
+as the only log line. `serve` is a real dependency for this reason; do not remove it.
+
+Because `dist/` is not committed, the host build is the only source of deployed
+output.
+
+### DNS
+
+The apex is registered at **Porkbun**, on Porkbun nameservers
+(`{fortaleza,curitiba,maceio,salvador}.ns.porkbun.com`). Connecting the domain means
+removing Porkbun's parking first — see §6.
 
 ---
 

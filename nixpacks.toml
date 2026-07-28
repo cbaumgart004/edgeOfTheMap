@@ -1,8 +1,14 @@
+# Build only. The start command lives in railway.json so there is a single
+# place that decides how the site is served.
+#
+# `npm run build` rather than bare `vite build`: the deploy host does not
+# reliably put vite on PATH, so package.json invokes it by explicit path.
+
 [phases.setup]
 nixPkgs = ["nodejs", "nodePackages.npm"]
 
-[phases.build]
-cmds = ["npm install", "vite build"]
+[phases.install]
+cmds = ["npm install"]
 
-[start]
-cmd = ""
+[phases.build]
+cmds = ["npm run build"]
