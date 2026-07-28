@@ -24,6 +24,10 @@ const PATHS = {
   raido: ['M7 2 V30', 'M7 3.5 L16.5 9 L7 14.5', 'M7.5 14.5 L16.5 27.5'],
 }
 
+/** Every glyph this component can draw. Exported so RuneFrame can cycle them
+ *  without duplicating the list. */
+export const RUNE_NAMES = Object.keys(PATHS)
+
 export default function Rune({ name, className = '' }) {
   const strokes = PATHS[name]
   if (!strokes) return null

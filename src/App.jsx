@@ -2,7 +2,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import Rune from './Rune.jsx'
-import BurnFilter from './BurnFilter.jsx'
+import SvgDefs from './SvgDefs.jsx'
+import RuneFrame from './RuneFrame.jsx'
 import heroWide from './assets/hero-wide.webp'
 import heroNarrow from './assets/hero-narrow.webp'
 import logoCard from './assets/logo-card.webp'
@@ -197,7 +198,7 @@ function App() {
 
   return (
     <>
-      <BurnFilter />
+      <SvgDefs />
 
       {burn && (
         <div className={`burn ${burn.lit ? 'is-lit' : ''}`} aria-hidden="true">
@@ -337,6 +338,7 @@ function App() {
                 data-reveal
                 style={{ '--reveal-delay': `${i * 80}ms` }}
               >
+                {isMystic && <RuneFrame />}
                 <span className="card-icon">
                   <Rune name={path.rune} />
                 </span>

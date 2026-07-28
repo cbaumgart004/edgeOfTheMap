@@ -41,8 +41,9 @@ src/
   main.jsx              React root (StrictMode). Imports the font faces → <App />
   App.jsx               The whole UI + the PATHS table (§4).
   App.css               Theme tokens, both faces, layout, the burn.
-  Rune.jsx              Elder Futhark glyphs as SVG (§4).
-  BurnFilter.jsx        The SVG displacement filter behind the burn (§5).
+  Rune.jsx              Elder Futhark glyphs as SVG (§4). Exports RUNE_NAMES.
+  RuneFrame.jsx         Inscribed rune border for mystic cards (§5).
+  SvgDefs.jsx           Shared SVG filters: #burn-displace, #driftwood (§5).
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
     logo-card.webp      Hero logo card, 800×533 (43 KB). Imported by App.jsx.
@@ -197,6 +198,16 @@ sharp-edged, spacious and slow. Three structural moves carry most of the distanc
   document.
 - **Runes leave their tiles.** Framed icon chips in light; unframed, lit glyphs in
   mystic, pulled to the text's left edge.
+- **Mystic cards become weathered rune-carved planks.** The frame is drawn on
+  `::before`/`::after` rather than on `.card` itself, then displaced by the
+  `#driftwood` filter — filtering the card directly would bend the copy along with
+  its border. Two offset lines read as a split plank. The displacement scale is
+  deliberately low (7); higher values melt the line instead of ageing it.
+  `RuneFrame` inscribes glyphs around all four edges, rendered **only** in mystic so
+  the light face carries none of that DOM. Swap the border's runes by editing
+  `FRAME_RUNES` in `RuneFrame.jsx` or passing a `runes` prop; every glyph also
+  carries `.rune-frame-glyph`, so the whole border can be restyled or hidden from
+  CSS alone.
 - **Only the dark face has texture** — a vignette and a 5.5% grain on
   `body.mystic-mode::before/::after`. The light face stays flat and printed.
 

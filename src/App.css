@@ -462,6 +462,7 @@ a {
 }
 
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   scroll-margin-top: 5.5rem;
@@ -779,7 +780,7 @@ a {
   initial-value: 0%;
 }
 
-.burn-defs {
+.svg-defs {
   position: absolute;
   width: 0;
   height: 0;
@@ -926,15 +927,40 @@ body.mystic-mode::after {
 body.mystic-mode .card {
   background: none;
   border: 0;
-  border-top: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
-  padding: 2.25rem 0 0;
+  padding: 2.9rem 2.1rem 2.6rem;
+}
+
+/* Weathered timber. The frame lives on pseudo-elements so the displacement
+   filter can age the border without bending the text inside it — filtering
+   .card directly would warp the copy too. Two offset lines read as a split
+   plank rather than a single wobbling stroke. */
+body.mystic-mode .card::before,
+body.mystic-mode .card::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  filter: url(#driftwood);
+  transition: border-color var(--motion) ease;
+}
+
+body.mystic-mode .card::before {
+  inset: 0;
+  border: 1px solid var(--border);
+}
+
+body.mystic-mode .card::after {
+  inset: 4px;
+  border: 1px solid rgba(122, 77, 231, 0.16);
 }
 
 body.mystic-mode .card:hover {
   transform: none;
   box-shadow: none;
+}
+
+body.mystic-mode .card:hover::before {
   border-color: var(--accent);
 }
 
@@ -943,6 +969,57 @@ body.mystic-mode .qr-card {
   border: 0;
   border-top: 1px solid var(--border);
   padding-inline: 0;
+}
+
+/* Inscribed rune border. Rendered only in mystic mode (see RuneFrame.jsx),
+   so the light face carries none of this DOM.
+
+   Every glyph is `.rune-frame-glyph` — restyle, resize, or `display: none`
+   the whole border from here without touching the component. */
+.rune-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--accent);
+  opacity: 0.52;
+}
+
+.rune-frame-edge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rune-frame-top {
+  top: 0.85rem;
+  left: 1.6rem;
+  right: 1.6rem;
+}
+
+.rune-frame-bottom {
+  bottom: 0.85rem;
+  left: 1.6rem;
+  right: 1.6rem;
+}
+
+.rune-frame-left {
+  left: 0.85rem;
+  top: 2rem;
+  bottom: 2rem;
+  flex-direction: column;
+}
+
+.rune-frame-right {
+  right: 0.85rem;
+  top: 2rem;
+  bottom: 2rem;
+  flex-direction: column;
+}
+
+.rune-frame-glyph {
+  font-size: 0.62rem;
+  stroke-width: 2.1;
 }
 
 /* Runes come out of their tiles and are simply lit. */
