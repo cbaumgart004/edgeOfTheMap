@@ -113,6 +113,51 @@ body.mystic-mode {
   box-shadow: 0 0 12px var(--ghost-blue);
 }
 
+/* QR SECTION */
+.qr-section {
+  margin-top: 4rem;
+}
+
+.qr-section h2 {
+  color: var(--gold);
+  margin-bottom: 0.25rem;
+}
+
+.qr-section p {
+  margin-top: 0;
+  color: var(--fog);
+}
+
+.qr-link {
+  display: inline-block;
+  line-height: 0;
+  border-radius: 8px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.qr-link:hover,
+.qr-link:focus-visible {
+  transform: scale(1.03);
+  filter: drop-shadow(0 0 12px var(--violet));
+}
+
+/* The code itself is only ~26% of the artwork's width, so the image has to
+   be generous or the QR renders too small to scan. */
+.qr-code {
+  width: 340px;
+  max-width: 100%;
+  height: auto;
+}
+
+.mystic-mode .qr-section h2 {
+  color: var(--ghost-blue);
+  text-shadow: 0 0 5px var(--violet);
+}
+
+.mystic-mode .qr-link {
+  filter: drop-shadow(0 0 10px var(--violet));
+}
+
 footer {
   margin-top: 4rem;
   font-size: 0.9rem;

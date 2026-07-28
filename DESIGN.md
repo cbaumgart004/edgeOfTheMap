@@ -16,6 +16,7 @@ This file is a *map*, not a spec. It should stay short enough to read in one sit
 | UI | React 19 (`@vitejs/plugin-react`) |
 | Language | Plain JSX — no TypeScript |
 | Styling | Hand-written CSS with custom properties. No framework, no CSS modules. |
+| Fonts | `@fontsource/lato`, `@fontsource/cormorant-garamond` — self-hosted, bundled. |
 | Routing | None — one page |
 | State | `useState` in `App.jsx`. No store, no context. |
 | Tests | None |
@@ -37,14 +38,15 @@ nixpacks.toml           Railway build phases.
 railway.json            Railway build command + output dir.
 
 src/
-  main.jsx              React root (StrictMode) → <App />
+  main.jsx              React root (StrictMode). Imports the font faces → <App />
   App.jsx               The entire UI.
   App.css               Theme tokens, layout, mystic-mode overrides.
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
     logo_signature.png  The logo actually shipped (67 KB). Imported by App.jsx.
     logo.png            Full-resolution master (1.8 MB). Not imported — see §6.
-    QR_Complete.png     Not imported — see §6.
+    qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
+    QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
 ```
 
 There is no `public/` directory. Every asset is imported through the bundler so it
@@ -64,8 +66,8 @@ main.jsx  ──renders──>  App
 ```
 
 `App` renders a fixed structure: header (logo, tagline, mode toggle), a
-`.dual-panels` section holding the Keeper and Storyteller panels, and a footer.
-Nothing is fetched, nothing is persisted, there are no routes.
+`.dual-panels` section holding the Keeper and Storyteller panels, a `.qr-section`,
+and a footer. Nothing is fetched, nothing is persisted, there are no routes.
 
 **Why the class lives on `<body>`:** `.container` is `max-width: 1200px` and centred,
 so a theme class applied there leaves the page gutters unstyled. Putting the class on
@@ -83,6 +85,11 @@ The site expresses one idea: a single practitioner with two faces.
 
 Both CTAs are currently inert — they render as buttons with no handler. Wiring them
 to contact routes is the obvious next piece of work.
+
+**The QR.** `qr_code.png` is branded artwork — a dragon coiled around a rune circle —
+with a QR at its centre encoding `https://theedgeofthemap.com`, the site's own
+canonical URL. It is also rendered as a link to that URL, so it works by tap as well
+as by scan. `SITE_URL` in `App.jsx` is the single source for both.
 
 ---
 
@@ -105,8 +112,11 @@ and text-shadow to the panels, and recolours the CTAs to ghost-blue. Transitions
 0.5s on `body` and 0.4s on `.panel` — long enough that a computed-style read taken
 immediately after the toggle will still show intermediate values.
 
-Neither font is actually loaded — no `@font-face`, no Google Fonts link. Both fall
-back to the generic `sans-serif` / `serif` family. See §6.
+**Fonts are self-hosted.** `main.jsx` imports Lato 400/700 and Cormorant Garamond
+400/600 from `@fontsource`, so Vite bundles the woff2/woff files and the site makes
+no third-party request to render. Cormorant is only referenced by mystic mode, so
+browsers defer downloading it until the toggle fires — that is correct lazy
+behaviour, not a missing font.
 
 ---
 
@@ -119,10 +129,19 @@ back to the generic `sans-serif` / `serif` family. See §6.
   kept for regenerating derivatives. `logo_signature.png` (67 KB, 300×200) is what
   renders; it carries explicit `width`/`height` attributes to reserve layout space,
   which is why `.logo` needs `height: auto` alongside `max-width`.
-- **`QR_Complete.png` (2 MB) is orphaned.** Nothing references it. Either wire it into
-  the page or drop it from the repo.
+- **`QR_Complete.png` (2 MB) is the QR master**, kept for the same reason as
+  `logo.png`. `qr_code.png` (99 KB) is the shipped derivative: 500×750, palette-
+  quantised to 256 colours with the alpha channel preserved, which matters — the
+  artwork is transparent apart from the opaque black backing behind the code itself.
+- **Re-deriving the QR: verify it still scans.** The code is only ~26% of the
+  artwork's width, so downscaling eats into it fast. Every candidate size was decoded
+  before being accepted, and `.qr-code` is set to 340px for the same reason — at
+  220px the code renders ~57px wide and becomes unreliable to scan.
 - **The `shimmer` class on the logo has no CSS rule.** It is a placeholder for an
   animation that was never written.
+- **`loading="lazy"` images do not load in a backgrounded tab.** Chrome defers them
+  while `document.visibilityState === 'hidden'`, so automated checks against a
+  non-foreground tab will report the QR as `naturalWidth: 0`. Not a bug.
 - **`node_modules/` and `dist/` were committed** for the first several commits. They
   are now untracked via `.gitignore`; the build output is produced on the host.
 

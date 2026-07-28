@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import './App.css'
 import logo from './assets/logo_signature.png'
+import qrCode from './assets/qr_code.png'
+
+const SITE_URL = 'https://theedgeofthemap.com'
 
 function App() {
   const [isMystic, setIsMystic] = useState(false)
@@ -51,6 +54,21 @@ function App() {
           </p>
           <button className="glow-button">Speak with Me</button>
         </div>
+      </section>
+
+      <section className="qr-section">
+        <h2>Carry the Map</h2>
+        <p>Scan to keep this page in your pocket.</p>
+        <a href={SITE_URL} className="qr-link">
+          <img
+            src={qrCode}
+            alt={`QR code linking to ${SITE_URL}`}
+            width="500"
+            height="750"
+            className="qr-code"
+            loading="lazy"
+          />
+        </a>
       </section>
 
       <footer>&copy; 2025 Edge of the Map LLC. All rights reserved.</footer>
