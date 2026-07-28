@@ -127,7 +127,7 @@ function App() {
     timers.current.push(setTimeout(() => setBurn(null), BURN_MS + 260))
   }, [burn])
 
-  const toggleLabel = isMystic ? 'Return to the known' : 'Reveal the mystery'
+  const toggleLabel = isMystic ? 'Return to the Known' : 'Reveal the Mystery'
 
   return (
     <>
@@ -163,7 +163,7 @@ function App() {
             aria-pressed={isMystic}
             title={toggleLabel}
           >
-            <Rune name="othala" />
+            <Rune name="raido" />
             <span className="visually-hidden">{toggleLabel}</span>
           </button>
           <a className="btn btn-primary btn-sm" href={mailto('Enquiry — Edge of the Map')}>
@@ -208,6 +208,26 @@ function App() {
                   Explore services
                 </a>
               </div>
+
+              {/* The signature interaction, stated outright rather than hidden
+                  behind an icon — the ember palette foreshadows the burn. */}
+              <button
+                className="reveal-cta"
+                onClick={toggleMystic}
+                aria-pressed={isMystic}
+              >
+                <span className="reveal-cta-rune" aria-hidden="true">
+                  <Rune name="raido" />
+                </span>
+                <span className="reveal-cta-text">
+                  <strong>{toggleLabel}</strong>
+                  <small>
+                    {isMystic
+                      ? 'Put out the fire and return to daylight'
+                      : 'Burn the map away and see what lies beneath'}
+                  </small>
+                </span>
+              </button>
 
               <ul className="hero-trust">
                 {PATHS.map((path) => (

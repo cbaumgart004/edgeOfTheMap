@@ -110,6 +110,10 @@ not. If woodworking ever needs a storefront, it earns a subdomain then.
 Othala is the inherited homestead, the domain one *keeps*. Ansuz is the god-rune of
 speech and the spoken word. Berkano is the birch — growth, and literally wood.
 
+A fourth rune sits outside the `PATHS` table: **Raidō (ᚱ), the journey**, reserved
+for the mode toggle — the control that carries you between the site's two worlds
+rather than describing a craft.
+
 **CTAs are `mailto:` links**, each carrying a per-path subject line (`subject` in the
 `PATHS` table) so an enquiry arrives already filed by discipline. There is no backend
 and no form service — the site is static, and `mailto` needs neither. If a real form
@@ -185,6 +189,13 @@ metaphor rather than fighting it: a paper map burning away. Sequence in `App.jsx
 
 The frozen colour matters: reading a live custom property would recolour the sheet
 halfway through the burn.
+
+**Two controls trigger it**: a compact `.header-toggle` in the sticky header, and
+`.reveal-cta` — a full-width pill in the hero carrying the Raidō rune, a label, and a
+line of explanation. The pill is deliberately unmissable; the transition is the
+site's signature moment and an icon alone buried it. On the light face the pill wears
+an ember palette so the control visually promises the fire it starts; in mystic mode
+it cools to violet and offers the way back.
 
 ---
 

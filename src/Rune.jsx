@@ -9,6 +9,8 @@
 //   Othala  (ᛟ) — homestead, inherited estate, the domain one keeps
 //   Ansuz   (ᚨ) — the god-rune of speech, breath, the spoken word
 //   Berkano (ᛒ) — the birch; growth, and literally wood
+//   Raido   (ᚱ) — riding, the journey; used for the control that carries
+//                 you between the site's two worlds
 import React from 'react'
 
 const PATHS = {
@@ -19,6 +21,7 @@ const PATHS = {
   ],
   ansuz: ['M7 2 V30', 'M7 4.5 L17 11', 'M7 13 L17 19.5'],
   berkano: ['M7 2 V30', 'M7 3.5 L16.5 9 L7 14.5', 'M7 16.5 L16.5 22 L7 27.5'],
+  raido: ['M7 2 V30', 'M7 3.5 L16.5 9 L7 14.5', 'M7.5 14.5 L16.5 27.5'],
 }
 
 export default function Rune({ name, className = '' }) {
