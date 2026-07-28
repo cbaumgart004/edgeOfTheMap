@@ -178,6 +178,27 @@ Both faces re-declare the same token names, so component rules never branch on m
 | `--accent` | `#0f766e` teal | `#a1e7f5` ghost blue |
 | `--accent-soft` | `#e6f4f1` | `rgba(122,77,231,.22)` |
 | `--display-font` | system UI stack | Cormorant Garamond |
+| `--radius` / `--radius-sm` | `10px` / `6px` | `0` — every corner squares off |
+| `--lead` | `1.6` | `1.85` |
+| `--tracking-display` | `-0.018em` | `0.012em` |
+| `--tracking-label` | `0.14em` | `0.34em` |
+| `--motion` | `0.2s` | `0.5s` |
+| `--section-y` | `clamp(3.5rem, 8vw, 6.5rem)` | `clamp(5.5rem, 13vw, 10rem)` |
+| `--card-gap` | `1.25rem` | `clamp(2rem, 5vw, 3.5rem)` |
+| `--measure` | `42rem` | `46rem` |
+
+**Shape, rhythm and pace are tokens too** — that is what stops the two faces being
+recolours of each other. Light is tight, rounded, gridded and quick; mystic is
+sharp-edged, spacious and slow. Three structural moves carry most of the distance:
+
+- **The card affordance disappears.** In daylight the services are boxed, shadowed
+  product cards. In mystic they lose surface, border, shadow and radius entirely and
+  become columns of a page divided by a hairline rule. Same markup, different kind of
+  document.
+- **Runes leave their tiles.** Framed icon chips in light; unframed, lit glyphs in
+  mystic, pulled to the text's left edge.
+- **Only the dark face has texture** — a vignette and a 5.5% grain on
+  `body.mystic-mode::before/::after`. The light face stays flat and printed.
 
 The teal accent is pulled down from the logo's neon so the light face still belongs
 to the brand. There are no per-discipline colours any more — three accent colours
