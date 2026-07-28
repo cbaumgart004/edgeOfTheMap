@@ -39,11 +39,14 @@ railway.json            Railway build command + output dir.
 
 src/
   main.jsx              React root (StrictMode). Imports the font faces → <App />
-  App.jsx               The entire UI.
-  App.css               Theme tokens, layout, mystic-mode overrides.
+  App.jsx               The whole UI + the PATHS table (§4).
+  App.css               Theme tokens, both faces, layout.
+  Rune.jsx              Elder Futhark glyphs as SVG (§4).
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
-    logo_signature.png  The logo actually shipped (67 KB). Imported by App.jsx.
+    hero-wide.webp      Hero plate, 1536×792 (116 KB). Imported by App.jsx.
+    hero-narrow.webp    Hero plate, 960×495 (40 KB). srcSet partner.
+    logo_signature.png  Footer mark (67 KB). Imported by App.jsx.
     logo.png            Full-resolution master (1.8 MB). Not imported — see §6.
     qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
@@ -65,9 +68,10 @@ main.jsx  ──renders──>  App
                          └─ useEffect: body.classList.toggle('mystic-mode', isMystic)
 ```
 
-`App` renders a fixed structure: header (logo, tagline, mode toggle), a
-`.dual-panels` section holding the Keeper and Storyteller panels, a `.qr-section`,
-and a footer. Nothing is fetched, nothing is persisted, there are no routes.
+`App` renders a fixed structure: a full-bleed `.hero` (which sits *outside*
+`.container`, since `.container` is width-capped), then `.paths` — one card per
+entry in the `PATHS` table — then `.qr-section` and a footer. Nothing is fetched,
+nothing is persisted, there are no routes.
 
 **Why the class lives on `<body>`:** `.container` is `max-width: 1200px` and centred,
 so a theme class applied there leaves the page gutters unstyled. Putting the class on
@@ -78,13 +82,30 @@ so a theme class applied there leaves the page gutters unstyled. Putting the cla
 
 ## 4. Domain model
 
-The site expresses one idea: a single practitioner with two faces.
+The site expresses one idea: a single practitioner, three crafts. Each craft is a
+**path**, defined by an entry in the `PATHS` array in `App.jsx` — adding a fourth,
+or later splitting one onto its own route, is an edit to that table rather than a
+layout rewrite.
 
-- **The Keeper** — the engineering side. Panel background `--keeper-bg`, text `--ghost-blue`, CTA "Build with Me".
-- **The Storyteller** — the voice side. Panel background `--storyteller-bg`, text `--gold`, CTA "Speak with Me".
+| Path | Discipline | Rune | Accent | CTA |
+| --- | --- | --- | --- | --- |
+| The Keeper | Web & Systems | Othala ᛟ | `--accent-keeper` | Build with Me |
+| The Storyteller | Audio Narration | Ansuz ᚨ | `--accent-storyteller` | Speak with Me |
+| The Wright | Woodworking | Berkano ᛒ | `--accent-wright` | Make with Me |
 
-Both CTAs are currently inert — they render as buttons with no handler. Wiring them
-to contact routes is the obvious next piece of work.
+**Why one site and not three.** The brand is the umbrella and the tagline already
+names the crafts. Three domains would split SEO authority, triple maintenance, and
+leave each thin. The audiences genuinely differ — publishers and authors are not
+furniture commissioners — but that is a job for distinct sections or routes inside
+one site. It is also the reversible direction: splitting later is easy, merging is
+not. If woodworking ever needs a storefront, it earns a subdomain then.
+
+**Rune choice is by meaning, not shape** — see the header comment in `Rune.jsx`.
+Othala is the inherited homestead, the domain one *keeps*. Ansuz is the god-rune of
+speech and the spoken word. Berkano is the birch — growth, and literally wood.
+
+All three CTAs are currently inert — they render as buttons with no handler. Wiring
+them to contact routes is the obvious next piece of work.
 
 **The QR.** `qr_code.png` is branded artwork — a dragon coiled around a rune circle —
 with a QR at its centre encoding `https://theedgeofthemap.com`, the site's own
@@ -95,21 +116,38 @@ as by scan. `SITE_URL` in `App.jsx` is the single source for both.
 
 ## 5. Theming
 
-Tokens are CSS custom properties on `:root` in `App.css`:
+**The site has two faces, and the separation is the whole point of the toggle.**
 
-| Token | Value | Role |
+*Default* is the professional face: Lato, near-monochrome, high contrast, sharp
+edges, the hero artwork desaturated back to a backdrop. Runes are present but drawn
+as quiet linework. **Nothing atmospheric leaks into it** — no glow, no serif, no
+violet. If a change makes the default face more mystical, it belongs behind the
+toggle instead.
+
+*Mystic mode* (`body.mystic-mode`) is the reveal: Cormorant Garamond, violet, glow,
+the hero tinted, the runes lit and flickering.
+
+Both faces are driven by the same token names, re-declared under
+`body.mystic-mode`, so component rules never branch on mode:
+
+| Token | Default | Mystic |
 | --- | --- | --- |
-| `--violet` | `#7a4de7` | Toggle button, mystic glow |
-| `--gold` | `#ffd34d` | Storyteller accent, default CTA |
-| `--ghost-blue` | `#a1e7f5` | Keeper accent, mystic text and CTA |
-| `--deep-black` | `#0c0c0e` | Default page background |
-| `--fog` | `#b5b5b5` | Body copy, footer |
-| `--keeper-bg` / `--storyteller-bg` | `#2a2c34` / `#1d1f24` | Panel backgrounds |
+| `--page-bg` | `#0a0a0c` | `#101018` |
+| `--surface` | `#141519` | `#17151f` |
+| `--ink` | `#e8edef` (~16:1) | `#ded6f2` |
+| `--ink-muted` | `#9ba5aa` (~7.6:1) | `#a99fc4` |
+| `--hairline` | `rgba(255,255,255,.12)` | `rgba(122,77,231,.32)` |
+| `--display-font` | Lato | Cormorant Garamond |
 
-**Two modes.** Default is dark sans-serif (Lato). *Mystic mode* switches the page to
-`#111118`, ghost-blue text, and a Cormorant Garamond serif, adds a violet radial glow
-and text-shadow to the panels, and recolours the CTAs to ghost-blue. Transitions are
-0.5s on `body` and 0.4s on `.panel` — long enough that a computed-style read taken
+Per-discipline accents are fixed across both faces: `--accent-keeper` `#6fd7ee`,
+`--accent-storyteller` `#ffd34d`, `--accent-wright` `#e8935a` — all ≥7:1 on
+`--page-bg`. Each card gets exactly one hairline of its accent by default; colour is
+rationed on purpose.
+
+Type is a fluid scale (`--step-0` … `--step-hero`) built on `clamp()`, so nothing
+needs a breakpoint to stay readable.
+
+Transitions are 0.5s on `body` — long enough that a computed-style read taken
 immediately after the toggle will still show intermediate values.
 
 **Fonts are self-hosted.** `main.jsx` imports Lato 400/700 and Cormorant Garamond
@@ -137,6 +175,22 @@ behaviour, not a missing font.
   artwork's width, so downscaling eats into it fast. Every candidate size was decoded
   before being accepted, and `.qr-code` is set to 340px for the same reason — at
   220px the code renders ~57px wide and becomes unreliable to scan.
+- **The hero plate is `logo.png` with its own wordmark cropped off** (the artwork
+  bakes in "EDGE OF THE MAP" below y=792). The type in the hero is real text so it
+  scales, reflows, and is readable by a screen reader. Re-derive with the same crop
+  or the wordmark will appear twice.
+- **Mystic tints the hero with a `color` blend, not `hue-rotate`.** `hue-rotate` was
+  tried first and threw the rune tablet orange — the plate holds more than one source
+  hue, so a single rotation cannot land them all on violet. A `mix-blend-mode: color`
+  overlay maps every hue while keeping the original luminance.
+- **`.hero-scrim` must paint above that tint** (`z-index: 2` vs `1`). The scrim is
+  what fades the hero into the page background; if the tint paints over it, the fade
+  is re-coloured and the hero ends on a hard horizontal seam.
+- **Cormorant's uppercase runs wider than Lato 900.** The mystic wordmark is scaled
+  to `calc(var(--step-hero) * 0.84)` so both faces hold a single line — without it,
+  toggling reflows the wordmark to two lines and the whole hero jumps. `.hero-content`
+  is 54rem rather than 48rem for the same reason: at 48rem the sans wordmark renders
+  flush to the edge with zero slack.
 - **The `shimmer` class on the logo has no CSS rule.** It is a placeholder for an
   animation that was never written.
 - **`loading="lazy"` images do not load in a backgrounded tab.** Chrome defers them
