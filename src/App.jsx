@@ -1,21 +1,29 @@
 // App.jsx
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import './App.css'
-import logo from './assets/logo.png' // Adjust the path as necessary
+import logo from './assets/logo_signature.png'
 
 function App() {
   const [isMystic, setIsMystic] = useState(false)
+
+  // Mystic mode themes the whole page, not just the centred container,
+  // so the class lives on <body>.
+  useEffect(() => {
+    document.body.classList.toggle('mystic-mode', isMystic)
+  }, [isMystic])
 
   const toggleMystic = () => {
     setIsMystic((prev) => !prev)
   }
 
   return (
-    <div className={`container ${isMystic ? 'mystic-mode' : ''}`}>
+    <div className="container">
       <header>
         <img
           src={logo}
           alt="Edge of the Map LLC Logo"
+          width="300"
+          height="200"
           className="logo shimmer"
         />
         <div className="tagline">
