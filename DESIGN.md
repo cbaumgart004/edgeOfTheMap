@@ -120,9 +120,11 @@ and no form service — the site is static, and `mailto` needs neither. If a rea
 is ever wanted it needs a third-party endpoint; that is a deliberate trade, not an
 oversight.
 
-> ⚠️ **`CONTACT_EMAIL` in `App.jsx` is a placeholder** — `hello@theedgeofthemap.com`
-> is assumed, not confirmed. Every CTA and the contact section resolve from that one
-> constant, so correcting it is a one-line change.
+`CONTACT_EMAIL` in `App.jsx` is `keeper@theedgeofthemap.com`. Every CTA and the
+contact band resolve from that one constant. If the crafts ever want separate
+inboxes — `storyteller@`, `wright@` — add an `email` field to `PATHS` and fall back
+to `CONTACT_EMAIL`; the subject lines already file enquiries by discipline, so this
+is only worth doing if the volume justifies separate mailboxes.
 
 **The QR.** `qr_code.png` is branded artwork — a dragon coiled around a rune circle —
 with a QR at its centre encoding `https://theedgeofthemap.com`, the site's own

@@ -11,9 +11,10 @@ import qrCode from './assets/qr_code.png'
 
 const SITE_URL = 'https://theedgeofthemap.com'
 
-// TODO(confirm): placeholder until the LLC's real inbox is settled.
 // Single source for every CTA — change here, not in the markup.
-const CONTACT_EMAIL = 'hello@theedgeofthemap.com'
+// If the crafts ever want separate inboxes, add an `email` to PATHS and fall
+// back to this one.
+const CONTACT_EMAIL = 'keeper@theedgeofthemap.com'
 
 const BURN_MS = 1250
 
