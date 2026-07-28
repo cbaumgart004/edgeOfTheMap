@@ -40,13 +40,15 @@ railway.json            Railway build command + output dir.
 src/
   main.jsx              React root (StrictMode). Imports the font faces → <App />
   App.jsx               The whole UI + the PATHS table (§4).
-  App.css               Theme tokens, both faces, layout.
+  App.css               Theme tokens, both faces, layout, the burn.
   Rune.jsx              Elder Futhark glyphs as SVG (§4).
+  BurnFilter.jsx        The SVG displacement filter behind the burn (§5).
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
-    hero-wide.webp      Hero plate, 1536×792 (116 KB). Imported by App.jsx.
-    hero-narrow.webp    Hero plate, 960×495 (40 KB). srcSet partner.
-    logo_signature.png  Footer mark (67 KB). Imported by App.jsx.
+    logo-card.webp      Hero logo card, 800×533 (43 KB). Imported by App.jsx.
+    hero-wide.webp      Mystic plate, 1536×792 (116 KB). Imported by App.jsx.
+    hero-narrow.webp    Mystic plate, 960×495 (40 KB). srcSet partner.
+    logo_signature.png  Header + footer mark (67 KB). Imported by App.jsx.
     logo.png            Full-resolution master (1.8 MB). Not imported — see §6.
     qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
@@ -71,11 +73,11 @@ main.jsx  ──renders──>  App
                                                   to every [data-reveal]
 ```
 
-`App` renders a fixed structure: a fixed `.site-header` and a full-page `.grain`
-overlay, a full-bleed `.hero` (which sits *outside* `.container`, since `.container`
-is width-capped), then `.paths` — one card per entry in the `PATHS` table — then
-`.contact`, `.qr-section` and a footer. Nothing is fetched, nothing is persisted,
-there are no routes; the nav is same-page anchors.
+`App` renders a fixed structure: a sticky `.site-header`, a two-column `.hero`
+(copy left, logo card right — the dark plate behind it is only lit in mystic mode),
+`.services` holding one `.card` per entry in the `PATHS` table, a `.cta-band`,
+`.qr-section`, and the footer. Nothing is fetched, nothing is persisted, there are
+no routes; the nav is same-page anchors.
 
 **Why the class lives on `<body>`:** `.container` is `max-width: 1200px` and centred,
 so a theme class applied there leaves the page gutters unstyled. Putting the class on
@@ -127,51 +129,62 @@ as by scan. `SITE_URL` in `App.jsx` is the single source for both.
 
 ## 5. Theming
 
-**The site has two faces, and the separation is the whole point of the toggle.**
+**The site has two faces, deliberately far apart. The distance is the point.**
 
-*Default* is the professional face: Lato, near-monochrome, high contrast, sharp
-edges, the hero artwork desaturated back to a backdrop. Runes are present but drawn
-as quiet linework. **Nothing atmospheric leaks into it** — no glow, no serif, no
-violet. If a change makes the default face more mystical, it belongs behind the
-toggle instead.
+*Default* is an ordinary light product site: white surfaces, one teal accent, system
+UI type, bordered cards with soft shadows, a conventional header and CTA band. It
+should read as a legitimate tech company and nothing else. **Nothing atmospheric
+leaks into it** — no glow, no serif, no violet, no dragons. If a change makes the
+default face more mystical, it belongs behind the toggle instead.
 
-*Mystic mode* (`body.mystic-mode`) is the reveal: Cormorant Garamond, violet, glow,
-the hero tinted, the runes lit and flickering.
+*Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
+Garamond, the dragon plate lit behind the hero, glow on the logo and runes. Same
+markup, same components — only tokens change.
 
-Both faces are driven by the same token names, re-declared under
-`body.mystic-mode`, so component rules never branch on mode:
+Both faces re-declare the same token names, so component rules never branch on mode:
 
 | Token | Default | Mystic |
 | --- | --- | --- |
-| `--page-bg` | `#0a0a0c` | `#101018` |
-| `--surface` | `#141519` | `#17151f` |
-| `--ink` | `#e8edef` (~16:1) | `#ded6f2` |
-| `--ink-muted` | `#9ba5aa` (~7.6:1) | `#a99fc4` |
-| `--hairline` | `rgba(255,255,255,.12)` | `rgba(122,77,231,.32)` |
-| `--display-font` | Lato | Cormorant Garamond |
+| `--bg` | `#ffffff` | `#101018` |
+| `--bg-subtle` | `#f6f7f9` | `#15131f` |
+| `--surface` | `#ffffff` | `#191527` |
+| `--border` | `#e3e6ea` | `rgba(122,77,231,.34)` |
+| `--ink` | `#14161a` (~16:1) | `#ece5ff` |
+| `--ink-muted` | `#5b6472` (~6.6:1) | `#aba0c6` |
+| `--accent` | `#0f766e` teal | `#a1e7f5` ghost blue |
+| `--accent-soft` | `#e6f4f1` | `rgba(122,77,231,.22)` |
+| `--display-font` | system UI stack | Cormorant Garamond |
 
-Per-discipline accents are fixed across both faces: `--accent-keeper` `#6fd7ee`,
-`--accent-storyteller` `#ffd34d`, `--accent-wright` `#e8935a` — all ≥7:1 on
-`--page-bg`. Each card gets exactly one hairline of its accent by default; colour is
-rationed on purpose.
+The teal accent is pulled down from the logo's neon so the light face still belongs
+to the brand. There are no per-discipline colours any more — three accent colours
+read as decoration on a light page; the runes carry the differentiation instead.
 
-Type is a fluid scale (`--step-0` … `--step-hero`) built on `clamp()`, so nothing
-needs a breakpoint to stay readable.
+Type is a fluid scale (`--step-0` … `--step-3`) built on `clamp()`, so nothing needs
+a breakpoint to stay readable.
 
-**Restraint devices** carrying the professional face: a fine `.grain` overlay at 3.5%
-(flat dark fields read as plastic without it), editorial `01/02/03` card indices,
-small-caps `.section-label`s at wide tracking, a hairline nav underline that scales
-from the left, and scroll reveals that fade-and-rise with a 90ms stagger per card.
-All of it is motion-safe — see §6.
+**Only the mystic face ships a webfont.** `main.jsx` imports Cormorant Garamond
+400/600 from `@fontsource`; the default face uses the system UI stack, which costs
+nothing and reads as native on every platform. Lato was dropped in the light rework —
+it was the old default face, and removing it took the CSS bundle from 12.5 KB to
+3.9 KB gzipped.
 
-Transitions are 0.5s on `body` — long enough that a computed-style read taken
-immediately after the toggle will still show intermediate values.
+### The burn transition
 
-**Fonts are self-hosted.** `main.jsx` imports Lato 400/700 and Cormorant Garamond
-400/600 from `@fontsource`, so Vite bundles the woff2/woff files and the site makes
-no third-party request to render. Cormorant is only referenced by mystic mode, so
-browsers defer downloading it until the toggle fires — that is correct lazy
-behaviour, not a missing font.
+Toggling does not cross-fade. A sheet painted in the **outgoing** background burns
+away from the centre to reveal the already-reskinned page beneath, with an ember rim
+travelling at the burn front. It runs for 1.25s and is skipped entirely under
+`prefers-reduced-motion`.
+
+The sheet is a flat plane rather than a copy of the old page — and that suits the
+metaphor rather than fighting it: a paper map burning away. Sequence in `App.jsx`:
+
+1. Freeze the current `background-color` into state and mount `.burn`.
+2. 60ms later, swap the body class (page underneath is now the new face, hidden by
+   the sheet) and add `.is-lit` to start the mask animation.
+3. Unmount at 1.51s.
+
+The frozen colour matters: reading a live custom property would recolour the sheet
+halfway through the burn.
 
 ---
 
@@ -192,10 +205,19 @@ behaviour, not a missing font.
   artwork's width, so downscaling eats into it fast. Every candidate size was decoded
   before being accepted, and `.qr-code` is set to 340px for the same reason — at
   220px the code renders ~57px wide and becomes unreliable to scan.
-- **The hero plate is `logo.png` with its own wordmark cropped off** (the artwork
-  bakes in "EDGE OF THE MAP" below y=792). The type in the hero is real text so it
-  scales, reflows, and is readable by a screen reader. Re-derive with the same crop
-  or the wordmark will appear twice.
+- **`filter` applies before `mask`.** The burn's displacement filter therefore sits
+  on `.burn-warp`, the *parent* of the masked layers — filtering the masked element
+  directly would displace its contents but leave a clean circular mask edge. That
+  ordering is the whole reason the burn looks torn instead of like a wipe. Same
+  reasoning is in the `BurnFilter.jsx` header.
+- **The burn needs `@property --burn`.** A plain custom property cannot be
+  transitioned, so without the `@property` registration the mask jumps straight to
+  its end state and the effect degrades to an instant swap. That is an acceptable
+  fallback, not a bug — but do not "simplify" the registration away.
+- **The mystic plate (`hero-wide.webp`) is `logo.png` with its own wordmark cropped
+  off** (the artwork bakes in "EDGE OF THE MAP" below y=792). `logo-card.webp` is the
+  opposite — the *full* logo including the wordmark, used as the light hero's visual.
+  Re-derive each from the right crop or the wordmark ends up doubled or missing.
 - **Mystic tints the hero with a `color` blend, not `hue-rotate`.** `hue-rotate` was
   tried first and threw the rune tablet orange — the plate holds more than one source
   hue, so a single rotation cannot land them all on violet. A `mix-blend-mode: color`
@@ -203,13 +225,10 @@ behaviour, not a missing font.
 - **`.hero-scrim` must paint above that tint** (`z-index: 2` vs `1`). The scrim is
   what fades the hero into the page background; if the tint paints over it, the fade
   is re-coloured and the hero ends on a hard horizontal seam.
-- **Cormorant's uppercase runs wider than Lato 900.** The mystic wordmark is scaled
-  to `calc(var(--step-hero) * 0.84)` so both faces hold a single line — without it,
-  toggling reflows the wordmark to two lines and the whole hero jumps. `.hero-content`
-  is 54rem rather than 48rem for the same reason: at 48rem the sans wordmark renders
-  flush to the edge with zero slack.
-- **The `shimmer` class on the logo has no CSS rule.** It is a placeholder for an
-  animation that was never written.
+- **Serif and sans set to different widths.** The two faces swap `--display-font`, so
+  any headline pinned to an exact line count will reflow on toggle. Give headings room
+  to breathe rather than tuning them flush; an earlier hero wordmark had to be scaled
+  to 0.84 to stop the serif face wrapping to two lines and jolting the layout.
 - **A backgrounded tab breaks three different automated checks.** While
   `document.visibilityState === 'hidden'`, Chrome defers `loading="lazy"` images (the
   QR reports `naturalWidth: 0`), does not fire `IntersectionObserver` (every

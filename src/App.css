@@ -1,46 +1,49 @@
 /* App.css
    ------------------------------------------------------------------
-   Two personalities, one stylesheet.
+   Two faces, deliberately far apart.
 
-   DEFAULT is the professional face: sans-serif, high contrast, sharp
-   edges, near-monochrome, the artwork desaturated back to a backdrop.
-   Runes are present but drawn as quiet linework.
+   DEFAULT is a light, conventional product site — white surfaces, a
+   single teal accent, system UI type, bordered cards. It should read as
+   a legitimate tech company and nothing else. No glow, no serif, no
+   atmosphere.
 
-   MYSTIC MODE (body.mystic-mode) is the reveal: serif, violet, glow,
-   the hero hue-rotated teal→violet, runes lit. Nothing mystical leaks
-   into the default face — that separation is the whole point of the
-   toggle.
+   MYSTIC (body.mystic-mode) is the opposite pole: dark violet, serif,
+   the dragon plate lit behind the hero. The distance between the two is
+   the point — the burn transition (§ BURN) sells the reveal.
+
+   Component rules never branch on mode. Both faces re-declare the same
+   token names, so a card is a card in either world.
    ------------------------------------------------------------------ */
 
 :root {
-  /* Brand */
-  --violet: #7a4de7;
-  --gold: #ffd34d;
-  --ghost-blue: #a1e7f5;
+  --bg: #ffffff;
+  --bg-subtle: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e3e6ea;
+  --border-strong: #ccd2d9;
 
-  /* Per-discipline accents. All ≥7:1 on --page-bg. */
-  --accent-keeper: #6fd7ee;
-  --accent-storyteller: #ffd34d;
-  --accent-wright: #e8935a;
+  --ink: #14161a; /* ~16:1 on --bg */
+  --ink-muted: #5b6472; /* ~6.6:1 on --bg */
 
-  /* Surfaces */
-  --page-bg: #0a0a0c;
-  --surface: #141519;
-  --hairline: rgba(255, 255, 255, 0.12);
+  --accent: #0f766e; /* teal, pulled from the logo's neon */
+  --accent-hover: #0b5d57;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6f4f1;
 
-  /* Ink — high contrast by default. */
-  --ink: #e8edef; /* ~16:1 */
-  --ink-muted: #9ba5aa; /* ~7.6:1 */
+  --radius: 10px;
+  --shadow-sm: 0 1px 2px rgba(16, 22, 26, 0.06);
+  --shadow-md: 0 6px 24px -8px rgba(16, 22, 26, 0.18);
 
-  /* Fluid type scale. */
-  --step-label: 0.78rem;
-  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.1rem);
-  --step-1: clamp(1.1rem, 1.02rem + 0.42vw, 1.35rem);
-  --step-2: clamp(1.4rem, 1.24rem + 0.8vw, 1.9rem);
-  --step-hero: clamp(2.2rem, 1rem + 6.6vw, 5rem);
+  --display-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --body-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-  --display-font: 'Lato', system-ui, sans-serif;
-  --display-tracking: 0.015em;
+  --step-label: 0.75rem;
+  --step-0: 1rem;
+  --step-1: clamp(1.05rem, 1rem + 0.3vw, 1.2rem);
+  --step-2: clamp(1.35rem, 1.15rem + 0.9vw, 1.85rem);
+  --step-3: clamp(1.9rem, 1.3rem + 2.6vw, 3.1rem);
+
+  --wrap: 1140px;
 }
 
 html {
@@ -49,19 +52,37 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Lato', system-ui, sans-serif;
+  font-family: var(--body-font);
   font-size: var(--step-0);
-  line-height: 1.65;
-  background-color: var(--page-bg);
+  line-height: 1.6;
+  background-color: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.5s ease, color 0.5s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--display-font);
-  letter-spacing: var(--display-tracking);
+  color: var(--ink);
+  line-height: 1.18;
+  letter-spacing: -0.018em;
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .rune {
@@ -71,94 +92,122 @@ h2 {
   overflow: visible;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Fine noise over the whole page. Flat dark fields read as plastic without
-   it; at 3.5% it is felt rather than seen. */
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+.eyebrow {
+  margin: 0 0 0.7rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 /* ============================================================
-   STICKY HEADER — only earns its space past the hero.
+   BUTTONS
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.72rem 1.35rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  background: var(--accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost:hover,
+.btn-ghost:focus-visible {
+  border-color: var(--ink-muted);
+  background: var(--bg-subtle);
+}
+
+.btn-sm {
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+}
+
+.btn-lg {
+  padding: 0.9rem 1.7rem;
+  font-size: 1rem;
+}
+
+/* ============================================================
+   HEADER
    ============================================================ */
 
 .site-header {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  z-index: 50;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 2rem;
-  padding: 0.9rem clamp(1.25rem, 4vw, 3rem);
-  background: rgba(10, 10, 12, 0.72);
-  backdrop-filter: blur(12px) saturate(1.2);
-  border-bottom: 1px solid var(--hairline);
-  translate: 0 -100%;
-  opacity: 0;
-  transition: translate 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease,
-    background-color 0.5s ease;
+  padding: 0.7rem clamp(1rem, 4vw, 2.5rem);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
-.site-header.is-pinned {
-  translate: 0 0;
-  opacity: 1;
-}
-
-.site-header-mark {
-  font-size: 0.8rem;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
   text-decoration: none;
   color: var(--ink);
+}
+
+.brand-mark {
+  width: 34px;
+  height: auto;
+  border-radius: 4px;
+}
+
+.brand-name {
+  font-family: var(--display-font);
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
 .site-nav {
   display: flex;
-  gap: clamp(1rem, 3vw, 2.25rem);
+  gap: 1.6rem;
+  margin-left: auto;
 }
 
 .site-nav a {
-  position: relative;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+  font-weight: 500;
   text-decoration: none;
   color: var(--ink-muted);
-  transition: color 0.25s ease;
-}
-
-.site-nav a::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.4rem;
-  height: 1px;
-  background: currentColor;
-  scale: 0 1;
-  transform-origin: left;
-  transition: scale 0.28s ease;
+  transition: color 0.2s ease;
 }
 
 .site-nav a:hover,
@@ -166,9 +215,10 @@ h2 {
   color: var(--ink);
 }
 
-.site-nav a:hover::after,
-.site-nav a:focus-visible::after {
-  scale: 1 1;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .header-toggle {
@@ -176,35 +226,20 @@ h2 {
   place-items: center;
   width: 2.1rem;
   height: 2.1rem;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--ink-muted);
   background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   cursor: pointer;
-  transition: color 0.25s ease, border-color 0.25s ease;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .header-toggle:hover,
 .header-toggle:focus-visible {
-  color: var(--ink);
-  border-color: currentColor;
-}
-
-/* ============================================================
-   SCROLL REVEAL
-   ============================================================ */
-
-[data-reveal] {
-  opacity: 0;
-  translate: 0 18px;
-  transition: opacity 0.7s ease var(--reveal-delay, 0ms),
-    translate 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
-}
-
-[data-reveal].is-visible {
-  opacity: 1;
-  translate: 0 0;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* ============================================================
@@ -213,482 +248,505 @@ h2 {
 
 .hero {
   position: relative;
-  min-height: 100svh;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
   isolation: isolate;
-  padding: 3rem 1.5rem 6rem;
-  text-align: center;
+  overflow: hidden;
+  padding: clamp(3rem, 7vw, 6rem) clamp(1rem, 4vw, 2.5rem) clamp(3rem, 6vw, 5rem);
+  background: linear-gradient(180deg, var(--accent-soft) 0%, var(--bg) 62%);
+  transition: background 0.35s ease;
 }
 
+/* Dark plate behind the hero — only lit in mystic mode. */
 .hero-media {
   position: absolute;
   inset: 0;
   z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-/* Default: pull the artwork back to a backdrop so the type carries the
-   page. Mystic mode is where it gets to be the loud one. */
 .hero-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
   display: block;
-  filter: saturate(0.32) brightness(0.5) contrast(1.18);
-  transform: scale(1.04);
-  animation: hero-drift 48s ease-in-out infinite alternate;
-  transition: filter 0.9s ease;
 }
 
-/* Must paint above the mystic tint overlay, or the tint re-colours the
-   fade-to-background and the hero ends on a hard seam. */
 .hero-scrim {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background:
-    radial-gradient(
-      ellipse 72% 60% at 50% 46%,
-      rgba(10, 10, 12, 0.88),
-      rgba(10, 10, 12, 0.45) 58%,
-      rgba(10, 10, 12, 0) 80%
+  /* Kept light enough that the plate actually reads — the copy sits in the
+     left column, so the darkening is weighted there rather than centred. */
+  background: radial-gradient(
+      ellipse 62% 70% at 26% 46%,
+      rgba(16, 16, 24, 0.92),
+      rgba(16, 16, 24, 0.55) 55%,
+      rgba(16, 16, 24, 0.12) 80%
     ),
-    linear-gradient(
-      to bottom,
-      rgba(10, 10, 12, 0.72) 0%,
-      rgba(10, 10, 12, 0) 24%,
-      rgba(10, 10, 12, 0) 48%,
-      var(--page-bg) 88%
-    );
+    linear-gradient(to bottom, rgba(16, 16, 24, 0.55), rgba(16, 16, 24, 0.1) 45%, var(--bg) 97%);
 }
 
-@keyframes hero-drift {
-  from {
-    transform: scale(1.04) translate3d(-1.1%, 0, 0);
-  }
-  to {
-    transform: scale(1.09) translate3d(1.1%, -0.9%, 0);
-  }
-}
-
-/* Wide enough that the sans wordmark keeps slack at the top of its clamp —
-   it renders flush to 48rem and would wrap on any font fallback. */
-.hero-content {
-  max-width: 54rem;
-}
-
-/* Othala · Ansuz · Berkano — the three crafts, stated before the name is. */
-.hero-runes {
-  display: flex;
+.hero-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 2.4rem;
-  margin-bottom: 2.4rem;
-  font-size: 1.9rem;
-  color: var(--ink);
-  opacity: 0.8;
-  transition: color 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  max-width: var(--wrap);
+  margin: 0 auto;
 }
 
-.hero-runes .rune {
-  stroke-width: 1.3;
-  filter: drop-shadow(0 1px 10px rgba(0, 0, 0, 0.9));
-}
-
-.wordmark {
-  margin: 0;
-  font-weight: 900;
-  font-size: var(--step-hero);
-  line-height: 1.04;
-  letter-spacing: 0.005em;
-  text-transform: uppercase;
-  color: #fff;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.95);
-  transition: color 0.5s ease, text-shadow 0.5s ease,
-    letter-spacing 0.5s ease, font-family 0s;
-}
-
-.wordmark-line {
-  display: block;
-}
-
-.wordmark-rule {
-  display: block;
-  width: min(58%, 17rem);
-  height: 1px;
-  margin: 1.35rem auto 1rem;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.55),
-    transparent
-  );
-}
-
-.wordmark-sub {
-  display: block;
-  font-family: 'Lato', system-ui, sans-serif;
-  font-size: clamp(0.7rem, 0.3rem + 0.9vw, 0.85rem);
+.hero h1 {
+  font-size: var(--step-3);
   font-weight: 700;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
-  color: var(--ink);
-  opacity: 0.82;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
+  max-width: 15ch;
 }
 
-.hero-tagline {
-  margin: 1.7rem auto 2.6rem;
-  max-width: 36rem;
+.hero-sub {
+  margin: 1.1rem 0 2rem;
   font-size: var(--step-1);
-  line-height: 1.6;
-  color: #eef2f4;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.95);
+  color: var(--ink-muted);
+  max-width: 46ch;
 }
 
-/* The signature interaction — deliberately not a form control. */
-.reveal-button {
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
+  margin: 2.5rem 0 0;
+  padding: 1.4rem 0 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.hero-trust li {
   display: inline-flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.9rem 2rem;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #fff;
-  background: rgba(10, 10, 12, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 2px;
-  cursor: pointer;
-  backdrop-filter: blur(3px);
-  transition: color 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, background-color 0.25s ease;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-muted);
 }
 
-.reveal-button:hover,
-.reveal-button:focus-visible {
-  color: var(--page-bg);
-  background: #fff;
-  border-color: #fff;
+.hero-trust .rune {
+  font-size: 0.95rem;
+  color: var(--accent);
 }
 
-.reveal-rune {
-  font-size: 0.72em;
-  opacity: 0.65;
-  transition: transform 0.35s ease, opacity 0.25s ease;
-}
-
-.reveal-button:hover .reveal-rune,
-.reveal-button:focus-visible .reveal-rune {
-  opacity: 1;
-  transform: rotate(45deg);
-}
-
-.hero-scroll {
-  position: absolute;
-  bottom: 2.2rem;
-  left: 50%;
-  translate: -50% 0;
-}
-
-.hero-scroll-line {
-  display: block;
-  width: 1px;
-  height: 3.5rem;
-  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.8));
-  animation: scroll-pulse 2.8s ease-in-out infinite;
-  transform-origin: top;
-}
-
-@keyframes scroll-pulse {
-  0%,
-  100% {
-    opacity: 0.18;
-    scale: 1 0.5;
-  }
-  50% {
-    opacity: 0.7;
-    scale: 1 1;
-  }
+.hero-visual img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
 /* ============================================================
-   PATHS
+   SERVICES
    ============================================================ */
 
-.container {
-  max-width: 1200px;
+.services {
+  max-width: var(--wrap);
   margin: 0 auto;
-  padding: 0 2rem 2rem;
-  text-align: center;
+  padding: clamp(3.5rem, 8vw, 6.5rem) clamp(1rem, 4vw, 2.5rem);
 }
 
-.paths {
+.section-head {
+  max-width: 44rem;
+  margin-bottom: 2.75rem;
+}
+
+.section-head h2 {
+  font-size: var(--step-2);
+  font-weight: 700;
+}
+
+.section-sub {
+  margin: 0.85rem 0 0;
+  color: var(--ink-muted);
+  font-size: var(--step-1);
+}
+
+.cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: 1.5rem;
-  margin-top: -2rem;
+  gap: 1.25rem;
 }
 
-.panel {
-  position: relative;
-  /* Clears the fixed header when jumped to from the nav. */
-  scroll-margin-top: 5.5rem;
+.card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 2.75rem 1.75rem 2.25rem;
+  scroll-margin-top: 5.5rem;
+  padding: 1.75rem;
   background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
-  transition: border-color 0.35s ease, transform 0.35s ease,
-    background-color 0.35s ease, box-shadow 0.35s ease;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease,
+    transform 0.25s ease, background-color 0.35s ease;
 }
 
-/* Accent hairline across the top — the only colour each card gets by
-   default. */
-.panel::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: var(--accent);
-  opacity: 0.85;
-  transition: opacity 0.35s ease;
-}
-
-.panel:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.24);
-}
-
-.keeper {
-  --accent: var(--accent-keeper);
-}
-.storyteller {
-  --accent: var(--accent-storyteller);
-}
-.wright {
-  --accent: var(--accent-wright);
-}
-
-/* Editorial index — 01 / 02 / 03. Quiet enough to be structure, not decoration. */
-.panel-index {
-  position: absolute;
-  top: 1.1rem;
-  right: 1.25rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: var(--ink-muted);
-  opacity: 0.45;
-}
-
-.panel-rune {
-  font-size: 1.75rem;
-  color: var(--accent);
-  margin-bottom: 1.25rem;
-  transition: filter 0.4s ease, transform 0.4s ease;
-}
-
-.panel:hover .panel-rune {
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
-.panel-discipline {
-  margin: 0 0 0.4rem;
+.card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-bottom: 1.1rem;
+  font-size: 1.15rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  transition: background-color 0.35s ease;
+}
+
+.card-persona {
+  margin: 0 0 0.3rem;
   font-size: var(--step-label);
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
-}
-
-.panel h2 {
-  margin: 0 0 0.75rem;
-  font-size: var(--step-2);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.panel-blurb {
-  margin: 0 0 1.75rem;
   color: var(--ink-muted);
-  max-width: 22rem;
 }
 
-.path-cta {
+.card h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.card-blurb {
+  margin: 0 0 1.1rem;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.card-points {
+  margin: 0 0 1.6rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.card-points li {
+  position: relative;
+  padding-left: 1.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.card-points li::before {
+  content: '';
+  position: absolute;
+  left: 0.25rem;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.card-link {
   margin-top: auto;
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1.5rem;
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 600;
   text-decoration: none;
   color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
-  border-radius: 2px;
-  transition: color 0.25s ease, background-color 0.25s ease,
-    border-color 0.25s ease;
 }
 
-.path-cta:hover,
-.path-cta:focus-visible {
-  color: var(--page-bg);
-  background: var(--accent);
-  border-color: var(--accent);
+.card-link span {
+  transition: transform 0.2s ease;
 }
 
-.path-cta-arrow {
-  transition: transform 0.25s ease;
-}
-
-.path-cta:hover .path-cta-arrow,
-.path-cta:focus-visible .path-cta-arrow {
+.card-link:hover span,
+.card-link:focus-visible span {
   transform: translateX(3px);
 }
 
 /* ============================================================
-   QR + FOOTER
+   CTA BAND + QR
    ============================================================ */
 
-.qr-section {
-  margin-top: 8rem;
+.cta-band {
+  background: var(--bg-subtle);
+  border-block: 1px solid var(--border);
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 2.5rem);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
-.qr-caption {
-  margin: 0 0 1.75rem;
+.cta-band-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.75rem;
+  max-width: var(--wrap);
+  margin: 0 auto;
+}
+
+.cta-band h2 {
+  font-size: var(--step-2);
+  font-weight: 700;
+}
+
+.cta-band p {
+  margin: 0.6rem 0 0;
+  color: var(--ink-muted);
+  max-width: 46ch;
+}
+
+.qr-section {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: clamp(3rem, 7vw, 5.5rem) clamp(1rem, 4vw, 2.5rem);
+}
+
+.qr-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.qr-copy {
+  flex: 1 1 22rem;
+}
+
+.qr-copy h2 {
+  font-size: var(--step-2);
+  font-weight: 700;
+}
+
+.qr-copy p {
+  margin: 0.7rem 0 0;
   color: var(--ink-muted);
 }
 
 .qr-link {
-  display: inline-block;
+  display: block;
   line-height: 0;
-  border-radius: 8px;
-  transition: transform 0.25s ease, filter 0.25s ease;
+  transition: transform 0.25s ease;
 }
 
-.qr-link:hover,
-.qr-link:focus-visible {
-  transform: scale(1.03);
+.qr-link:hover {
+  transform: scale(1.02);
 }
 
-/* The code itself is only ~26% of the artwork's width, so the image has to
-   be generous or the QR renders too small to scan. */
+/* The code is only ~26% of the artwork's width, so the image has to be
+   generous or the QR renders too small to scan. */
 .qr-code {
-  width: 340px;
+  width: 260px;
   max-width: 100%;
   height: auto;
 }
 
 /* ============================================================
-   CONTACT
+   FOOTER
    ============================================================ */
 
-.section-label {
-  margin: 0 0 0.9rem;
-  font-size: var(--step-label);
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+  font-size: 0.88rem;
   color: var(--ink-muted);
 }
 
-.contact {
-  margin-top: 9rem;
-  padding-top: 4rem;
-  border-top: 1px solid var(--hairline);
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
 }
 
-.contact h2 {
-  margin: 0 0 1rem;
-  font-size: clamp(1.8rem, 1.1rem + 2.6vw, 3.1rem);
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
 }
 
-body.mystic-mode .contact h2 {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.contact-blurb {
-  max-width: 34rem;
-  margin: 0 auto 2.25rem;
+.footer-nav a {
   color: var(--ink-muted);
-  font-size: var(--step-1);
-}
-
-.contact-link {
-  display: inline-block;
-  font-size: var(--step-1);
-  font-weight: 700;
-  letter-spacing: 0.04em;
   text-decoration: none;
+}
+
+.footer-nav a:hover {
   color: var(--ink);
-  border-bottom: 1px solid var(--hairline);
-  padding-bottom: 0.3rem;
-  transition: color 0.25s ease, border-color 0.25s ease;
-}
-
-.contact-link:hover,
-.contact-link:focus-visible {
-  color: var(--accent-keeper);
-  border-color: currentColor;
-}
-
-footer {
-  margin-top: 6rem;
-  padding-top: 2.5rem;
-  border-top: 1px solid var(--hairline);
-  font-size: 0.85rem;
-  color: var(--ink-muted);
-}
-
-.footer-mark {
-  display: block;
-  width: 104px;
-  height: auto;
-  margin: 0 auto 1rem;
-  opacity: 0.42;
-  transition: opacity 0.3s ease;
-}
-
-.footer-mark:hover {
-  opacity: 0.75;
 }
 
 /* ============================================================
-   MYSTIC MODE — everything atmospheric lives behind the toggle.
+   SCROLL REVEAL
+   ============================================================ */
+
+[data-reveal] {
+  opacity: 0;
+  translate: 0 16px;
+  transition: opacity 0.6s ease var(--reveal-delay, 0ms),
+    translate 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* ============================================================
+   BURN — the mode transition.
+
+   A sheet painted in the outgoing background burns away from the centre
+   to reveal the already-reskinned page beneath, with an ember rim
+   travelling at the burn front. The sheet is a flat plane rather than a
+   copy of the old page, which suits the metaphor: a paper map burning.
+   ============================================================ */
+
+@property --burn {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
+.burn-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.burn {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  --burn: 0%;
+}
+
+.burn.is-lit {
+  --burn: 165%;
+  transition: --burn 1.25s cubic-bezier(0.42, 0.03, 0.72, 0.62);
+}
+
+/* The filter must sit on the wrapper: CSS applies `filter` before `mask`,
+   so filtering the masked layer directly would leave a clean circular
+   edge instead of a torn one. */
+.burn-warp {
+  position: absolute;
+  inset: -14%;
+  filter: url(#burn-displace);
+}
+
+.burn-sheet,
+.burn-ember {
+  position: absolute;
+  inset: 0;
+}
+
+.burn-sheet {
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 52%,
+    transparent 0 var(--burn),
+    #000 calc(var(--burn) + 6%)
+  );
+  mask-image: radial-gradient(
+    circle at 50% 52%,
+    transparent 0 var(--burn),
+    #000 calc(var(--burn) + 6%)
+  );
+}
+
+.burn-ember {
+  background: radial-gradient(
+    circle at 50% 52%,
+    #fff0a8 0%,
+    #ffb020 34%,
+    #ff5a1f 58%,
+    #7a4de7 80%,
+    transparent 92%
+  );
+  filter: blur(5px) saturate(1.4);
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 52%,
+    transparent 0 calc(var(--burn) - 3%),
+    #000 calc(var(--burn) + 0.5%),
+    #000 calc(var(--burn) + 3.5%),
+    transparent calc(var(--burn) + 9%)
+  );
+  mask-image: radial-gradient(
+    circle at 50% 52%,
+    transparent 0 calc(var(--burn) - 3%),
+    #000 calc(var(--burn) + 0.5%),
+    #000 calc(var(--burn) + 3.5%),
+    transparent calc(var(--burn) + 9%)
+  );
+}
+
+/* ============================================================
+   MYSTIC MODE
    ============================================================ */
 
 body.mystic-mode {
-  --page-bg: #101018;
-  --surface: #17151f;
-  --ink: #ded6f2;
-  --ink-muted: #a99fc4;
-  --hairline: rgba(122, 77, 231, 0.32);
+  --bg: #101018;
+  --bg-subtle: #15131f;
+  --surface: #191527;
+  --border: rgba(122, 77, 231, 0.34);
+  --border-strong: rgba(161, 231, 245, 0.5);
+
+  --ink: #ece5ff;
+  --ink-muted: #aba0c6;
+
+  --accent: #a1e7f5;
+  --accent-hover: #ffffff;
+  --accent-ink: #14101f;
+  --accent-soft: rgba(122, 77, 231, 0.22);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 10px 34px -10px rgba(122, 77, 231, 0.55);
+
   --display-font: 'Cormorant Garamond', serif;
-  font-family: 'Cormorant Garamond', serif;
+  --body-font: 'Cormorant Garamond', serif;
+
+  font-family: var(--body-font);
 }
 
-/* The artwork is teal; the mystic palette is violet. A `color` blend maps
+body.mystic-mode .hero {
+  background: transparent;
+}
+
+body.mystic-mode .hero-media {
+  opacity: 1;
+}
+
+/* The plate is teal; the mystic palette is violet. A `color` blend maps
    every hue onto violet while keeping the original luminance — hue-rotate
-   was tried first and threw the rune tablet orange, because the plate holds
-   more than one source hue. */
-body.mystic-mode .hero-image {
-  filter: saturate(0.85) brightness(0.78) contrast(1.06);
-}
-
+   was tried first and threw the rune tablet orange. */
 body.mystic-mode .hero-media::after {
   content: '';
   position: absolute;
@@ -700,107 +758,46 @@ body.mystic-mode .hero-media::after {
   pointer-events: none;
 }
 
-body.mystic-mode .hero-runes {
-  color: var(--ghost-blue);
-  opacity: 1;
-  filter: drop-shadow(0 0 8px rgba(161, 231, 245, 0.8));
+body.mystic-mode .hero h1,
+body.mystic-mode .cta-band h2 {
+  text-shadow: 0 0 28px rgba(122, 77, 231, 0.6);
 }
 
-/* Cormorant's uppercase runs materially wider than Lato 900, so the serif
-   face is scaled down to hold the same single line — otherwise toggling
-   reflows the wordmark to two lines and the whole hero jumps. */
-body.mystic-mode .wordmark {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 600;
-  font-size: calc(var(--step-hero) * 0.84);
-  letter-spacing: 0.045em;
-  color: #f2ecff;
-  text-shadow: 0 0 30px rgba(122, 77, 231, 0.8),
-    0 0 80px rgba(122, 77, 231, 0.45);
+body.mystic-mode .hero-visual img {
+  box-shadow: 0 0 40px -6px rgba(122, 77, 231, 0.75);
 }
 
-body.mystic-mode .wordmark-sub,
-body.mystic-mode .hero-tagline {
-  color: var(--ghost-blue);
+body.mystic-mode .card-icon {
+  color: var(--accent);
+  box-shadow: 0 0 16px rgba(122, 77, 231, 0.35);
 }
 
-body.mystic-mode .reveal-button {
-  color: #f2ecff;
-  border-color: rgba(161, 231, 245, 0.7);
-  background: rgba(122, 77, 231, 0.22);
-  box-shadow: 0 0 24px rgba(122, 77, 231, 0.45);
+body.mystic-mode .card-icon .rune {
+  filter: drop-shadow(0 0 6px currentColor);
 }
 
-body.mystic-mode .reveal-button:hover,
-body.mystic-mode .reveal-button:focus-visible {
-  color: var(--page-bg);
-  background: var(--ghost-blue);
-  border-color: var(--ghost-blue);
-  box-shadow: 0 0 32px rgba(161, 231, 245, 0.6);
-}
-
-body.mystic-mode .panel {
-  background-image: radial-gradient(
-    circle at 50% 0%,
-    rgba(122, 77, 231, 0.22),
-    transparent 70%
-  );
-  box-shadow: 0 0 24px rgba(122, 77, 231, 0.18);
-  text-shadow: 0 0 6px rgba(122, 77, 231, 0.55);
-}
-
-body.mystic-mode .panel-rune {
-  filter: drop-shadow(0 0 10px currentColor);
-  animation: rune-flicker 5s ease-in-out infinite;
-}
-
-.wright .panel-rune {
-  animation-delay: 1.1s;
-}
-.storyteller .panel-rune {
-  animation-delay: 2.3s;
-}
-
-@keyframes rune-flicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  46% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-  54% {
-    opacity: 1;
-  }
-}
-
-body.mystic-mode .path-cta {
-  box-shadow: 0 0 14px rgba(122, 77, 231, 0.4);
-}
-
-body.mystic-mode .site-header {
-  background: rgba(16, 16, 24, 0.72);
-}
-
-body.mystic-mode .contact-link {
-  color: var(--ghost-blue);
-}
-
+body.mystic-mode .brand-mark,
 body.mystic-mode .qr-link {
-  filter: drop-shadow(0 0 12px var(--violet));
-}
-
-body.mystic-mode .footer-mark {
-  opacity: 0.6;
-  filter: drop-shadow(0 0 8px rgba(122, 77, 231, 0.5));
+  filter: drop-shadow(0 0 10px rgba(122, 77, 231, 0.6));
 }
 
 /* ============================================================
-   MOTION
+   RESPONSIVE + MOTION
    ============================================================ */
+
+@media (max-width: 880px) {
+  .hero-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-visual {
+    order: -1;
+  }
+
+  .site-nav {
+    display: none;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -814,17 +811,8 @@ body.mystic-mode .footer-mark {
     translate: none;
   }
 
-  .hero-image {
-    animation: none;
-    transform: scale(1.04);
-  }
-
-  .hero-scroll-line,
-  body.mystic-mode .panel-rune {
-    animation: none;
-  }
-
-  .panel:hover {
+  .card:hover,
+  .qr-link:hover {
     transform: none;
   }
 
@@ -832,23 +820,6 @@ body.mystic-mode .footer-mark {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .hero {
-    padding-bottom: 5rem;
-  }
-
-  .container {
-    padding-inline: 1.25rem;
-  }
-
-  .paths {
-    margin-top: 0;
-  }
-
-  .qr-section {
-    margin-top: 4.5rem;
+    animation-duration: 0.01ms !important;
   }
 }

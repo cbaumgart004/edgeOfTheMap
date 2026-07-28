@@ -2,10 +2,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
-// Self-hosted so the fonts named in App.css actually resolve, and so the
-// site makes no third-party request to render.
-import '@fontsource/lato/400.css'
-import '@fontsource/lato/700.css'
+// Only the mystic face ships a webfont — the default face uses the system UI
+// stack, which costs nothing and reads as native on every platform.
+// Self-hosted so the site makes no third-party request to render.
 import '@fontsource/cormorant-garamond/400.css'
 import '@fontsource/cormorant-garamond/600.css'
 
