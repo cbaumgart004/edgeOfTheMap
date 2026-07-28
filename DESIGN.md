@@ -59,19 +59,23 @@ gets content-hashed and cache-busted.
 
 ## 3. Runtime architecture
 
-One component, one piece of state.
+One component, three small hooks, no store.
 
 ```
 main.jsx  ──renders──>  App
                          │
                          ├─ useState: isMystic
-                         └─ useEffect: body.classList.toggle('mystic-mode', isMystic)
+                         │    └─ useEffect: body.classList.toggle('mystic-mode', …)
+                         ├─ usePastHero()      → pins .site-header past 65% of the hero
+                         └─ useScrollReveal()  → IntersectionObserver adds .is-visible
+                                                  to every [data-reveal]
 ```
 
-`App` renders a fixed structure: a full-bleed `.hero` (which sits *outside*
-`.container`, since `.container` is width-capped), then `.paths` — one card per
-entry in the `PATHS` table — then `.qr-section` and a footer. Nothing is fetched,
-nothing is persisted, there are no routes.
+`App` renders a fixed structure: a fixed `.site-header` and a full-page `.grain`
+overlay, a full-bleed `.hero` (which sits *outside* `.container`, since `.container`
+is width-capped), then `.paths` — one card per entry in the `PATHS` table — then
+`.contact`, `.qr-section` and a footer. Nothing is fetched, nothing is persisted,
+there are no routes; the nav is same-page anchors.
 
 **Why the class lives on `<body>`:** `.container` is `max-width: 1200px` and centred,
 so a theme class applied there leaves the page gutters unstyled. Putting the class on
@@ -104,8 +108,15 @@ not. If woodworking ever needs a storefront, it earns a subdomain then.
 Othala is the inherited homestead, the domain one *keeps*. Ansuz is the god-rune of
 speech and the spoken word. Berkano is the birch — growth, and literally wood.
 
-All three CTAs are currently inert — they render as buttons with no handler. Wiring
-them to contact routes is the obvious next piece of work.
+**CTAs are `mailto:` links**, each carrying a per-path subject line (`subject` in the
+`PATHS` table) so an enquiry arrives already filed by discipline. There is no backend
+and no form service — the site is static, and `mailto` needs neither. If a real form
+is ever wanted it needs a third-party endpoint; that is a deliberate trade, not an
+oversight.
+
+> ⚠️ **`CONTACT_EMAIL` in `App.jsx` is a placeholder** — `hello@theedgeofthemap.com`
+> is assumed, not confirmed. Every CTA and the contact section resolve from that one
+> constant, so correcting it is a one-line change.
 
 **The QR.** `qr_code.png` is branded artwork — a dragon coiled around a rune circle —
 with a QR at its centre encoding `https://theedgeofthemap.com`, the site's own
@@ -146,6 +157,12 @@ rationed on purpose.
 
 Type is a fluid scale (`--step-0` … `--step-hero`) built on `clamp()`, so nothing
 needs a breakpoint to stay readable.
+
+**Restraint devices** carrying the professional face: a fine `.grain` overlay at 3.5%
+(flat dark fields read as plastic without it), editorial `01/02/03` card indices,
+small-caps `.section-label`s at wide tracking, a hairline nav underline that scales
+from the left, and scroll reveals that fade-and-rise with a 90ms stagger per card.
+All of it is motion-safe — see §6.
 
 Transitions are 0.5s on `body` — long enough that a computed-style read taken
 immediately after the toggle will still show intermediate values.
@@ -193,9 +210,19 @@ behaviour, not a missing font.
   flush to the edge with zero slack.
 - **The `shimmer` class on the logo has no CSS rule.** It is a placeholder for an
   animation that was never written.
-- **`loading="lazy"` images do not load in a backgrounded tab.** Chrome defers them
-  while `document.visibilityState === 'hidden'`, so automated checks against a
-  non-foreground tab will report the QR as `naturalWidth: 0`. Not a bug.
+- **A backgrounded tab breaks three different automated checks.** While
+  `document.visibilityState === 'hidden'`, Chrome defers `loading="lazy"` images (the
+  QR reports `naturalWidth: 0`), does not fire `IntersectionObserver` (every
+  `[data-reveal]` stays at `opacity: 0`), and does not deliver `scroll` events (the
+  header never unpins). Screenshots of that tab also drop fixed-position layers, so
+  `.site-header` can be absent from a capture while `elementFromPoint` still returns
+  it. None of these are bugs — verify with `elementFromPoint` or by dispatching the
+  event manually rather than trusting a capture.
+- **`[data-reveal]` starts at `opacity: 0`**, so anything that stops
+  `useScrollReveal` from running leaves content invisible. The hook reveals
+  everything up front when `IntersectionObserver` is missing or reduced motion is
+  requested, and the reduced-motion media query repeats the reset in CSS. Keep both
+  paths if you touch it.
 - **`node_modules/` and `dist/` were committed** for the first several commits. They
   are now untracked via `.gitignore`; the build output is produced on the host.
 

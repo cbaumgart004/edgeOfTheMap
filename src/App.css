@@ -43,6 +43,10 @@
   --display-tracking: 0.015em;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: 'Lato', system-ui, sans-serif;
@@ -65,6 +69,142 @@ h2 {
   height: 1.33em;
   display: block;
   overflow: visible;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Fine noise over the whole page. Flat dark fields read as plastic without
+   it; at 3.5% it is felt rather than seen. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   STICKY HEADER — only earns its space past the hero.
+   ============================================================ */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.9rem clamp(1.25rem, 4vw, 3rem);
+  background: rgba(10, 10, 12, 0.72);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border-bottom: 1px solid var(--hairline);
+  translate: 0 -100%;
+  opacity: 0;
+  transition: translate 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease,
+    background-color 0.5s ease;
+}
+
+.site-header.is-pinned {
+  translate: 0 0;
+  opacity: 1;
+}
+
+.site-header-mark {
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.site-nav {
+  display: flex;
+  gap: clamp(1rem, 3vw, 2.25rem);
+}
+
+.site-nav a {
+  position: relative;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink-muted);
+  transition: color 0.25s ease;
+}
+
+.site-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.4rem;
+  height: 1px;
+  background: currentColor;
+  scale: 0 1;
+  transform-origin: left;
+  transition: scale 0.28s ease;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  color: var(--ink);
+}
+
+.site-nav a:hover::after,
+.site-nav a:focus-visible::after {
+  scale: 1 1;
+}
+
+.header-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  font-size: 1rem;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.header-toggle:hover,
+.header-toggle:focus-visible {
+  color: var(--ink);
+  border-color: currentColor;
+}
+
+/* ============================================================
+   SCROLL REVEAL
+   ============================================================ */
+
+[data-reveal] {
+  opacity: 0;
+  translate: 0 18px;
+  transition: opacity 0.7s ease var(--reveal-delay, 0ms),
+    translate 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  translate: 0 0;
 }
 
 /* ============================================================
@@ -296,6 +436,8 @@ h2 {
 
 .panel {
   position: relative;
+  /* Clears the fixed header when jumped to from the nav. */
+  scroll-margin-top: 5.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -334,6 +476,18 @@ h2 {
   --accent: var(--accent-wright);
 }
 
+/* Editorial index — 01 / 02 / 03. Quiet enough to be structure, not decoration. */
+.panel-index {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink-muted);
+  opacity: 0.45;
+}
+
 .panel-rune {
   font-size: 1.75rem;
   color: var(--accent);
@@ -367,26 +521,39 @@ h2 {
   max-width: 22rem;
 }
 
-.glow-button {
+.path-cta {
   margin-top: auto;
-  padding: 0.7rem 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.5rem;
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  text-decoration: none;
   color: var(--accent);
-  background: transparent;
-  border: 1px solid var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
   border-radius: 2px;
-  cursor: pointer;
-  transition: color 0.25s ease, background-color 0.25s ease;
+  transition: color 0.25s ease, background-color 0.25s ease,
+    border-color 0.25s ease;
 }
 
-.glow-button:hover,
-.glow-button:focus-visible {
+.path-cta:hover,
+.path-cta:focus-visible {
   color: var(--page-bg);
   background: var(--accent);
+  border-color: var(--accent);
+}
+
+.path-cta-arrow {
+  transition: transform 0.25s ease;
+}
+
+.path-cta:hover .path-cta-arrow,
+.path-cta:focus-visible .path-cta-arrow {
+  transform: translateX(3px);
 }
 
 /* ============================================================
@@ -394,17 +561,11 @@ h2 {
    ============================================================ */
 
 .qr-section {
-  margin-top: 7rem;
+  margin-top: 8rem;
 }
 
-.qr-section h2 {
-  margin-bottom: 0.25rem;
-  font-size: var(--step-2);
-  color: var(--ink);
-}
-
-.qr-section p {
-  margin-top: 0;
+.qr-caption {
+  margin: 0 0 1.75rem;
   color: var(--ink-muted);
 }
 
@@ -426,6 +587,63 @@ h2 {
   width: 340px;
   max-width: 100%;
   height: auto;
+}
+
+/* ============================================================
+   CONTACT
+   ============================================================ */
+
+.section-label {
+  margin: 0 0 0.9rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.contact {
+  margin-top: 9rem;
+  padding-top: 4rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.contact h2 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.8rem, 1.1rem + 2.6vw, 3.1rem);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+body.mystic-mode .contact h2 {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.contact-blurb {
+  max-width: 34rem;
+  margin: 0 auto 2.25rem;
+  color: var(--ink-muted);
+  font-size: var(--step-1);
+}
+
+.contact-link {
+  display: inline-block;
+  font-size: var(--step-1);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--ink);
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 0.3rem;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.contact-link:hover,
+.contact-link:focus-visible {
+  color: var(--accent-keeper);
+  border-color: currentColor;
 }
 
 footer {
@@ -559,8 +777,16 @@ body.mystic-mode .panel-rune {
   }
 }
 
-body.mystic-mode .glow-button {
+body.mystic-mode .path-cta {
   box-shadow: 0 0 14px rgba(122, 77, 231, 0.4);
+}
+
+body.mystic-mode .site-header {
+  background: rgba(16, 16, 24, 0.72);
+}
+
+body.mystic-mode .contact-link {
+  color: var(--ghost-blue);
 }
 
 body.mystic-mode .qr-link {
@@ -577,6 +803,17 @@ body.mystic-mode .footer-mark {
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* useScrollReveal reveals everything up front under this preference; this
+     makes sure nothing is left stuck at opacity 0 either way. */
+  [data-reveal] {
+    opacity: 1;
+    translate: none;
+  }
+
   .hero-image {
     animation: none;
     transform: scale(1.04);
