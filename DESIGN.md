@@ -123,6 +123,9 @@ and no form service — the site is static, and `mailto` needs neither. If a rea
 is ever wanted it needs a third-party endpoint; that is a deliberate trade, not an
 oversight.
 
+`MAKER_NAME` in `App.jsx` is `Chris Baumgart`, inferred from the repo owner and not
+yet confirmed. It appears in the About copy only.
+
 `CONTACT_EMAIL` in `App.jsx` is `keeper@theedgeofthemap.com`. Every CTA and the
 contact band resolve from that one constant. If the crafts ever want separate
 inboxes — `storyteller@`, `wright@` — add an `email` field to `PATHS` and fall back
@@ -147,8 +150,20 @@ leaks into it** — no glow, no serif, no violet, no dragons. If a change makes 
 default face more mystical, it belongs behind the toggle instead.
 
 *Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
-Garamond, the dragon plate lit behind the hero, glow on the logo and runes. Same
-markup, same components — only tokens change.
+Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
+
+**One section breaks the "only tokens change" rule, deliberately.** `.about` swaps
+its *content*: **About** in the light face — a straight professional bio — and
+**Lore** in mystic, which is in-world and knowingly overwritten. `AboutProfessional`
+and `AboutLore` in `App.jsx`; the nav label swaps with it. This is the payoff for
+the toggle: the light face earns trust, the dark face rewards the visitor who pulled
+the thread. Everywhere else, keep to tokens.
+
+The positioning follows from it. The site does **not** argue that woodworking,
+software, and narration are secretly one discipline — that reads as contrived. What
+they actually share is stated plainly: they are all commission work, the maker is
+the whole supply chain, and all three produce things people live with for years. The
+unifying element is the person, not a synthetic through-line.
 
 Both faces re-declare the same token names, so component rules never branch on mode:
 

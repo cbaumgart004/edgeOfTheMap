@@ -16,6 +16,9 @@ const SITE_URL = 'https://theedgeofthemap.com'
 // back to this one.
 const CONTACT_EMAIL = 'keeper@theedgeofthemap.com'
 
+// TODO(confirm): inferred from the repo owner. Change here, not in the copy.
+const MAKER_NAME = 'Chris Baumgart'
+
 const BURN_MS = 1250
 
 // One brand, three crafts. Kept as data so a fourth path — or splitting one
@@ -58,6 +61,68 @@ const PATHS = [
 
 const mailto = (subject) =>
   `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
+
+/* The one place the two faces diverge in *content* rather than styling.
+   Everything else on the page is the same markup re-themed; here the mode
+   genuinely changes what is said. The professional face earns trust, the
+   mystic face rewards the visitor who pulled the thread. */
+
+function AboutProfessional() {
+  return (
+    <>
+      <h2>One workshop, three trades.</h2>
+      <p>
+        I&rsquo;m {MAKER_NAME}. I run Edge of the Map LLC on my own: I build
+        software, I narrate audiobooks, and I make furniture.
+      </p>
+      <p>
+        That combination raises an eyebrow, and it should. So here is the honest
+        version — they are not secretly the same craft. What they share is how
+        the work gets done. You describe what you need, and the person you spoke
+        to is the person who builds it. No account layer, no handoff, no junior
+        picking it up on Thursday.
+      </p>
+      <p>
+        The other thing they share is a time horizon. A table outlives the room
+        it was bought for. A narration sits in someone&rsquo;s ears for eleven
+        hours. A system gets inherited by whoever comes next. I would rather
+        make things that survive contact with that.
+      </p>
+    </>
+  )
+}
+
+function AboutLore() {
+  return (
+    <>
+      <h2>They told me the map ended here.</h2>
+      <p>
+        It does not end. The cartographers simply stopped — at the place where
+        the vellum curls and the ink refuses, where someone in 1420 wrote{' '}
+        <em>hic sunt dracones</em> because the alternative was admitting he had
+        run out of nerve.
+      </p>
+      <p>I went and looked.</p>
+      <p>
+        The dragons are real. They are also bored, and staggeringly opinionated
+        about joinery. The one on the left has been dead nine hundred years and
+        still files bug reports. The one on the right does voices — all of them,
+        constantly, without being asked. Neither will tell me what lies past the
+        next fold, only that I am <em>getting warmer</em>, which from a creature
+        made of teeth and low pressure systems is not the comfort it sounds.
+      </p>
+      <p>
+        So I keep three trades. Wood, because something has to hold. Software,
+        because something has to remember. Voice, because something has to be
+        told, or none of it happened at all.
+      </p>
+      <p>
+        The runes are Othala, Ansuz, Berkano — homestead, breath, birch. I did
+        not choose them. They were the three that stayed lit.
+      </p>
+    </>
+  )
+}
 
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -149,12 +214,13 @@ function App() {
           <span className="brand-name">Edge of the Map</span>
         </a>
 
-        <nav className="site-nav" aria-label="Services">
+        <nav className="site-nav" aria-label="Sections">
           {PATHS.map((path) => (
             <a key={path.id} href={`#${path.id}`}>
               {path.title}
             </a>
           ))}
+          <a href="#about">{isMystic ? 'Lore' : 'About'}</a>
         </nav>
 
         <div className="header-actions">
@@ -288,6 +354,17 @@ function App() {
                 </a>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section
+          className={`about ${isMystic ? 'is-lore' : ''}`}
+          id="about"
+          data-reveal
+        >
+          <div className="about-inner">
+            <p className="eyebrow">{isMystic ? 'Lore' : 'About'}</p>
+            {isMystic ? <AboutLore /> : <AboutProfessional />}
           </div>
         </section>
 

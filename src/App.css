@@ -538,6 +538,68 @@ a {
 }
 
 /* ============================================================
+   ABOUT / LORE
+   The one section whose *content* changes with the mode, not just its
+   styling — see App.jsx. Measure stays narrow in both faces; the lore
+   just gets more room to breathe.
+   ============================================================ */
+
+.about {
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+  padding: clamp(3rem, 7vw, 5.5rem) clamp(1rem, 4vw, 2.5rem);
+  scroll-margin-top: 5rem;
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.about-inner {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.about h2 {
+  font-size: var(--step-2);
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.about p {
+  margin: 0 0 1.15rem;
+  color: var(--ink-muted);
+}
+
+.about p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lore gets a longer line, looser leading, and a drop cap — it is meant to
+   be read like a page, not scanned like a bio. */
+.about.is-lore .about-inner {
+  max-width: 46rem;
+}
+
+.about.is-lore p {
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.about.is-lore em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+/* `h2 + p`, not `p:first-of-type` — the eyebrow is also a <p>, and would
+   otherwise take the drop cap. */
+.about.is-lore h2 + p::first-letter {
+  float: left;
+  margin: 0.08em 0.09em 0 0;
+  font-size: 3.4em;
+  line-height: 0.78;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(161, 231, 245, 0.45);
+}
+
+/* ============================================================
    CTA BAND + QR
    ============================================================ */
 
