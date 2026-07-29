@@ -2,10 +2,10 @@
    ------------------------------------------------------------------
    Two faces, deliberately far apart.
 
-   DEFAULT is a light, conventional product site — white surfaces, a
-   single teal accent, system UI type, bordered cards. It should read as
-   a legitimate tech company and nothing else. No glow, no serif, no
-   atmosphere.
+   DEFAULT is a light, printed page — warm paper stock, warm ink, teal
+   used as a mark with the ember as its counter, system UI type, filing-
+   card sections. It should read as a legitimate working business and
+   nothing else. No glow, no serif, no atmosphere.
 
    MYSTIC (body.mystic-mode) is the opposite pole: dark violet, serif,
    the dragon plate lit behind the hero. The distance between the two is
@@ -17,35 +17,53 @@
 
 :root,
 .face {
-  --bg: #ffffff;
-  --bg-subtle: #f6f7f9;
-  --surface: #ffffff;
-  --border: #e3e6ea;
-  --border-strong: #ccd2d9;
+  /* Warm paper, not clinical white. The light face is printed matter — a
+     well-set trade page — rather than a product template, and the stock is
+     where that starts. It costs nothing and stays entirely flat: no glow, no
+     texture, no atmosphere. Those belong to the other face. */
+  --bg: #faf8f5;
+  --bg-subtle: #f2eee7;
+  --surface: #ffffff; /* fresh stock, laid *on* the paper */
+  --border: #e3ddd3;
+  --border-strong: #c9c0b2;
 
-  --ink: #14161a; /* ~16:1 on --bg */
-  --ink-muted: #5b6472; /* ~6.6:1 on --bg */
+  --ink: #191510; /* warm near-black, ~17:1 on --bg */
+  --ink-muted: #5f584e; /* ~6.6:1 on --bg */
 
   --accent: #0f766e; /* teal, pulled from the logo's neon */
   --accent-hover: #0b5d57;
   --accent-ink: #ffffff;
-  --accent-soft: #e6f4f1;
+  --accent-soft: #e3efec;
+
+  /* The ember is the second colour of the light palette, not a pile of
+     one-off hexes inside .reveal-cta. It earns a place because the only
+     control it paints is the one promising the burn. */
+  --ember: #c2410c;
+  --ember-line: #f0c49a;
+  --ember-soft: #ffe8d1;
+  --ember-wash: #fff6ed;
 
   /* Shape, rhythm and pace are tokens too — the two faces differ in how they
      are *built*, not only in what colour they are. Light is tight, rounded,
      gridded and quick; mystic is sharp, spacious and slow. */
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow-sm: 0 1px 2px rgba(16, 22, 26, 0.06);
-  --shadow-md: 0 6px 24px -8px rgba(16, 22, 26, 0.18);
+  --shadow-sm: 0 1px 2px rgba(56, 44, 28, 0.07);
+  --shadow-md: 0 6px 24px -8px rgba(56, 44, 28, 0.2);
 
   --lead: 1.6;
   --tracking-display: -0.018em;
   --tracking-label: 0.14em;
   --motion: 0.2s;
 
-  --section-y: clamp(3.5rem, 8vw, 6.5rem);
-  --card-pad: 1.75rem;
+  /* Every vertical rhythm token is a clamp whose *floor* is what mobile
+     actually gets — the vw term only overtakes it around 640px. So the floor
+     is the mobile design, and it was set far too high: 3.5rem top and bottom
+     meant 112px of dead air between every section on a phone. Keep the floors
+     low and let the vw term earn the space back on wider screens. */
+  --section-y: clamp(2.75rem, 7vw, 5.75rem);
+  --head-gap: clamp(1.6rem, 4vw, 2.75rem);
+  --card-pad: clamp(1.25rem, 3.5vw, 1.75rem);
   --card-gap: 1.25rem;
   --measure: 42rem;
 
@@ -104,6 +122,10 @@ h3 {
   line-height: 1.18;
   letter-spacing: var(--tracking-display);
   margin: 0;
+  /* Set, rather than merely wrapped. Costs nothing where it is unsupported,
+     and it is most of what separates a typeset headline from a default one
+     when the face has no webfont to lean on. */
+  text-wrap: balance;
 }
 
 ::selection {
@@ -132,13 +154,37 @@ a {
   overflow: visible;
 }
 
+/* The bindrune is a 1:6 column, not the 1:1.33 icon box — size it by height
+   and let the width follow, or it crushes. `overflow: visible` matters here:
+   the glow below spills well outside the viewBox. */
+.rune-bind {
+  display: block;
+  width: auto;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Every section opens on a ruled label — the standing editorial device of the
+   light face, and the cheapest way to make a page look composed rather than
+   assembled. It reads in both faces, so it stays unbranched. */
 .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 0 0 0.7rem;
   font-size: var(--step-label);
   font-weight: 700;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--accent);
+}
+
+.eyebrow::before {
+  content: '';
+  flex: none;
+  width: 1.35rem;
+  height: 1px;
+  background: currentColor;
 }
 
 /* ============================================================
@@ -291,9 +337,15 @@ a {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: clamp(3rem, 7vw, 6rem) clamp(1rem, 4vw, 2.5rem) clamp(3rem, 6vw, 5rem);
-  background: linear-gradient(180deg, var(--accent-soft) 0%, var(--bg) 62%);
-  transition: background 0.35s ease;
+  padding: clamp(2.25rem, 6vw, 5rem) clamp(1rem, 4vw, 2.5rem)
+    clamp(2.25rem, 5vw, 4.25rem);
+  /* Paper, not a teal wash. The tinted gradient that used to sit here was the
+     single most template-looking thing on the site — every SaaS front page
+     opens on one. The hero now reads as the head of a printed sheet, closed
+     by a hairline rule instead of fading into nothing. */
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg) 68%);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.35s ease, border-color 0.35s ease;
 }
 
 /* Dark plate behind the hero — only lit in mystic mode. */
@@ -331,7 +383,7 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(2rem, 5vw, 4.5rem);
+  gap: clamp(1.5rem, 5vw, 4.5rem);
   max-width: var(--wrap);
   margin: 0 auto;
 }
@@ -343,7 +395,7 @@ a {
 }
 
 .hero-sub {
-  margin: 1.1rem 0 2rem;
+  margin: 0.9rem 0 1.5rem;
   font-size: var(--step-1);
   color: var(--ink-muted);
   max-width: 46ch;
@@ -361,13 +413,13 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.9rem;
-  margin-top: 1.6rem;
+  margin-top: 1.25rem;
   padding: 0.72rem 1.3rem 0.72rem 0.75rem;
   font-family: inherit;
   text-align: left;
   color: var(--ink);
-  background: linear-gradient(115deg, #fff6ed 0%, var(--surface) 70%);
-  border: 1px solid #f0c49a;
+  background: linear-gradient(115deg, var(--ember-wash) 0%, var(--surface) 70%);
+  border: 1px solid var(--ember-line);
   border-radius: 999px;
   cursor: pointer;
   transition: border-color 0.25s ease, box-shadow 0.25s ease,
@@ -389,8 +441,8 @@ a {
   width: 2.4rem;
   height: 2.4rem;
   font-size: 1rem;
-  color: #c2410c;
-  background: #ffe8d1;
+  color: var(--ember);
+  background: var(--ember-soft);
   border-radius: 50%;
   transition: color 0.25s ease, background-color 0.35s ease,
     box-shadow 0.25s ease;
@@ -419,9 +471,9 @@ a {
 .hero-trust {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.4rem;
-  margin: 2.5rem 0 0;
-  padding: 1.4rem 0 0;
+  gap: clamp(0.9rem, 3vw, 1.4rem);
+  margin: clamp(1.5rem, 4vw, 2.5rem) 0 0;
+  padding: clamp(1rem, 2.5vw, 1.4rem) 0 0;
   list-style: none;
   border-top: 1px solid var(--border);
 }
@@ -460,7 +512,7 @@ a {
 
 .section-head {
   max-width: 44rem;
-  margin-bottom: 2.75rem;
+  margin-bottom: var(--head-gap);
 }
 
 .section-head h2 {
@@ -488,16 +540,20 @@ a {
   padding: var(--card-pad);
   background: var(--surface);
   border: 1px solid var(--border);
+  /* A filing card, not a floating panel: the top edge is a keyline that takes
+     the accent on hover. The resting shadow and the 2px hover lift that used
+     to live here are *the* generic product-card gesture, and they were doing
+     more than anything else to make this face look bought rather than made. */
+  border-top: 2px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
   transition: border-color 0.25s ease, box-shadow 0.25s ease,
-    transform 0.25s ease, background-color 0.35s ease;
+    background-color 0.35s ease;
 }
 
 .card:hover {
   border-color: var(--border-strong);
+  border-top-color: var(--accent);
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
 }
 
 .card-icon {
@@ -505,12 +561,16 @@ a {
   place-items: center;
   width: 2.6rem;
   height: 2.6rem;
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
   font-size: 1.15rem;
   color: var(--accent);
   background: var(--accent-soft);
+  /* Outlined, so the rune reads as a stamped mark rather than a filled app
+     icon. Mystic drops the box entirely — see its own rule. */
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
   border-radius: var(--radius-sm);
-  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+  transition: background-color 0.35s ease, border-color 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
 .card-persona {
@@ -529,13 +589,13 @@ a {
 }
 
 .card-blurb {
-  margin: 0 0 1.1rem;
+  margin: 0 0 1rem;
   color: var(--ink-muted);
   font-size: 0.95rem;
 }
 
 .card-points {
-  margin: 0 0 1.6rem;
+  margin: 0 0 1.25rem;
   padding: 0;
   list-style: none;
   font-size: 0.9rem;
@@ -602,11 +662,11 @@ a {
 .about h2 {
   font-size: var(--step-2);
   font-weight: 700;
-  margin-bottom: 1.25rem;
+  margin-bottom: clamp(0.9rem, 2.5vw, 1.25rem);
 }
 
 .about p {
-  margin: 0 0 1.15rem;
+  margin: 0 0 1.05rem;
   color: var(--ink-muted);
 }
 
@@ -648,7 +708,7 @@ a {
 .cta-band {
   background: var(--bg-subtle);
   border-block: 1px solid var(--border);
-  padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 2.5rem);
+  padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2.5rem);
   transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
@@ -657,7 +717,7 @@ a {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1.75rem;
+  gap: clamp(1.25rem, 3vw, 1.75rem);
   max-width: var(--wrap);
   margin: 0 auto;
 }
@@ -684,8 +744,8 @@ a {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 2.5rem;
-  padding: clamp(1.75rem, 4vw, 3rem);
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  padding: clamp(1.4rem, 4vw, 2.75rem);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -734,6 +794,22 @@ a {
   transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
+/* The maker's mark, centred above the footer proper. Sized by height because
+   the binding is a 1:7 column — see .rune-bind. */
+.footer-mark {
+  display: flex;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 2.5rem) 1rem 0;
+  color: var(--accent);
+  opacity: 0.6;
+}
+
+/* A 1:7 column is only ~21px wide at 145px tall, so it needs real height to
+   read at all — at footer-icon size it degrades to a hairline. */
+.footer-mark .rune-bind {
+  height: clamp(6.5rem, 14vw, 9rem);
+}
+
 .footer-inner {
   display: flex;
   flex-wrap: wrap;
@@ -742,7 +818,7 @@ a {
   gap: 1.25rem;
   max-width: var(--wrap);
   margin: 0 auto;
-  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+  padding: clamp(1.5rem, 4vw, 2rem) clamp(1rem, 4vw, 2.5rem);
   font-size: 0.88rem;
   color: var(--ink-muted);
 }
@@ -987,8 +1063,13 @@ body.mystic-mode,
   --tracking-display: 0.012em;
   --tracking-label: 0.34em;
   --motion: 0.5s;
-  --section-y: clamp(5.5rem, 13vw, 10rem);
-  --card-gap: clamp(2rem, 5vw, 3.5rem);
+  /* Still roughly 1.6× the light face's air — that ratio is the point — but
+     the floor comes down with it. At 5.5rem a phone was getting 176px of
+     nothing between sections, which does not read as spacious, only as
+     scrolling. */
+  --section-y: clamp(3.75rem, 11vw, 9rem);
+  --head-gap: clamp(2.25rem, 6vw, 4rem);
+  --card-gap: clamp(1.6rem, 5vw, 3.5rem);
   --measure: 46rem;
 
   --display-font: 'Cormorant Garamond', serif;
@@ -1025,12 +1106,15 @@ body.mystic-mode::after {
 /* The card affordance disappears entirely. In daylight these are boxed,
    shadowed product cards; here they are columns of a page divided by a rule.
    Same markup — a different kind of document. */
+/* `border: 0` also clears the light face's top keyline — the whole card
+   affordance goes, keyline included. */
 .face.mystic-mode .card {
   background: none;
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  padding: 2.9rem 2.1rem 2.6rem;
+  padding: clamp(2rem, 6vw, 2.9rem) clamp(1.5rem, 4.5vw, 2.1rem)
+    clamp(1.75rem, 5vw, 2.6rem);
 }
 
 /* Weathered timber. The frame lives on pseudo-elements so the displacement
@@ -1057,7 +1141,6 @@ body.mystic-mode::after {
 }
 
 .face.mystic-mode .card:hover {
-  transform: none;
   box-shadow: none;
 }
 
@@ -1133,11 +1216,15 @@ body.mystic-mode::after {
   margin-bottom: 1.4rem;
   font-size: 2rem;
   background: none;
+  border: 0;
   color: var(--accent);
 }
 
+/* The hairline that closes the light hero belongs to the printed face only —
+   here the plate runs into the page. */
 .face.mystic-mode .hero {
   background: transparent;
+  border-bottom-color: transparent;
 }
 
 .face.mystic-mode .hero-media {
@@ -1196,6 +1283,15 @@ body.mystic-mode::after {
   filter: drop-shadow(0 0 9px currentColor);
 }
 
+/* The plate's neon is a tight white core inside a wide coloured halo, which
+   takes four layered shadows — a single large drop-shadow reads as a blur,
+   not as a lit tube. Only the mystic face lights it; in daylight the mark is
+   printed flat like everything else on that face. */
+.face.mystic-mode .rune-bind {
+  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 5px currentColor)
+    drop-shadow(0 0 14px currentColor) drop-shadow(0 0 30px currentColor);
+}
+
 .face.mystic-mode .brand-mark,
 .face.mystic-mode .qr-link {
   filter: drop-shadow(0 0 10px rgba(122, 77, 231, 0.6));
@@ -1231,7 +1327,6 @@ body.mystic-mode::after {
     translate: none;
   }
 
-  .card:hover,
   .qr-link:hover {
     transform: none;
   }

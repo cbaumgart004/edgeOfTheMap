@@ -42,20 +42,21 @@ src/
   App.jsx               The whole UI + the PATHS table (§4).
   App.css               Theme tokens, both faces, layout, the burn.
   Rune.jsx              Elder Futhark glyphs as SVG (§4). Exports RUNE_NAMES.
+  Bindrune.jsx          The maker's bindrune — seven runes on one stave (§4).
   RuneFrame.jsx         Inscribed rune border for mystic cards (§5).
   SvgDefs.jsx           Shared SVG filters: #burn-displace, #driftwood (§5).
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
-    logo-card.webp      Hero logo card, 800×533 (43 KB). Imported by App.jsx.
-    hero-wide.webp      Mystic plate, 1536×792 (116 KB). Imported by App.jsx.
-    hero-narrow.webp    Mystic plate, 960×495 (40 KB). srcSet partner.
+    logo-card.webp      Hero logo card, 800×533 (58 KB). Imported by App.jsx.
+    hero-wide.webp      Mystic plate, 1536×792 (154 KB). Imported by App.jsx.
+    hero-narrow.webp    Mystic plate, 960×495 (54 KB). srcSet partner.
     logo_signature.png  Header + footer mark (67 KB). Imported by App.jsx.
-    logo.png            Full-resolution master (1.8 MB). Not imported — see §6.
+    logo.png            Full-resolution master (2.3 MB). Not imported — see §6.
     qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
 ```
 
-`public/` holds exactly two files — `banner.webp` (1536×512, 3:1) and `og.webp`
+`public/` holds exactly two files — `banner.webp` (2048×640, 3.2:1) and `og.webp`
 (1200×630) — because both need **stable URLs**: the social card is referenced by
 absolute URL from `index.html`, and a content-hashed filename would break every time
 the bundle rebuilt. Everything else is imported through the bundler so it gets
@@ -129,6 +130,27 @@ A fourth rune sits outside the `PATHS` table: **Raidō (ᚱ), the journey**, res
 for the mode toggle — the control that carries you between the site's two worlds
 rather than describing a craft.
 
+### The bindrune
+
+`Bindrune.jsx` draws the maker's mark: seven runes bound adjacent, top to bottom,
+on one continuous stave — Wunjo, Raidho, Othala, Ansuz, Berkano, Fehu, and Tiwaz
+tripled into three stacked rooftops at the foot. The stave is drawn once no matter
+how many segments hang from it; that shared vertical is what makes it one mark
+rather than seven glyphs in a column.
+
+It is kept as **labelled data, not a path blob** — each segment carries its rune's
+name and meaning alongside its strokes, because the whole point of a bindrune is
+that every stroke means something. Coordinates are absolute within the viewBox so
+tuning one segment cannot silently reflow the others.
+
+**It is a 1:7 column, not the 1:1.33 icon box `Rune.jsx` uses.** Size it by height
+and let the width follow. At icon size it degrades to a hairline — the footer mark
+needs ~100px of height before it reads at all, and it is unusable as a favicon (a
+16px square cannot hold it; see §8).
+
+The same binding is carved into the hero artwork's tablet (§6), so the mark appears
+twice in two materials: cut into wood in the plate, drawn in vector in the footer.
+
 **CTAs are `mailto:` links**, each carrying a per-path subject line (`subject` in the
 `PATHS` table) so an enquiry arrives already filed by discipline. There is no backend
 and no form service — the site is static, and `mailto` needs neither. If a real form
@@ -155,11 +177,28 @@ as by scan. `SITE_URL` in `App.jsx` is the single source for both.
 
 **The site has two faces, deliberately far apart. The distance is the point.**
 
-*Default* is an ordinary light product site: white surfaces, one teal accent, system
-UI type, bordered cards with soft shadows, a conventional header and CTA band. It
-should read as a legitimate tech company and nothing else. **Nothing atmospheric
-leaks into it** — no glow, no serif, no violet, no dragons. If a change makes the
-default face more mystical, it belongs behind the toggle instead.
+*Default* is **printed matter** — a well-set trade page. Warm paper stock, warm
+near-black ink, teal used as a mark with the ember as its counter, system UI type,
+filing-card sections closed by hairline rules. It should read as a legitimate working
+business and nothing else. **Nothing atmospheric leaks into it** — no glow, no serif,
+no violet, no dragons. If a change makes the default face more mystical, it belongs
+behind the toggle instead.
+
+The printed framing is what keeps the light face from reading as a template while
+staying inside that rule: paper, rules and ruled labels are *flat*, so they add
+character without adding atmosphere. Three things carry it, and none of them cost a
+webfont: the stock is warm (`#faf8f5`) rather than `#ffffff`; every section opens on
+a ruled `.eyebrow` label; and the cards are filing cards — a 2px top keyline that
+takes the accent on hover — rather than shadowed panels that lift. The resting
+shadow and the 2px hover lift were the generic product-card gesture and are gone.
+The hero's old teal→white gradient wash went with them; it was the single most
+template-looking thing on the site.
+
+**The light face still ships no webfont**, so its typography has to be earned from
+system UI: `text-wrap: balance` on every heading, the tracking tokens, and the ruled
+labels. If the face ever needs more voice than that, a display webfont is the next
+lever — but it reverses the decision that took the CSS bundle from 12.5 KB to 3.9 KB
+gzipped, so price it deliberately rather than reaching for it first.
 
 *Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
 Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
@@ -194,34 +233,38 @@ Both faces re-declare the same token names, so component rules never branch on m
 
 | Token | Default | Mystic |
 | --- | --- | --- |
-| `--bg` | `#ffffff` | `#101018` |
-| `--bg-subtle` | `#f6f7f9` | `#15131f` |
-| `--surface` | `#ffffff` | `#191527` |
-| `--border` | `#e3e6ea` | `rgba(122,77,231,.34)` |
-| `--ink` | `#14161a` (~16:1) | `#ece5ff` |
-| `--ink-muted` | `#5b6472` (~6.6:1) | `#aba0c6` |
+| `--bg` | `#faf8f5` warm paper | `#101018` |
+| `--bg-subtle` | `#f2eee7` second stock | `#15131f` |
+| `--surface` | `#ffffff` fresh stock | `#191527` |
+| `--border` | `#e3ddd3` | `rgba(122,77,231,.34)` |
+| `--ink` | `#191510` (~17:1) | `#ece5ff` |
+| `--ink-muted` | `#5f584e` (~6.6:1) | `#aba0c6` |
 | `--accent` | `#0f766e` teal | `#a1e7f5` ghost blue |
-| `--accent-soft` | `#e6f4f1` | `rgba(122,77,231,.22)` |
+| `--accent-soft` | `#e3efec` | `rgba(122,77,231,.22)` |
+| `--ember` | `#c2410c` | *(unused — mystic overrides `.reveal-cta` wholesale)* |
 | `--display-font` | system UI stack | Cormorant Garamond |
 | `--radius` / `--radius-sm` | `10px` / `6px` | `0` — every corner squares off |
 | `--lead` | `1.6` | `1.85` |
 | `--tracking-display` | `-0.018em` | `0.012em` |
 | `--tracking-label` | `0.14em` | `0.34em` |
 | `--motion` | `0.2s` | `0.5s` |
-| `--section-y` | `clamp(3.5rem, 8vw, 6.5rem)` | `clamp(5.5rem, 13vw, 10rem)` |
-| `--card-gap` | `1.25rem` | `clamp(2rem, 5vw, 3.5rem)` |
+| `--section-y` | `clamp(2.75rem, 7vw, 5.75rem)` | `clamp(3.75rem, 11vw, 9rem)` |
+| `--head-gap` | `clamp(1.6rem, 4vw, 2.75rem)` | `clamp(2.25rem, 6vw, 4rem)` |
+| `--card-pad` | `clamp(1.25rem, 3.5vw, 1.75rem)` | *(mystic sets `.card` padding directly)* |
+| `--card-gap` | `1.25rem` | `clamp(1.6rem, 5vw, 3.5rem)` |
 | `--measure` | `42rem` | `46rem` |
 
 **Shape, rhythm and pace are tokens too** — that is what stops the two faces being
 recolours of each other. Light is tight, rounded, gridded and quick; mystic is
 sharp-edged, spacious and slow. Three structural moves carry most of the distance:
 
-- **The card affordance disappears.** In daylight the services are boxed, shadowed
-  product cards. In mystic they lose surface, border, shadow and radius entirely and
-  become columns of a page divided by a hairline rule. Same markup, different kind of
-  document.
-- **Runes leave their tiles.** Framed icon chips in light; unframed, lit glyphs in
-  mystic, pulled to the text's left edge.
+- **The card affordance disappears.** In daylight the services are filing cards —
+  surface, hairline border, and a 2px top keyline that takes the accent on hover. In
+  mystic they lose surface, border, keyline and radius entirely (a single `border: 0`
+  clears all of it) and become columns of a page divided by a hairline rule. Same
+  markup, different kind of document.
+- **Runes leave their tiles.** Outlined icon chips in light — stamped marks, not
+  filled app icons; unframed, lit glyphs in mystic, pulled to the text's left edge.
 - **Mystic cards become weathered rune-carved planks.** The frame is drawn on
   `::before`/`::after` rather than on `.card` itself, then displaced by the
   `#driftwood` filter — filtering the card directly would bend the copy along with
@@ -328,10 +371,34 @@ it cools to violet and offers the way back.
 - **Assets are imported, never referenced by path.** `import logo from './assets/…'`
   gets hashing and cache-busting. Unimported files in `src/assets/` are simply not
   emitted, so `logo.png` and `QR_Complete.png` cost repo size but not bundle size.
-- **`logo.png` is 1.8 MB and must not be shipped.** It is the full-resolution master,
+- **`logo.png` is 2.3 MB and must not be shipped.** It is the full-resolution master,
   kept for regenerating derivatives. `logo_signature.png` (67 KB, 300×200) is what
   renders; it carries explicit `width`/`height` attributes to reserve layout space,
   which is why `.logo` needs `height: auto` alongside `max-width`.
+- **The master is repainted, not original.** The artwork's tablet originally carried
+  invented, meaningless glyphs. It now carries a live-edge black walnut slab with the
+  real bindrune (§4) carved into it, lit by the neon spilling from the grooves. Every
+  derivative — `logo-card`, `hero-wide`, `hero-narrow`, `public/banner.webp`,
+  `public/og.webp` — is cut from that one repainted master, so **re-derive rather than
+  edit a derivative**. The dragons and wordmark are untouched original art.
+- **The dragons cannot be carved, only the tablet.** An earlier attempt rendered the
+  whole logo as carved wood and failed: in the source the dragons are dark silhouettes
+  defined by *rim light*, so their bright pixels are lightning and edge contours, not
+  form. Emboss the raw luminance and it is mud; threshold it and the dragons vanish
+  while the lightning survives as scratches. There is no line art to carve from. The
+  wood is therefore confined to the tablet, which is also why keeping the dragons and
+  going to wood were compatible asks rather than opposed ones.
+- **The slab's live edge is traced from the artwork, not drawn.** Its right edge
+  follows the neon divider between tablet and dragons, detected per row and
+  median-filtered — a plain brightest-pixel scan locks onto lightning branches. The
+  bark band deliberately runs *past* that line so the slab abuts the lit rock instead
+  of hovering short of it. Two things ruin it if retuned: a hot cambium line reads as
+  a pink zigzag rather than pale sapwood, and high-frequency jitter on the outer
+  boundary reads as a drawn zigzag rather than a ragged edge — raggedness is
+  low-frequency wander plus texture, never a fast wobble.
+- **Crops taken below y=792 pull in the artwork's baked wordmark.** `hero-wide` stops
+  there for exactly this reason. A banner or og crop that runs past it gets a second,
+  smaller "EDGE OF THE MAP" ghosted into the frame.
 - **`QR_Complete.png` (2 MB) is the QR master**, kept for the same reason as
   `logo.png`. `qr_code.png` (99 KB) is the shipped derivative: 500×750, palette-
   quantised to 256 colours with the alpha channel preserved, which matters — the
@@ -398,6 +465,17 @@ it cools to violet and offers the way back.
   on the first mode toggle; the lore styling now keys off `body.mystic-mode`
   instead. Mode-dependent styling belongs on the body class, never in the
   `className` of a revealed section.
+- **In a vertical-rhythm `clamp()`, the floor *is* the mobile design.** Every spacing
+  token here is `clamp(min, Nvw, max)`, and with N around 7 the `vw` term does not
+  overtake the floor until roughly 640px. So on a phone the middle term is dead and
+  the page gets `min`, doubled at every section boundary — `--section-y: 3.5rem` was
+  112px of nothing between sections, and the fluid syntax hid it because the value
+  *looked* responsive. Tune the floor for the phone and let `vw` earn the space back;
+  check with `getComputedStyle` at 390px rather than reading the clamp.
+- **Spacing that never shrank was worth more than the clamps.** A handful of values
+  were plain rems (`.section-head` margin, `.hero-trust`, `.footer-inner`, card
+  padding) and so were identical on a 4K monitor and a phone. Converting those was
+  most of the 321px removed from the mobile page height.
 - **The Lore drop cap is tagged, not positional.** It hangs off `.lore-lede`
   rather than `h2 + p`, because Lore opens on a one-line fragment and a 3.4em
   floated capital spills straight out of it. Move the class if the opening
@@ -442,3 +520,20 @@ removing Porkbun's parking first — see §6.
 
 No ADRs exist yet. If a decision here grows a real trade-off worth recording, add
 `docs/adr/` and link the record from this section rather than expanding the prose above.
+
+### Open
+
+- **No favicon.** `index.html` ships none, so tabs show the browser default. The
+  bindrune cannot serve — at 16px a 1:7 column is a smear. Candidates explored and
+  rejected: Othala plus legs (muddy at 16), the tripled Tiwaz alone (reads as
+  chevrons), a dragon head biting Raidho (works at 64px, marginal at 16, and reads
+  more beast than dragon). Othala's bare diamond is the safe fallback; the tripled
+  Tiwaz with its stave reads as a tree, which is the strongest by meaning — it is
+  "three branches, one trunk" from the Lore.
+- **The banner frieze runes are quarter-turned**, which means they are no longer
+  readable *as* those runes — orientation is part of a rune's identity, so the
+  frieze reads as ornament rather than as text. Standing them upright on a baseline
+  is the alternative, but that is a rune row, not a bound mark.
+- **The banner's aspect trades against how much dragon fits.** At 4:1 only 289px of
+  the master's 1024 height lands in frame; at the chosen 3.2:1 it is 361px. Widening
+  it again costs creature.

@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import Rune from './Rune.jsx'
+import Bindrune from './Bindrune.jsx'
 import SvgDefs from './SvgDefs.jsx'
 import RuneFrame from './RuneFrame.jsx'
 import heroWide from './assets/hero-wide.webp'
@@ -40,7 +41,7 @@ const PATHS = [
     blurb:
       'Web applications you own outright — your data exportable on demand, a real API behind it, and full control of your own content.',
     loreBlurb:
-      'A system is an idea that someone has to keep. It will outlive the brief, and the budget, and probably me, and one day a stranger will open it and have to understand it. I build for that stranger.',
+      'A system is an idea that someone has to keep. It will outlive the immediate, the budget, and probably me, and one day a stranger will open it and have to understand it. I build for that stranger.',
     points: [
       'Your data, yours to export',
       'Robust, documented API access',
@@ -72,10 +73,10 @@ const PATHS = [
     title: 'Woodworking',
     persona: 'The Wright',
     blurb:
-      'Commissioned furniture and fine woodwork, cut and joined by hand for the room it will live in.',
+      'Commissioned fine woodwork decor and accessories, cut and joined by hand for the room it will live in.',
     loreBlurb:
       'This was a tree once, and it was reaching for something the whole time it stood. It is still reaching. I shape it by hand into the thing it was already becoming, and it will hold long after the room it was made for is gone.',
-    points: ['Bespoke furniture', 'Hardwood joinery', 'Finish and restoration'],
+    points: ['Bespoke Decor', 'Hardwood joinery', 'Finish and restoration'],
     cta: 'Discuss a commission',
     subject: 'Commission enquiry — Woodworking',
   },
@@ -140,8 +141,8 @@ function AboutLore() {
       <p>
         The runes were not chosen for their shapes. Othala, the homestead you
         keep. Ansuz, the breath that carries a word. Berkano, the birch, which
-        is to say growth, which is to say wood. Three branches, one trunk. I did
-        not choose them. I noticed them.
+        is to say growth, and very literally growth in wood itself. Three branches, one trunk. I did
+        not choose them. But they are here, and they have spoken.
       </p>
       <p>
         Each of these branches shares in common one single thing. Wonder.
@@ -516,6 +517,12 @@ function App() {
       </main>
 
       <footer className="site-footer">
+        {/* The maker's mark: the same seven-rune binding carved into the
+            tablet in the hero artwork, drawn here as vector so it takes the
+            face's colour and lights in mystic mode. */}
+        <div className="footer-mark">
+          <Bindrune title="The Edge of the Map bindrune" />
+        </div>
         <div className="footer-inner">
           <div className="footer-brand">
             <img src={mark} alt="" className="brand-mark" />
