@@ -97,6 +97,9 @@ The site expresses one idea: a single practitioner, three crafts. Each craft is 
 or later splitting one onto its own route, is an edit to that table rather than a
 layout rewrite.
 
+Each entry carries both faces' copy — `blurb` and `loreBlurb` (§5) — alongside its
+rune, CTA and subject line.
+
 | Path | Discipline | Rune | Accent | CTA |
 | --- | --- | --- | --- | --- |
 | The Keeper | Web & Systems | Othala ᛟ | `--accent-keeper` | Build with Me |
@@ -153,10 +156,24 @@ default face more mystical, it belongs behind the toggle instead.
 *Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
 Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
 
-**One section breaks the "only tokens change" rule, deliberately.** `.about` swaps
+**Two places break the "only tokens change" rule, deliberately.** `.about` swaps
 its *content*: **About** in the light face — a straight professional bio — and
-**Lore** in mystic, which is in-world and knowingly overwritten. `AboutProfessional`
-and `AboutLore` in `App.jsx`; the nav label swaps with it. This is the payoff for
+**Lore** in mystic, which tells the same three-trades fact as cosmology: one trunk,
+three branches, all of it star stuff, the shared thing being wonder. `AboutProfessional`
+and `AboutLore` in `App.jsx`; the nav label swaps with it.
+
+Lore is written in the owner's own voice and seeded from his own draft — earnest,
+polysyndetic (*And… And… And…*), fragments as sentences, repetition rather than
+variation, the cosmic register colliding with the small and concrete. **It carries no
+irony and no punchlines**, and it does not reach for fantasy furniture; an earlier
+draft leaned on dragons and witty asides and read as machine-written. If you edit this
+section, match that voice or leave it alone.
+
+The second break is the **service cards**, which carry two summaries: `blurb` for the
+light face and `loreBlurb` for mystic, both in `PATHS`. The cards render in both faces,
+so a single field would have leaked the mystic voice into daylight. `points` and the
+CTAs stay shared — they are functional inventory and read straight in either face.
+Everywhere else, keep to tokens. This is the payoff for
 the toggle: the light face earns trust, the dark face rewards the visitor who pulled
 the thread. Everywhere else, keep to tokens.
 
@@ -278,7 +295,7 @@ it cools to violet and offers the way back.
   on `.burn-warp`, the *parent* of the masked layers — filtering the masked element
   directly would displace its contents but leave a clean circular mask edge. That
   ordering is the whole reason the burn looks torn instead of like a wipe. Same
-  reasoning is in the `BurnFilter.jsx` header.
+  reasoning is in the `#burn-displace` comment in `SvgDefs.jsx`.
 - **The burn needs `@property --burn`.** A plain custom property cannot be
   transitioned, so without the `@property` registration the mask jumps straight to
   its end state and the effect degrades to an instant swap. That is an acceptable

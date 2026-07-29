@@ -24,6 +24,11 @@ const BURN_MS = 1250
 
 // One brand, three crafts. Kept as data so a fourth path — or splitting one
 // out to its own route later — is an edit here, not a layout rewrite.
+//
+// `blurb` is the light face: plain, professional, no atmosphere. `loreBlurb`
+// is the mystic face, in the same voice as AboutLore. Two fields rather than
+// one because the cards render in both faces, and letting the mystic copy
+// through to daylight is exactly the leak §5 of DESIGN.md warns about.
 const PATHS = [
   {
     id: 'keeper',
@@ -31,8 +36,14 @@ const PATHS = [
     title: 'Web & Systems',
     persona: 'The Keeper',
     blurb:
-      'Full-stack development, systems design, and digital infrastructure built to outlast the brief.',
-    points: ['React & Node applications', 'API and data modelling', 'Deployment and CI'],
+      'Web applications you own outright — your data exportable on demand, a real API behind it, and full control of your own content.',
+    loreBlurb:
+      'A system is an idea that someone has to keep. It will outlive the brief, and the budget, and probably me, and one day a stranger will open it and have to understand it. I build for that stranger.',
+    points: [
+      'Your data, yours to export',
+      'Robust, documented API access',
+      'Template starts, then edit inline',
+    ],
     cta: 'Start a project',
     subject: 'Project enquiry — Web & Systems',
   },
@@ -42,8 +53,14 @@ const PATHS = [
     title: 'Audio Narration',
     persona: 'The Storyteller',
     blurb:
-      'Audiobook narration, voice artistry, and immersive storytelling — recorded, directed, delivered.',
-    points: ['Audiobook narration', 'Character & commercial VO', 'Studio-quality delivery'],
+      'Audiobook narration made in collaboration with the author — characters voiced as faithfully to your original intent as I can get them.',
+    loreBlurb:
+      'A story is only ink until someone says it aloud. And then it is a voice in a stranger’s ear, in the car, in the dark, over the dishes, for hours. I say it aloud.',
+    points: [
+      'Author-led character work',
+      'Audiobook and commercial VO',
+      'Studio-quality delivery',
+    ],
     cta: 'Request a demo',
     subject: 'Booking enquiry — Audio Narration',
   },
@@ -54,6 +71,8 @@ const PATHS = [
     persona: 'The Wright',
     blurb:
       'Commissioned furniture and fine woodwork, cut and joined by hand for the room it will live in.',
+    loreBlurb:
+      'This was a tree once, and it was reaching for something the whole time it stood. It is still reaching. I shape it by hand into the thing it was already becoming, and it will hold long after the room it was made for is gone.',
     points: ['Bespoke furniture', 'Hardwood joinery', 'Finish and restoration'],
     cta: 'Discuss a commission',
     subject: 'Commission enquiry — Woodworking',
@@ -96,30 +115,48 @@ function AboutProfessional() {
 function AboutLore() {
   return (
     <>
-      <h2>They told me the map ended here.</h2>
+      <h2>Every story starts at the beginning.</h2>
+      <p>With the exception of those that don&rsquo;t.</p>
       <p>
-        It does not end. The cartographers simply stopped — at the place where
-        the vellum curls and the ink refuses, where someone in 1420 wrote{' '}
-        <em>hic sunt dracones</em> because the alternative was admitting he had
-        run out of nerve.
-      </p>
-      <p>I went and looked.</p>
-      <p>
-        The dragons are real. They are also bored, and staggeringly opinionated
-        about joinery. The one on the left has been dead nine hundred years and
-        still files bug reports. The one on the right does voices — all of them,
-        constantly, without being asked. Neither will tell me what lies past the
-        next fold, only that I am <em>getting warmer</em>, which from a creature
-        made of teeth and low pressure systems is not the comfort it sounds.
+        There are three branches here, and they look like three different
+        things, and people tell me so. They sprout from a single trunk. A
+        website is an idea, or an amalgam of ideas, and every one of them must
+        start somewhere. Every narration is a tale from start to end. Every
+        finished piece of woodwork first was a seedling, sprouted, grew, and was
+        shaped. All of it born of star stuff.
       </p>
       <p>
-        So I keep three trades. Wood, because something has to hold. Software,
-        because something has to remember. Voice, because something has to be
-        told, or none of it happened at all.
+        And the wood remembers. It remembers every year it stood and every dry
+        summer, and it will tell you so in the grain, and it will fight you if
+        you do not read it. And the story remembers too, because someone dreamed
+        it once, and someone must say it aloud, or it stays ink. And the system
+        remembers longest of all. Someone will inherit it. Someone I will never
+        meet will open it at two in the morning and either bless me or curse me,
+        and I will never know which.
+      </p>
+      <p>So I shape. And I tell. And I keep.</p>
+      <p>
+        The runes were not chosen for their shapes. Othala, the homestead you
+        keep. Ansuz, the breath that carries a word. Berkano, the birch, which
+        is to say growth, which is to say wood. Three branches, one trunk. I did
+        not choose them. I noticed them.
       </p>
       <p>
-        The runes are Othala, Ansuz, Berkano — homestead, breath, birch. I did
-        not choose them. They were the three that stayed lit.
+        Each of these branches shares in common one single thing. Wonder.
+      </p>
+      <p>
+        That is the whole of it. Not the wood, not the code, not the voice. The
+        held breath before a thing exists, and the smaller one after. I have
+        chased it into all three trades and found it waiting in each, patient,
+        and entirely unwilling to explain itself.
+      </p>
+      <p>
+        We are the keepers of wonder. A shaper of stories, a teller of tales, a
+        dreamer of dreams.
+      </p>
+      <p>
+        They told me the map ended here. It does not end. It is only where
+        someone else stopped drawing.
       </p>
     </>
   )
@@ -344,7 +381,9 @@ function App() {
                 </span>
                 <p className="card-persona">{path.persona}</p>
                 <h3>{path.title}</h3>
-                <p className="card-blurb">{path.blurb}</p>
+                <p className="card-blurb">
+                  {isMystic ? path.loreBlurb : path.blurb}
+                </p>
                 <ul className="card-points">
                   {path.points.map((point) => (
                     <li key={point}>{point}</li>
