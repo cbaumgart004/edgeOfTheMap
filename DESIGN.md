@@ -83,10 +83,18 @@ main.jsx  ──renders──>  App
 `.qr-section`, and the footer. Nothing is fetched, nothing is persisted, there are
 no routes; the nav is same-page anchors.
 
-**Why the class lives on `<body>`:** `.container` is `max-width: 1200px` and centred,
-so a theme class applied there leaves the page gutters unstyled. Putting the class on
-`<body>` lets mystic mode repaint the whole viewport, and every existing
-`.mystic-mode .foo` descendant selector still matches.
+**Where the mode class lives.** It goes on **both** `<body>` and a `.face` wrapper
+around the whole page, and the token block is declared for both
+(`body.mystic-mode, .face.mystic-mode`). Body carries it so mystic mode repaints the
+whole viewport — `.container` is `max-width: 1200px` and centred, so a class there
+leaves the gutters unstyled — and the body-level texture layers key off it.
+
+`.face` carries it so that a **detached copy of the page can hold the opposite face**,
+which is what the burn needs: custom properties resolve from the nearest declaring
+ancestor, so a clone with a bare `.face` renders light even while sitting inside a
+`body.mystic-mode`. That is why component rules are `.face.mystic-mode .foo` and not
+`.mystic-mode .foo` — the looser form would match through the body class and drag the
+clone into the new face with it.
 
 ---
 
@@ -243,21 +251,31 @@ it was the old default face, and removing it took the CSS bundle from 12.5 KB to
 
 ### The burn transition
 
-Toggling does not cross-fade. A sheet painted in the **outgoing** background burns
-away from the centre to reveal the already-reskinned page beneath, with an ember rim
+Toggling does not cross-fade. A **live clone of the outgoing page** burns away from
+the centre to reveal the already-reskinned real page beneath, with an ember rim
 travelling at the burn front. It runs for 1.25s and is skipped entirely under
 `prefers-reduced-motion`.
 
-The sheet is a flat plane rather than a copy of the old page — and that suits the
-metaphor rather than fighting it: a paper map burning away. Sequence in `App.jsx`:
+The clone is a real copy, not a flat plane: you watch *your own page* burn, and the
+new one is genuinely underneath rather than arriving after a blank sheet lifts. Two
+renderings are on screen at once for the duration, which is the entire reason theming
+hangs off `.face` (§3). Sequence in `App.jsx`:
 
-1. Freeze the current `background-color` into state and mount `.burn`.
-2. 60ms later, swap the body class (page underneath is now the new face, hidden by
-   the sheet) and add `.is-lit` to start the mask animation.
+1. Deep-clone the `.face` wrapper, strip its ids (duplicates would shadow the real
+   anchor targets), and mount `.burn` with it.
+2. 60ms later, flip the live wrapper to the new face — the clone keeps the old one —
+   and add `.is-lit` to start the mask animation.
 3. Unmount at 1.51s.
 
-The frozen colour matters: reading a live custom property would recolour the sheet
-halfway through the burn.
+Two positioning details make the clone land on top of the real page rather than near
+it. `--burn-scroll` pulls it up by the scroll offset, and `--burn-bleed` (a fixed
+120px, not a percentage, so the arithmetic stays trivial) gives the displacement
+filter room without exposing an edge. And because `.burn-sheet` is
+`overflow: hidden`, it is a scroll container, so the cloned `position: sticky` header
+would otherwise pin one bleed above the viewport — `.burn-page .site-header` pushes
+its sticky threshold down to compensate. **Do not "fix" that header in JS by making
+it absolute**: it leaves the flow and shifts everything below it up by its own
+height, misaligning the whole clone.
 
 **Two controls trigger it**: a compact `.header-toggle` in the sticky header, and
 `.reveal-cta` — a full-width pill in the hero carrying the Raidō rune, a label, and a
@@ -291,6 +309,11 @@ it cools to violet and offers the way back.
   add the custom domain in Railway, then in Porkbun **delete the URL forward and the
   parking A records** before pointing an ALIAS (apex) and CNAME (`www`) at the target
   Railway gives you. Leaving the forward in place will keep overriding the records.
+- **Editing `App.css` from PowerShell 5.1 will mojibake it.** `Get-Content` decodes
+  the file as the system ANSI codepage, so every em dash comes back mangled and
+  writing it out re-encodes the damage. Use
+  `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)` and
+  `WriteAllText` with `UTF8Encoding($false)`, or just edit the file directly.
 - **`filter` applies before `mask`.** The burn's displacement filter therefore sits
   on `.burn-warp`, the *parent* of the masked layers — filtering the masked element
   directly would displace its contents but leave a clean circular mask edge. That
@@ -323,6 +346,20 @@ it cools to violet and offers the way back.
   `.site-header` can be absent from a capture while `elementFromPoint` still returns
   it. None of these are bugs — verify with `elementFromPoint` or by dispatching the
   event manually rather than trusting a capture.
+- **No `[data-reveal]` element may take a React-computed `className`.**
+  `useScrollReveal` adds `is-visible` imperatively and then *unobserves* the
+  element, so it only ever fires once. A template-literal className on the same
+  node wipes that class on the next re-render, and because the observer is gone
+  it can never be re-added — the section is stranded at `opacity: 0` for the rest
+  of the session, reading as a tall empty gap rather than as missing content.
+  `.about` used to carry `` `about ${isMystic ? 'is-lore' : ''}` `` and vanished
+  on the first mode toggle; the lore styling now keys off `body.mystic-mode`
+  instead. Mode-dependent styling belongs on the body class, never in the
+  `className` of a revealed section.
+- **The Lore drop cap is tagged, not positional.** It hangs off `.lore-lede`
+  rather than `h2 + p`, because Lore opens on a one-line fragment and a 3.4em
+  floated capital spills straight out of it. Move the class if the opening
+  paragraph changes.
 - **`[data-reveal]` starts at `opacity: 0`**, so anything that stops
   `useScrollReveal` from running leaves content invisible. The hook reveals
   everything up front when `IntersectionObserver` is missing or reduced motion is

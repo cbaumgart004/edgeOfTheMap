@@ -117,7 +117,7 @@ function AboutLore() {
     <>
       <h2>Every story starts at the beginning.</h2>
       <p>With the exception of those that don&rsquo;t.</p>
-      <p>
+      <p className="lore-lede">
         There are three branches here, and they look like three different
         things, and people tell me so. They sprout from a single trunk. A
         website is an idea, or an amalgam of ideas, and every one of them must
@@ -194,10 +194,14 @@ function useScrollReveal() {
 
 function App() {
   const [isMystic, setIsMystic] = useState(false)
-  // The burn sheet is painted with the *outgoing* background, frozen at the
-  // moment of the toggle — reading a live var would recolour it mid-burn.
+  // The burn holds a *clone of the outgoing page*, captured at the moment of
+  // the toggle. The clone keeps the old face because `.face` re-declares the
+  // theme tokens, so it renders in the outgoing world while the live wrapper
+  // below it has already flipped to the new one.
   const [burn, setBurn] = useState(null)
   const timers = useRef([])
+  const faceRef = useRef(null)
+  const sheetRef = useRef(null)
 
   useScrollReveal()
 
@@ -209,19 +213,41 @@ function App() {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
+  // Mount the cloned page into the sheet once React has rendered the sheet.
+  useEffect(() => {
+    if (!burn || !sheetRef.current) return
+    sheetRef.current.appendChild(burn.clone)
+    return () => burn.clone.remove()
+  }, [burn])
+
   const toggleMystic = useCallback(() => {
     if (burn) return // already mid-transition
 
-    if (prefersReducedMotion()) {
+    const face = faceRef.current
+    if (prefersReducedMotion() || !face) {
       setIsMystic((prev) => !prev)
       return
     }
 
-    const outgoing = getComputedStyle(document.body).backgroundColor
-    setBurn({ bg: outgoing, lit: false })
+    const clone = face.cloneNode(true)
+    clone.classList.add('burn-page')
+    clone.setAttribute('aria-hidden', 'true')
+    // Duplicate ids would briefly shadow the real ones for anchor links.
+    clone.removeAttribute('id')
+    clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'))
 
-    // Let the sheet paint before the theme underneath changes, then start
-    // the burn on the following frame so the mask transition has a start value.
+    // The sticky header needs no JS: it stays in flow (moving it out shifts
+    // everything below it up by its own height) and CSS retargets its sticky
+    // threshold to the burn bleed. See `.burn-page .site-header`.
+    setBurn({
+      clone,
+      lit: false,
+      scrollY: window.scrollY,
+      width: face.offsetWidth,
+    })
+
+    // Let the clone paint before the theme underneath changes, then start the
+    // burn on the following frame so the mask transition has a start value.
     timers.current.push(
       setTimeout(() => {
         setIsMystic((prev) => !prev)
@@ -238,14 +264,41 @@ function App() {
       <SvgDefs />
 
       {burn && (
-        <div className={`burn ${burn.lit ? 'is-lit' : ''}`} aria-hidden="true">
+        <div
+          className={`burn ${burn.lit ? 'is-lit' : ''}`}
+          aria-hidden="true"
+          style={{
+            '--burn-scroll': `${burn.scrollY}px`,
+            '--burn-width': `${burn.width}px`,
+          }}
+        >
           <div className="burn-warp">
+            {/* Lives inside .burn so the mask circle inherits the animating
+                --burn. The displacement rides on the mask shape, not on the
+                sheet, so the hole tears while the page stays legible. */}
+            <svg className="burn-mask-svg" aria-hidden="true" focusable="false">
+              <defs>
+                <mask id="burnMask" maskUnits="userSpaceOnUse">
+                  <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
+                  <circle
+                    className="burn-hole"
+                    fill="#000"
+                    filter="url(#burn-displace)"
+                  />
+                </mask>
+              </defs>
+            </svg>
+
+            {/* The clone is appended here imperatively — it is a detached DOM
+                node, not React's to render. The ember sits *after* it so the
+                rim glows over the burning page rather than behind it. */}
+            <div className="burn-sheet" ref={sheetRef} />
             <div className="burn-ember" />
-            <div className="burn-sheet" style={{ background: burn.bg }} />
           </div>
         </div>
       )}
 
+      <div className={`face ${isMystic ? 'mystic-mode' : ''}`} ref={faceRef}>
       <header className="site-header">
         <a className="brand" href="#top">
           <img src={mark} alt="" className="brand-mark" />
@@ -398,11 +451,12 @@ function App() {
           </div>
         </section>
 
-        <section
-          className={`about ${isMystic ? 'is-lore' : ''}`}
-          id="about"
-          data-reveal
-        >
+        {/* className must stay a constant string. useScrollReveal adds
+            `is-visible` imperatively and then unobserves the element, so any
+            React-computed className here would wipe that class on the next
+            mode toggle and strand the section at opacity 0 forever. The lore
+            styling keys off body.mystic-mode instead. */}
+        <section className="about" id="about" data-reveal>
           <div className="about-inner">
             <p className="eyebrow">{isMystic ? 'Lore' : 'About'}</p>
             {isMystic ? <AboutLore /> : <AboutProfessional />}
@@ -467,6 +521,7 @@ function App() {
           </nav>
         </div>
       </footer>
+      </div>
     </>
   )
 }

@@ -15,7 +15,8 @@
    token names, so a card is a card in either world.
    ------------------------------------------------------------------ */
 
-:root {
+:root,
+.face {
   --bg: #ffffff;
   --bg-subtle: #f6f7f9;
   --surface: #ffffff;
@@ -62,6 +63,23 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+/* The theme wrapper. Tokens are declared here as well as on <body> so that a
+   *detached copy* of the page can carry the opposite face: the burn clones
+   this element, and because the clone re-declares its own tokens, it keeps the
+   outgoing look even after the live one has flipped. Custom properties resolve
+   from the nearest declaring ancestor, so the clone's own `.face` wins over the
+   `body.mystic-mode` it is sitting inside. That is why mode styling hangs off
+   `.face.mystic-mode` and not `body` alone — see the BURN block. */
+.face {
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--body-font);
+  line-height: var(--lead);
+  transition: background-color 0.35s ease, color 0.35s ease,
+    line-height 0.35s ease;
 }
 
 body {
@@ -597,23 +615,23 @@ a {
 
 /* Lore gets a longer line, looser leading, and a drop cap — it is meant to
    be read like a page, not scanned like a bio. */
-.about.is-lore .about-inner {
+.face.mystic-mode .about .about-inner {
   max-width: 46rem;
 }
 
-.about.is-lore p {
+.face.mystic-mode .about p {
   font-size: 1.08rem;
   line-height: 1.75;
 }
 
-.about.is-lore em {
+.face.mystic-mode .about em {
   color: var(--accent);
   font-style: italic;
 }
 
 /* `h2 + p`, not `p:first-of-type` — the eyebrow is also a <p>, and would
    otherwise take the drop cap. */
-.about.is-lore h2 + p::first-letter {
+.face.mystic-mode .about .lore-lede::first-letter {
   float: left;
   margin: 0.08em 0.09em 0 0;
   font-size: 3.4em;
@@ -768,10 +786,20 @@ a {
 /* ============================================================
    BURN — the mode transition.
 
-   A sheet painted in the outgoing background burns away from the centre
-   to reveal the already-reskinned page beneath, with an ember rim
-   travelling at the burn front. The sheet is a flat plane rather than a
-   copy of the old page, which suits the metaphor: a paper map burning.
+   A *live clone of the outgoing page* burns away from the centre to reveal
+   the already-reskinned real page beneath, with an ember rim travelling at
+   the burn front. The clone is a real copy, not a flat plane: you watch your
+   own page burn, and the new one is genuinely underneath it rather than
+   arriving after a blank sheet lifts.
+
+   Two renderings are on screen at once for 1.25s, which is why theming hangs
+   off `.face` (§ .face) — the clone keeps the outgoing tokens while the live
+   wrapper carries the new ones.
+
+   The bleed gives the displacement filter room to push pixels around without
+   exposing an edge. It is a fixed px value, not a percentage, because the
+   clone has to be positioned back to true viewport origin and doing that
+   against a percentage inset is not worth the arithmetic.
    ============================================================ */
 
 @property --burn {
@@ -792,7 +820,10 @@ a {
   inset: 0;
   z-index: 9998;
   pointer-events: none;
+  overflow: hidden;
   --burn: 0%;
+  --burn-bleed: 120px;
+  --burn-scroll: 0px;
 }
 
 .burn.is-lit {
@@ -802,11 +833,16 @@ a {
 
 /* The filter must sit on the wrapper: CSS applies `filter` before `mask`,
    so filtering the masked layer directly would leave a clean circular
-   edge instead of a torn one. */
+   edge instead of a torn one.
+
+   That reasoning held while the sheet was a flat colour: displacing a uniform
+   plane is invisible except at the mask edge. With a *clone of the page* in the
+   sheet the same filter smears the entire layout into marbled noise. So the
+   displacement moved into the mask itself (see #burnMask) — the hole is torn,
+   the content it uncovers is untouched. */
 .burn-warp {
   position: absolute;
-  inset: -14%;
-  filter: url(#burn-displace);
+  inset: calc(-1 * var(--burn-bleed));
 }
 
 .burn-sheet,
@@ -815,17 +851,50 @@ a {
   inset: 0;
 }
 
+/* Hosts the cloned page. The clone is laid out at its natural document size
+   and pulled back up by the scroll offset, then nudged in by the bleed, so it
+   lands exactly where the real page is on screen. */
 .burn-sheet {
-  -webkit-mask-image: radial-gradient(
-    circle at 50% 52%,
-    transparent 0 var(--burn),
-    #000 calc(var(--burn) + 6%)
-  );
-  mask-image: radial-gradient(
-    circle at 50% 52%,
-    transparent 0 var(--burn),
-    #000 calc(var(--burn) + 6%)
-  );
+  overflow: hidden;
+}
+
+.burn-page {
+  position: absolute;
+  top: calc(var(--burn-bleed) - var(--burn-scroll));
+  left: var(--burn-bleed);
+  width: var(--burn-width, 100vw);
+  min-height: 0;
+}
+
+/* `.burn-sheet` has overflow:hidden, which makes it a scroll container, so the
+   cloned header sticks to *its* top edge — one bleed above the viewport. Push
+   the sticky threshold down by the bleed so it pins where the real one does.
+   Correct unscrolled too: the clone's natural header position is already at
+   exactly that offset, so nothing moves. */
+.burn-page .site-header {
+  top: var(--burn-bleed);
+}
+
+/* The hole is an SVG mask rather than a radial-gradient so the tear can be
+   drawn by displacing the *mask shape*. White keeps the clone, the displaced
+   black circle punches through to the real page beneath. */
+.burn-sheet {
+  -webkit-mask: url(#burnMask);
+  mask: url(#burnMask);
+}
+
+.burn-mask-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.burn-hole {
+  cx: 50%;
+  cy: 52%;
+  r: var(--burn);
 }
 
 .burn-ember {
@@ -837,7 +906,9 @@ a {
     #7a4de7 80%,
     transparent 92%
   );
-  filter: blur(5px) saturate(1.4);
+  /* The ember is pure glow, so displacing it costs nothing and keeps its rim
+     ragged in step with the torn hole. Displace first, then blur. */
+  filter: url(#burn-displace) blur(5px) saturate(1.4);
   -webkit-mask-image: radial-gradient(
     circle at 50% 52%,
     transparent 0 calc(var(--burn) - 3%),
@@ -858,7 +929,8 @@ a {
    MYSTIC MODE
    ============================================================ */
 
-body.mystic-mode {
+body.mystic-mode,
+.face.mystic-mode {
   --bg: #101018;
   --bg-subtle: #15131f;
   --surface: #191527;
@@ -924,7 +996,7 @@ body.mystic-mode::after {
 /* The card affordance disappears entirely. In daylight these are boxed,
    shadowed product cards; here they are columns of a page divided by a rule.
    Same markup — a different kind of document. */
-body.mystic-mode .card {
+.face.mystic-mode .card {
   background: none;
   border: 0;
   border-radius: 0;
@@ -936,8 +1008,8 @@ body.mystic-mode .card {
    filter can age the border without bending the text inside it — filtering
    .card directly would warp the copy too. Two offset lines read as a split
    plank rather than a single wobbling stroke. */
-body.mystic-mode .card::before,
-body.mystic-mode .card::after {
+.face.mystic-mode .card::before,
+.face.mystic-mode .card::after {
   content: '';
   position: absolute;
   pointer-events: none;
@@ -945,26 +1017,26 @@ body.mystic-mode .card::after {
   transition: border-color var(--motion) ease;
 }
 
-body.mystic-mode .card::before {
+.face.mystic-mode .card::before {
   inset: 0;
   border: 1px solid var(--border);
 }
 
-body.mystic-mode .card::after {
+.face.mystic-mode .card::after {
   inset: 4px;
   border: 1px solid rgba(122, 77, 231, 0.16);
 }
 
-body.mystic-mode .card:hover {
+.face.mystic-mode .card:hover {
   transform: none;
   box-shadow: none;
 }
 
-body.mystic-mode .card:hover::before {
+.face.mystic-mode .card:hover::before {
   border-color: var(--accent);
 }
 
-body.mystic-mode .qr-card {
+.face.mystic-mode .qr-card {
   background: none;
   border: 0;
   border-top: 1px solid var(--border);
@@ -1023,7 +1095,7 @@ body.mystic-mode .qr-card {
 }
 
 /* Runes come out of their tiles and are simply lit. */
-body.mystic-mode .card-icon {
+.face.mystic-mode .card-icon {
   width: auto;
   height: auto;
   /* Without its tile the icon box stretches the column, so pull the glyph
@@ -1035,18 +1107,18 @@ body.mystic-mode .card-icon {
   color: var(--accent);
 }
 
-body.mystic-mode .hero {
+.face.mystic-mode .hero {
   background: transparent;
 }
 
-body.mystic-mode .hero-media {
+.face.mystic-mode .hero-media {
   opacity: 1;
 }
 
 /* The plate is teal; the mystic palette is violet. A `color` blend maps
    every hue onto violet while keeping the original luminance — hue-rotate
    was tried first and threw the rune tablet orange. */
-body.mystic-mode .hero-media::after {
+.face.mystic-mode .hero-media::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1057,46 +1129,46 @@ body.mystic-mode .hero-media::after {
   pointer-events: none;
 }
 
-body.mystic-mode .hero h1,
-body.mystic-mode .cta-band h2 {
+.face.mystic-mode .hero h1,
+.face.mystic-mode .cta-band h2 {
   text-shadow: 0 0 28px rgba(122, 77, 231, 0.6);
 }
 
-body.mystic-mode .hero-visual img {
+.face.mystic-mode .hero-visual img {
   box-shadow: 0 0 40px -6px rgba(122, 77, 231, 0.75);
 }
 
 /* In the dark world the ember has already burned — the control cools to
    the mystic palette and offers the way back. */
-body.mystic-mode .reveal-cta {
+.face.mystic-mode .reveal-cta {
   background: linear-gradient(115deg, rgba(122, 77, 231, 0.28) 0%, var(--surface) 70%);
   border-color: rgba(161, 231, 245, 0.55);
   box-shadow: 0 0 24px -6px rgba(122, 77, 231, 0.6);
 }
 
-body.mystic-mode .reveal-cta:hover,
-body.mystic-mode .reveal-cta:focus-visible {
+.face.mystic-mode .reveal-cta:hover,
+.face.mystic-mode .reveal-cta:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(161, 231, 245, 0.16),
     0 0 32px -6px rgba(161, 231, 245, 0.75);
 }
 
-body.mystic-mode .reveal-cta-rune {
+.face.mystic-mode .reveal-cta-rune {
   color: var(--accent);
   background: rgba(122, 77, 231, 0.3);
 }
 
-body.mystic-mode .reveal-cta:hover .reveal-cta-rune {
+.face.mystic-mode .reveal-cta:hover .reveal-cta-rune {
   box-shadow: 0 0 16px rgba(161, 231, 245, 0.7);
 }
 
 /* The glow belongs to the glyph now, not to a box behind it. */
-body.mystic-mode .card-icon .rune {
+.face.mystic-mode .card-icon .rune {
   filter: drop-shadow(0 0 9px currentColor);
 }
 
-body.mystic-mode .brand-mark,
-body.mystic-mode .qr-link {
+.face.mystic-mode .brand-mark,
+.face.mystic-mode .qr-link {
   filter: drop-shadow(0 0 10px rgba(122, 77, 231, 0.6));
 }
 
