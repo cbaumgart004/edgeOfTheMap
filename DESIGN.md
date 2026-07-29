@@ -181,9 +181,8 @@ The second break is the **service cards**, which carry two summaries: `blurb` fo
 light face and `loreBlurb` for mystic, both in `PATHS`. The cards render in both faces,
 so a single field would have leaked the mystic voice into daylight. `points` and the
 CTAs stay shared — they are functional inventory and read straight in either face.
-Everywhere else, keep to tokens. This is the payoff for
-the toggle: the light face earns trust, the dark face rewards the visitor who pulled
-the thread. Everywhere else, keep to tokens.
+Everywhere else, keep to tokens. This is the payoff for the toggle: the light face
+earns trust, the dark face rewards the visitor who pulled the thread.
 
 The positioning follows from it. The site does **not** argue that woodworking,
 software, and narration are secretly one discipline — that reads as contrived. What
@@ -253,8 +252,12 @@ it was the old default face, and removing it took the CSS bundle from 12.5 KB to
 
 Toggling does not cross-fade. A **live clone of the outgoing page** burns away from
 the centre to reveal the already-reskinned real page beneath, with an ember rim
-travelling at the burn front. It runs for 1.25s and is skipped entirely under
+travelling at the burn front. It runs for 1.8s and is skipped entirely under
 `prefers-reduced-motion`.
+
+`BURN_MS` in `App.jsx` is the only duration. It sets the unmount timer and is passed
+to CSS as `--burn-dur`, which the mask transition reads — the two used to be
+separate literals that could drift.
 
 The clone is a real copy, not a flat plane: you watch *your own page* burn, and the
 new one is genuinely underneath rather than arriving after a blank sheet lifts. Two
@@ -265,7 +268,41 @@ hangs off `.face` (§3). Sequence in `App.jsx`:
    anchor targets), and mount `.burn` with it.
 2. 60ms later, flip the live wrapper to the new face — the clone keeps the old one —
    and add `.is-lit` to start the mask animation.
-3. Unmount at 1.51s.
+3. Unmount at `BURN_MS + 260`.
+
+**Tuning the tear.** The edge is drawn by `#burn-displace`, applied to the mask
+circle *and* — via `.burn-ember-warp` — to the ember, with the same seed, so the
+rim tears in step with the hole it is lighting. Two things have to hold or the
+effect reads as fake, and both were broken at once:
+
+- **The ember must sit on the tear.** `--burn` is registered as a **`<length>`**,
+  not a percentage, because its two consumers resolve percentages differently: SVG
+  `r` against the normalized diagonal, a radial-gradient stop against the distance
+  to the farthest corner. The same `30%` put the rim ~100px inside its own hole, so
+  the page dissolved where no flame was.
+- **The ember must be ragged.** Its filter goes on a wrapper. `filter` runs before
+  `mask`, so filtering the ember itself warps a smooth background gradient —
+  invisible — and then carves a perfectly clean ring out of it (§6).
+
+Keep the noise period short and the excursion small: an earlier pass ran
+`baseFrequency 0.009` at `scale 110`, a ~110px period swinging the boundary ±55px,
+which looked like a wobbling cut-out rather than char. The filter ends in its own
+blur because the mask circle is a hard shape, and a hard displaced edge reads as
+cut. The ember band is in **px**, so the rim stays a line; as a percentage of the
+box it grew as the burn travelled and arrived as a glowing donut.
+
+**Three things keep it affordable**, and all three are easy to undo by accident:
+
+- `--burn` stops at **110%**, not further. The hole clears the farthest corner at
+  r ≈ 72% and the ember leaves the box at ≈ 105%; past that the browser is
+  rasterizing a filter region several times the viewport with nothing on screen.
+- **Two octaves** of turbulence, not four. Each octave is another noise sample per
+  pixel per frame, and the detail lands under the blur anyway.
+- **Nothing underneath animates layout.** The clone covers the page for the whole
+  window, so `line-height` (`--lead`) and heading `letter-spacing`
+  (`--tracking-display`) snap between faces instead of transitioning. They used to
+  animate, which reflowed the entire document every frame *while* the burn ran — for
+  an effect no one could see. Only colour is transitioned on `.face` and `body`.
 
 Two positioning details make the clone land on top of the real page rather than near
 it. `--burn-scroll` pulls it up by the scroll offset, and `--burn-bleed` (a fixed
@@ -314,11 +351,16 @@ it cools to violet and offers the way back.
   writing it out re-encodes the damage. Use
   `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)` and
   `WriteAllText` with `UTF8Encoding($false)`, or just edit the file directly.
-- **`filter` applies before `mask`.** The burn's displacement filter therefore sits
-  on `.burn-warp`, the *parent* of the masked layers — filtering the masked element
-  directly would displace its contents but leave a clean circular mask edge. That
-  ordering is the whole reason the burn looks torn instead of like a wipe. Same
-  reasoning is in the `#burn-displace` comment in `SvgDefs.jsx`.
+- **`filter` applies before `mask`, so the tear lives in the mask shape.** Filtering
+  a masked element displaces its *contents* and leaves a clean circular mask edge.
+  Filtering the parent instead was the answer while the burn was a flat sheet, but
+  with a clone of the page in there it smeared the whole layout into marbled noise.
+  So `#burn-displace` now sits on the mask's own circle (`#burnMask` in `App.jsx`):
+  the hole is torn and what it uncovers stays sharp. The ember is masked too, so it
+  gets the filter on `.burn-ember-warp` rather than on itself — putting it on
+  `.burn-ember` displaced a smooth gradient and then masked a flawless circle out
+  of it, which is how the rim went round without anyone noticing. `.burn-warp` is
+  the bleed, not a filter host.
 - **The burn needs `@property --burn`.** A plain custom property cannot be
   transitioned, so without the `@property` registration the mask jumps straight to
   its end state and the effect degrades to an instant swap. That is an acceptable

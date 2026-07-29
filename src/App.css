@@ -78,8 +78,11 @@ html {
   color: var(--ink);
   font-family: var(--body-font);
   line-height: var(--lead);
-  transition: background-color 0.35s ease, color 0.35s ease,
-    line-height 0.35s ease;
+  /* Colour only. `--lead` still changes between faces, but transitioning
+     line-height reflows the whole document on every frame — and it would do
+     it underneath the burn clone, where nothing is visible anyway. Same
+     reasoning kills the letter-spacing transition on headings. */
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 body {
@@ -90,8 +93,7 @@ body {
   background-color: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.35s ease, color 0.35s ease,
-    line-height 0.35s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 h1,
@@ -102,7 +104,6 @@ h3 {
   line-height: 1.18;
   letter-spacing: var(--tracking-display);
   margin: 0;
-  transition: letter-spacing 0.4s ease;
 }
 
 ::selection {
@@ -792,9 +793,11 @@ a {
    own page burn, and the new one is genuinely underneath it rather than
    arriving after a blank sheet lifts.
 
-   Two renderings are on screen at once for 1.25s, which is why theming hangs
-   off `.face` (§ .face) — the clone keeps the outgoing tokens while the live
-   wrapper carries the new ones.
+   Two renderings are on screen at once for the duration, which is why theming
+   hangs off `.face` (§ .face) — the clone keeps the outgoing tokens while the
+   live wrapper carries the new ones. Because the clone covers the page for
+   that whole window, nothing underneath needs to animate: mode-dependent
+   layout properties snap, and only colour is transitioned.
 
    The bleed gives the displacement filter room to push pixels around without
    exposing an edge. It is a fixed px value, not a percentage, because the
@@ -802,10 +805,16 @@ a {
    against a percentage inset is not worth the arithmetic.
    ============================================================ */
 
+/* A length, not a percentage — the two consumers of --burn resolve percentages
+   against different references. SVG `r` takes a fraction of the *normalized
+   diagonal*; a radial-gradient stop takes a fraction of the distance to the
+   *farthest corner*. The same 30% therefore put the ember rim about 100px
+   inside the hole it was supposed to be burning, so the page dissolved where
+   no flame was. In px they are locked together by construction. */
 @property --burn {
-  syntax: '<percentage>';
+  syntax: '<length>';
   inherits: true;
-  initial-value: 0%;
+  initial-value: 0px;
 }
 
 .svg-defs {
@@ -821,14 +830,23 @@ a {
   z-index: 9998;
   pointer-events: none;
   overflow: hidden;
-  --burn: 0%;
+  --burn: 0px;
   --burn-bleed: 120px;
   --burn-scroll: 0px;
 }
 
+/* The end radius is the cheapest lever on cost, because the filter region
+   scales with the circle. Reaching the farthest visible corner needs at most
+   ~72vmax (worst case is a square viewport); 82vmax clears that and carries
+   the rim off the edge. The old value animated to roughly twice what any
+   viewport could show, spending its last third rasterizing an enormous
+   filter region with nothing on screen to prove it.
+
+   Duration comes from BURN_MS in App.jsx via --burn-dur so the mask animation
+   and the unmount timer cannot drift apart. The fallback matches it. */
 .burn.is-lit {
-  --burn: 165%;
-  transition: --burn 1.25s cubic-bezier(0.42, 0.03, 0.72, 0.62);
+  --burn: 82vmax;
+  transition: --burn var(--burn-dur, 1800ms) cubic-bezier(0.42, 0.03, 0.72, 0.62);
 }
 
 /* The filter must sit on the wrapper: CSS applies `filter` before `mask`,
@@ -846,9 +864,17 @@ a {
 }
 
 .burn-sheet,
+.burn-ember-warp,
 .burn-ember {
   position: absolute;
   inset: 0;
+}
+
+/* Same filter and seed as the hole, so the rim tears in step with the edge it
+   is lighting. It has to sit on the wrapper: see the note in App.jsx, and the
+   `filter` before `mask` entry in DESIGN.md §6. */
+.burn-ember-warp {
+  filter: url(#burn-displace);
 }
 
 /* Hosts the cloned page. The clone is laid out at its natural document size
@@ -906,22 +932,25 @@ a {
     #7a4de7 80%,
     transparent 92%
   );
-  /* The ember is pure glow, so displacing it costs nothing and keeps its rim
-     ragged in step with the torn hole. Displace first, then blur. */
-  filter: url(#burn-displace) blur(5px) saturate(1.4);
+  /* Softening only — the tear comes from the wrapper above. */
+  filter: blur(2px) saturate(1.4);
+  /* A line, in px: a thin hot core with a short glow trailing outward into
+     the paper it has not reached yet. The band used to be a percentage of the
+     box, so it grew as the burn travelled and ended as a glowing donut wide
+     enough to read as decoration. Fixed px keeps it a rim the whole way. */
   -webkit-mask-image: radial-gradient(
     circle at 50% 52%,
-    transparent 0 calc(var(--burn) - 3%),
-    #000 calc(var(--burn) + 0.5%),
-    #000 calc(var(--burn) + 3.5%),
-    transparent calc(var(--burn) + 9%)
+    transparent 0 calc(var(--burn) - 7px),
+    #000 var(--burn),
+    #000 calc(var(--burn) + 4px),
+    transparent calc(var(--burn) + 18px)
   );
   mask-image: radial-gradient(
     circle at 50% 52%,
-    transparent 0 calc(var(--burn) - 3%),
-    #000 calc(var(--burn) + 0.5%),
-    #000 calc(var(--burn) + 3.5%),
-    transparent calc(var(--burn) + 9%)
+    transparent 0 calc(var(--burn) - 7px),
+    #000 var(--burn),
+    #000 calc(var(--burn) + 4px),
+    transparent calc(var(--burn) + 18px)
   );
 }
 

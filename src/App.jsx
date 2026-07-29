@@ -20,7 +20,9 @@ const CONTACT_EMAIL = 'keeper@theedgeofthemap.com'
 // TODO(confirm): inferred from the repo owner. Change here, not in the copy.
 const MAKER_NAME = 'Chris Baumgart'
 
-const BURN_MS = 1250
+// Drives both the unmount timer below and the mask animation in CSS, which
+// reads it as --burn-dur. Changing it here changes both.
+const BURN_MS = 1800
 
 // One brand, three crafts. Kept as data so a fourth path — or splitting one
 // out to its own route later — is an edit here, not a layout rewrite.
@@ -270,6 +272,7 @@ function App() {
           style={{
             '--burn-scroll': `${burn.scrollY}px`,
             '--burn-width': `${burn.width}px`,
+            '--burn-dur': `${BURN_MS}ms`,
           }}
         >
           <div className="burn-warp">
@@ -293,7 +296,14 @@ function App() {
                 node, not React's to render. The ember sits *after* it so the
                 rim glows over the burning page rather than behind it. */}
             <div className="burn-sheet" ref={sheetRef} />
-            <div className="burn-ember" />
+
+            {/* The ember gets a filtered *wrapper*, not a filter of its own:
+                `filter` runs before `mask`, so displacing the ember element
+                would warp its smooth background gradient — invisible — and
+                then carve a perfectly clean ring out of the result. */}
+            <div className="burn-ember-warp">
+              <div className="burn-ember" />
+            </div>
           </div>
         </div>
       )}
