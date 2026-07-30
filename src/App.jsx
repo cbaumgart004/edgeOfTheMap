@@ -13,6 +13,10 @@ import qrCode from './assets/qr_code.png'
 
 const SITE_URL = 'https://theedgeofthemap.com'
 
+// The visible link label, derived rather than retyped — a domain change used to
+// leave the anchor text pointing at the old host while its href and alt updated.
+const SITE_HOST = new URL(SITE_URL).host
+
 // Single source for every CTA — change here, not in the markup.
 // If the crafts ever want separate inboxes, add an `email` to PATHS and fall
 // back to this one.
@@ -84,6 +88,12 @@ const PATHS = [
 
 const mailto = (subject) =>
   `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
+
+// The one subject line that isn't path-specific, and so the only one that could
+// drift: it was typed out at four call sites, and editing three of four splits
+// inbound mail into two differently-named threads with nothing visible on the
+// page to show it. Per-path subjects live in PATHS.subject.
+const GENERAL_ENQUIRY = mailto('Enquiry — Edge of the Map')
 
 /* The one place the two faces diverge in *content* rather than styling.
    Everything else on the page is the same markup re-themed; here the mode
@@ -251,13 +261,17 @@ function App() {
 
     // Let the clone paint before the theme underneath changes, then start the
     // burn on the following frame so the mask transition has a start value.
-    timers.current.push(
+    //
+    // Assigned, not appended: the burn is single-flight (the guard above), so
+    // only the current run's ids can ever matter and pushing grew the array for
+    // the whole session.
+    timers.current = [
       setTimeout(() => {
         setIsMystic((prev) => !prev)
         setBurn((b) => (b ? { ...b, lit: true } : b))
-      }, 60)
-    )
-    timers.current.push(setTimeout(() => setBurn(null), BURN_MS + 260))
+      }, 60),
+      setTimeout(() => setBurn(null), BURN_MS + 260),
+    ]
   }, [burn])
 
   const toggleLabel = isMystic ? 'Return to the Known' : 'Reveal the Mystery'
@@ -312,7 +326,7 @@ function App() {
       <div className={`face ${isMystic ? 'mystic-mode' : ''}`} ref={faceRef}>
       <header className="site-header">
         <a className="brand" href="#top">
-          <img src={mark} alt="" className="brand-mark" />
+          <img src={mark} alt="" className="brand-mark" width="300" height="200" />
           <span className="brand-name">Edge of the Map</span>
         </a>
 
@@ -335,7 +349,7 @@ function App() {
             <Rune name="raido" />
             <span className="visually-hidden">{toggleLabel}</span>
           </button>
-          <a className="btn btn-primary btn-sm" href={mailto('Enquiry — Edge of the Map')}>
+          <a className="btn btn-primary btn-sm" href={GENERAL_ENQUIRY}>
             Contact
           </a>
         </div>
@@ -343,7 +357,13 @@ function App() {
 
       <main id="top">
         <section className="hero">
-          {/* Only lit in mystic mode — the default face is a clean light page. */}
+          {/* Only lit in mystic mode — the default face is a clean light page.
+              It stays in the document rather than mounting on toggle, because
+              the burn clones the outgoing page and a plate that appears with
+              the flip would pop in behind the tear instead of being revealed
+              by it. It is, though, explicitly deprioritised: every visitor
+              fetches and decodes it, and most never toggle, so it must not
+              compete with the hero card for bandwidth on first paint. */}
           <div className="hero-media" aria-hidden="true">
             <img
               className="hero-image"
@@ -351,6 +371,8 @@ function App() {
               srcSet={`${heroNarrow} 960w, ${heroWide} 1536w`}
               sizes="100vw"
               alt=""
+              fetchPriority="low"
+              decoding="async"
             />
             <div className="hero-scrim" />
           </div>
@@ -367,10 +389,7 @@ function App() {
               </p>
 
               <div className="hero-actions">
-                <a
-                  className="btn btn-primary"
-                  href={mailto('Enquiry — Edge of the Map')}
-                >
+                <a className="btn btn-primary" href={GENERAL_ENQUIRY}>
                   Start a conversation
                 </a>
                 <a className="btn btn-ghost" href="#services">
@@ -430,6 +449,10 @@ function App() {
             </p>
           </div>
 
+          {/* --reveal-index carries only the index — the stagger interval is
+              pace, and pace is a token here, so CSS multiplies it by
+              --reveal-step. As a `${i * 80}ms` literal the cascade was stuck at
+              the light face's rhythm and could not slow with the mystic face. */}
           <div className="cards">
             {PATHS.map((path, i) => (
               <article
@@ -437,7 +460,7 @@ function App() {
                 id={path.id}
                 className="card"
                 data-reveal
-                style={{ '--reveal-delay': `${i * 80}ms` }}
+                style={{ '--reveal-index': i }}
               >
                 {isMystic && <RuneFrame />}
                 <span className="card-icon">
@@ -483,10 +506,7 @@ function App() {
                 whichever path brought you here.
               </p>
             </div>
-            <a
-              className="btn btn-primary btn-lg"
-              href={mailto('Enquiry — Edge of the Map')}
-            >
+            <a className="btn btn-primary btn-lg" href={GENERAL_ENQUIRY}>
               {CONTACT_EMAIL}
             </a>
           </div>
@@ -498,8 +518,7 @@ function App() {
               <p className="eyebrow">Carry the map</p>
               <h2>Keep this page in your pocket.</h2>
               <p>
-                Scan the code, or visit{' '}
-                <a href={SITE_URL}>theedgeofthemap.com</a>.
+                Scan the code, or visit <a href={SITE_URL}>{SITE_HOST}</a>.
               </p>
             </div>
             <a href={SITE_URL} className="qr-link">
@@ -525,7 +544,7 @@ function App() {
         </div>
         <div className="footer-inner">
           <div className="footer-brand">
-            <img src={mark} alt="" className="brand-mark" />
+            <img src={mark} alt="" className="brand-mark" width="300" height="200" />
             <span>&copy; 2025 Edge of the Map LLC. All rights reserved.</span>
           </div>
           <nav className="footer-nav" aria-label="Footer">
@@ -534,7 +553,7 @@ function App() {
                 {path.title}
               </a>
             ))}
-            <a href={mailto('Enquiry — Edge of the Map')}>Contact</a>
+            <a href={GENERAL_ENQUIRY}>Contact</a>
           </nav>
         </div>
       </footer>

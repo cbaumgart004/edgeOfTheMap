@@ -1,8 +1,9 @@
 // Bindrune.jsx
 //
-// The maker's runebinding: six runes bound adjacent, top to bottom, on one
-// continuous stave. This is the mark the artwork's tablet should have been
-// carrying — the plate's glyph column is invented, this one is not.
+// The maker's runebinding: seven runes bound adjacent, top to bottom, on one
+// continuous stave. The artwork's tablet now carries this same binding carved
+// into walnut, so the mark appears twice in two materials — cut into wood in
+// the plate, drawn in vector here.
 //
 // Drawn in vector rather than baked into the plate so it scales, takes the
 // face's colour through `currentColor`, and burns with the page. The glow is
@@ -13,6 +14,7 @@
 // not a card icon; sizing it like one will crush it. Give it height and let
 // the width follow.
 import React from 'react'
+import { GLYPH_STROKE } from './Rune.jsx'
 
 // The stave every segment hangs from, drawn once. One unbroken vertical is
 // what makes this a single bound mark rather than seven glyphs in a stack.
@@ -76,31 +78,21 @@ const BINDING = [
   },
 ]
 
-/** The runes bound here, top to bottom — for copy that has to name them. */
-export const BOUND_RUNES = BINDING.map((s) => s.rune)
-
 export default function Bindrune({
   className = '',
   title = 'The Edge of the Map bindrune',
-  binding = BINDING,
 }) {
   return (
     <svg
       className={`rune-bind ${className}`}
       viewBox="0 0 24 164"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      role={title ? 'img' : undefined}
-      aria-label={title || undefined}
-      aria-hidden={title ? undefined : true}
-      focusable="false"
+      {...GLYPH_STROKE}
+      role="img"
+      aria-label={title}
     >
-      {title && <title>{title}</title>}
+      <title>{title}</title>
       <path d={STAVE} />
-      {binding.flatMap((seg) =>
+      {BINDING.flatMap((seg) =>
         seg.strokes.map((d, i) => <path key={`${seg.rune}-${i}`} d={d} />)
       )}
     </svg>

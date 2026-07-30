@@ -13,7 +13,9 @@
 //                 you between the site's two worlds
 import React from 'react'
 
-const PATHS = {
+// Named GLYPHS, not PATHS: App.jsx's `PATHS` is the three-crafts table, and two
+// unrelated tables under one name in one codebase is a reader's tripwire.
+const GLYPHS = {
   othala: [
     'M12 3 L19.5 11 L12 19 L4.5 11 Z',
     'M12 19 L6.5 28',
@@ -24,25 +26,32 @@ const PATHS = {
   raido: ['M7 2 V30', 'M7 3.5 L16.5 9 L7 14.5', 'M7.5 14.5 L16.5 27.5'],
 }
 
-/** Every glyph this component can draw. Exported so RuneFrame can cycle them
- *  without duplicating the list. */
-export const RUNE_NAMES = Object.keys(PATHS)
+/** Every glyph this component can draw. Consumed by RuneFrame so the frame
+ *  cycles the real glyph set instead of duplicating the list. */
+export const RUNE_NAMES = Object.keys(GLYPHS)
+
+/** The brand's stroke identity, shared with Bindrune so the footer mark and the
+ *  card icons cannot drift apart in weight or cap style. `.rune-frame-glyph`
+ *  overrides stroke-width from CSS, so this stays a default, not a lock. */
+export const GLYPH_STROKE = {
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'square',
+  strokeLinejoin: 'miter',
+  focusable: 'false',
+}
 
 export default function Rune({ name, className = '' }) {
-  const strokes = PATHS[name]
+  const strokes = GLYPHS[name]
   if (!strokes) return null
 
   return (
     <svg
       className={`rune ${className}`}
       viewBox="0 0 24 32"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="square"
-      strokeLinejoin="miter"
+      {...GLYPH_STROKE}
       aria-hidden="true"
-      focusable="false"
     >
       {strokes.map((d, i) => (
         <path key={i} d={d} />

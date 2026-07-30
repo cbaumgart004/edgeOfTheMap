@@ -16,7 +16,7 @@ This file is a *map*, not a spec. It should stay short enough to read in one sit
 | UI | React 19 (`@vitejs/plugin-react`) |
 | Language | Plain JSX — no TypeScript |
 | Styling | Hand-written CSS with custom properties. No framework, no CSS modules. |
-| Fonts | `@fontsource/lato`, `@fontsource/cormorant-garamond` — self-hosted, bundled. |
+| Fonts | `@fontsource/cormorant-garamond` only, and only its `latin-` subsets — self-hosted, bundled. Mystic face only; see §5. |
 | Routing | None — one page |
 | State | `useState` in `App.jsx`. No store, no context. |
 | Tests | None |
@@ -73,10 +73,16 @@ main.jsx  ──renders──>  App
                          │
                          ├─ useState: isMystic
                          │    └─ useEffect: body.classList.toggle('mystic-mode', …)
-                         ├─ usePastHero()      → pins .site-header past 65% of the hero
+                         ├─ useState: burn     → the outgoing page's clone (§5)
                          └─ useScrollReveal()  → IntersectionObserver adds .is-visible
                                                   to every [data-reveal]
 ```
+
+**There are no scroll or resize handlers anywhere.** The header is plain CSS
+`position: sticky`; the only `window` reads in the whole app are `matchMedia` and
+one `window.scrollY` at the moment of a toggle. Don't come here looking for a
+scroll hot path — earlier revisions of this file described a `usePastHero()` hook
+that pinned the header past 65% of the hero, and it does not exist.
 
 `App` renders a fixed structure: a sticky `.site-header`, a two-column `.hero`
 (copy left, logo card right — the dark plate behind it is only lit in mystic mode),
@@ -122,7 +128,19 @@ furniture commissioners — but that is a job for distinct sections or routes in
 one site. It is also the reversible direction: splitting later is easy, merging is
 not. If woodworking ever needs a storefront, it earns a subdomain then.
 
+That claim holds **structurally** — `PATHS` drives the nav, the hero trust row, the
+cards and the footer nav, and `.cards` is `auto-fit` so a fourth reflows without a
+breakpoint. The only edit outside the table is a glyph in `Rune.jsx`. **What it does
+not cover is arity in the prose**: "three" is written into the hero h1 and sub, the
+services heading, the About opening, and the Lore's *three branches, one trunk*.
+None of that is templatable and none of it should be — but `PATHS.length` and the
+copy can disagree with nothing to flag it, so a fourth path is a table edit *plus* a
+copy pass.
+
 **Rune choice is by meaning, not shape** — see the header comment in `Rune.jsx`.
+`RUNE_NAMES` is the glyph set `Rune` can draw, and `RuneFrame`'s `FRAME_RUNES` is
+now an alias of it rather than a second hand-kept copy of the same four names — a
+name `Rune` cannot draw renders nothing at all, with no error to notice.
 Othala is the inherited homestead, the domain one *keeps*. Ansuz is the god-rune of
 speech and the spoken word. Berkano is the birch — growth, and literally wood.
 
@@ -197,8 +215,18 @@ template-looking thing on the site.
 **The light face still ships no webfont**, so its typography has to be earned from
 system UI: `text-wrap: balance` on every heading, the tracking tokens, and the ruled
 labels. If the face ever needs more voice than that, a display webfont is the next
-lever — but it reverses the decision that took the CSS bundle from 12.5 KB to 3.9 KB
-gzipped, so price it deliberately rather than reaching for it first.
+lever — but it reverses the decision that took the CSS bundle down by two thirds
+(it is 18.3 KB, 5.0 KB gzipped, most of it the two faces' token blocks and the
+burn), so price it deliberately rather than reaching for it first.
+
+**The light face is also flat in the literal sense: no `backdrop-filter`.** The
+sticky header used to frost its backdrop on both faces, which is a blur re-resolved
+on every scroll frame for the whole session — the only permanently-on expensive
+compositing path the site had — to show 12% of it through an 88%-opaque fill. It
+is now near-opaque and unblurred in daylight, and the frost is scoped to
+`.face.mystic-mode .site-header`, where atmosphere is the point. The burn's cloned
+header sets `backdrop-filter: none` outright: the clone is verbatim, so in mystic
+mode it otherwise carries a *second* blur through the animating mask.
 
 *Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
 Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
@@ -229,6 +257,14 @@ they actually share is stated plainly: they are all commission work, the maker i
 the whole supply chain, and all three produce things people live with for years. The
 unifying element is the person, not a synthetic through-line.
 
+**Colours that appear at more than one alpha are stored as channel triples, not
+colours** — `--violet: 122 77 231`, consumed as `rgb(var(--violet) / 0.6)`. The
+mystic violet and its ghost-blue glow were previously raw `rgba()` literals in a
+dozen component rules at seven different alphas, so changing `--accent` re-tinted
+the Lore drop cap while leaving its glow the old blue. Same reason for
+`--ember-hover` / `--ember-glow` on the light face. A single-alpha colour stays a
+plain hex; only the multi-alpha hues pay for the indirection.
+
 Both faces re-declare the same token names, so component rules never branch on mode:
 
 | Token | Default | Mystic |
@@ -241,16 +277,21 @@ Both faces re-declare the same token names, so component rules never branch on m
 | `--ink-muted` | `#5f584e` (~6.6:1) | `#aba0c6` |
 | `--accent` | `#0f766e` teal | `#a1e7f5` ghost blue |
 | `--accent-soft` | `#e3efec` | `rgba(122,77,231,.22)` |
-| `--ember` | `#c2410c` | *(unused — mystic overrides `.reveal-cta` wholesale)* |
+| `--ember` | `#c2410c` (+ `-line`, `-soft`, `-wash`, `-hover`, `-glow`) | *(unused — mystic overrides `.reveal-cta` wholesale)* |
+| `--violet` / `--glow` | *(light face has neither)* | `122 77 231` / `161 231 245`, as **channel triples** |
 | `--display-font` | system UI stack | Cormorant Garamond |
 | `--radius` / `--radius-sm` | `10px` / `6px` | `0` — every corner squares off |
 | `--lead` | `1.6` | `1.85` |
 | `--tracking-display` | `-0.018em` | `0.012em` |
 | `--tracking-label` | `0.14em` | `0.34em` |
 | `--motion` | `0.2s` | `0.5s` |
+| `--face-fade` | `0.35s` — *declared once, never per face* | ← same |
+| `--gutter` | `clamp(1rem, 4vw, 2.5rem)` | ← same |
+| `--header-h` | `5.5rem` | ← same |
+| `--reveal-step` | `80ms` | ← same |
 | `--section-y` | `clamp(2.75rem, 7vw, 5.75rem)` | `clamp(3.75rem, 11vw, 9rem)` |
 | `--head-gap` | `clamp(1.6rem, 4vw, 2.75rem)` | `clamp(2.25rem, 6vw, 4rem)` |
-| `--card-pad` | `clamp(1.25rem, 3.5vw, 1.75rem)` | *(mystic sets `.card` padding directly)* |
+| `--card-pad` | `clamp(1.25rem, 3.5vw, 1.75rem)` | a three-value shorthand — the token carries the whole padding so `.card` stays unbranched |
 | `--card-gap` | `1.25rem` | `clamp(1.6rem, 5vw, 3.5rem)` |
 | `--measure` | `42rem` | `46rem` |
 
@@ -288,8 +329,22 @@ a breakpoint to stay readable.
 **Only the mystic face ships a webfont.** `main.jsx` imports Cormorant Garamond
 400/600 from `@fontsource`; the default face uses the system UI stack, which costs
 nothing and reads as native on every platform. Lato was dropped in the light rework —
-it was the old default face, and removing it took the CSS bundle from 12.5 KB to
-3.9 KB gzipped.
+it was the old default face, and removing it is most of why the CSS bundle is a
+third of what it was.
+
+Import the **`latin-` entrypoints**, not the bare `400.css`/`600.css`. The bare ones
+declare all five subsets (cyrillic, cyrillic-ext, vietnamese, latin-ext, latin), so
+ten `@font-face` blocks land in the render-blocking stylesheet where two can ever
+match this copy, and Vite emits a `.woff` fallback for each — 20 font files and
+377 KB of deploy weight to ship 2 files and 46 KB.
+
+**The serif is warmed on idle** (`warmMysticFont` in `main.jsx`). The `@font-face`
+rules ship in the CSS but the woff2 is not fetched until a glyph needs it, which is
+the instant the burn flips the face 60 ms in — so a ~45 KB request landed on the
+frame the mask transition starts and `font-display: swap` then re-laid out the whole
+document *mid-burn*: the mystic reveal arrived in system UI and snapped to serif a
+beat later. Serif type is half that face's identity; it should be resident before
+the toggle is pressed, not fetched because it was.
 
 ### The burn transition
 
@@ -301,6 +356,13 @@ travelling at the burn front. It runs for 1.8s and is skipped entirely under
 `BURN_MS` in `App.jsx` is the only duration. It sets the unmount timer and is passed
 to CSS as `--burn-dur`, which the mask transition reads — the two used to be
 separate literals that could drift.
+
+**The origin is a pair of tokens for the same reason**: `--burn-x` / `--burn-y` on
+`.burn`. The radius was hardened into a registered `<length>` precisely so its two
+consumers could not disagree, but the *centre* was left as four independent `50% 52%`
+literals — the mask circle's `cx`/`cy`, the ember gradient, and the rim's own mask —
+with nothing keeping them in step. That is the same failure as the radius bug below,
+and it looks identical: a rim lighting somewhere the page is not dissolving.
 
 The clone is a real copy, not a flat plane: you watch *your own page* burn, and the
 new one is genuinely underneath rather than arriving after a blank sheet lifts. Two
@@ -371,10 +433,23 @@ it cools to violet and offers the way back.
 - **Assets are imported, never referenced by path.** `import logo from './assets/…'`
   gets hashing and cache-busting. Unimported files in `src/assets/` are simply not
   emitted, so `logo.png` and `QR_Complete.png` cost repo size but not bundle size.
+- **A value used in two rules is a token; a value used in seven is a bug waiting.**
+  `--gutter`, `--header-h`, `--face-fade` and `--reveal-step` all exist because the
+  literal was previously copied across rules that *must* agree, and where a missed
+  copy is silent rather than visible: the gutter governs whether the header, every
+  eyebrow and the footer share a left edge, and `--header-h` is the only thing
+  keeping same-page anchors from landing under the sticky header (two rules used to
+  guess at it independently, 5.5rem and 5rem).
+- **The reveal stagger is `--reveal-index` × `--reveal-step`.** `App.jsx` passes only
+  the index — the datum it owns — and CSS multiplies. As a `${i * 80}ms` template
+  literal the interval was unreachable from CSS, so the cascade was pinned to the
+  light face's rhythm and could not slow with the mystic face like every other
+  pace token.
 - **`logo.png` is 2.3 MB and must not be shipped.** It is the full-resolution master,
   kept for regenerating derivatives. `logo_signature.png` (67 KB, 300×200) is what
-  renders; it carries explicit `width`/`height` attributes to reserve layout space,
-  which is why `.logo` needs `height: auto` alongside `max-width`.
+  renders, as `.brand-mark` in both the header and the footer; it carries explicit
+  `width="300" height="200"` to reserve layout space, which is why `.brand-mark`
+  needs `height: auto` alongside its `width: 34px`.
 - **The master is repainted, not original.** The artwork's tablet originally carried
   invented, meaningless glyphs. It now carries a live-edge black walnut slab with the
   real bindrune (§4) carved into it, lit by the neon spilling from the grooves. Every
@@ -405,8 +480,9 @@ it cools to violet and offers the way back.
   artwork is transparent apart from the opaque black backing behind the code itself.
 - **Re-deriving the QR: verify it still scans.** The code is only ~26% of the
   artwork's width, so downscaling eats into it fast. Every candidate size was decoded
-  before being accepted, and `.qr-code` is set to 340px for the same reason — at
-  220px the code renders ~57px wide and becomes unreliable to scan.
+  before being accepted; at 220px the code renders ~57px wide and becomes unreliable
+  to scan. **`.qr-code` currently ships `260px`, not the 340px this section used to
+  claim** — see §8, it is unresolved rather than decided.
 - **The domain is not connected yet.** `theedgeofthemap.com` resolves to Porkbun's
   parking IPs (`207.207.210.36/.50`) and 302s to `theedgeofthemap-com.l.ink` — their
   "A Brand New Domain!" page. `www` is a CNAME to `uixie.porkbun.com`. To go live:
@@ -518,11 +594,35 @@ removing Porkbun's parking first — see §6.
 
 ## 8. Decisions
 
-No ADRs exist yet. If a decision here grows a real trade-off worth recording, add
-`docs/adr/` and link the record from this section rather than expanding the prose above.
+Records live in [`docs/adr/`](docs/adr/README.md), one per decision. If a decision
+here grows a real trade-off worth recording, add a record and link it from this index
+rather than expanding the prose above.
+
+| # | Decision |
+| --- | --- |
+| [0001](docs/adr/0001-cleanup-v2-quality-pass.md) | Cleanup pass — shared values become tokens; atmosphere (and `backdrop-filter`) is scoped to the mystic face; Cormorant is imported as `latin-` subsets and pre-warmed on idle; the burn keeps its `-webkit-mask` prefixes |
 
 ### Open
 
+- **`.qr-code` is 260px in CSS; §6 recorded 340px as the decoded-and-accepted
+  size.** One of the two drifted and it is not clear which. At 260px the code renders
+  ~68px wide — above the ~57px that was measured as unreliable, but below the size
+  that was actually tested and accepted. The functional constraint lives only in
+  prose, in a file the CSS does not reference. **Resolving it needs a decode test at
+  260px, not a judgement call**; until then the shipped value is left alone.
+- **The LCP image cannot be preloaded without breaking a convention.** `logo-card`
+  carries `fetchPriority="high"`, but the page is client-rendered and `index.html`
+  ships no image hint, so the preload scanner sees nothing and the request cannot
+  start until ~203 KB of JS has parsed. `fetchPriority` only reorders requests that
+  already exist. Fixing it means either moving the file to `public/` (the exception
+  already granted to `og.webp`/`banner.webp`, at the cost of cache-busting) or a Vite
+  `transformIndexHtml` hook to emit the tag with the hashed name. Not done because
+  both are real trades against §6's import rule, not cleanups.
+- **`qr_code.png` is a 99 KB PNG on a site that otherwise ships WebP.** Lossless WebP
+  with alpha typically lands 30–45% below a 256-colour PNG at identical pixels, and
+  lossless is bit-exact so the scan constraint is unaffected. Not done here because
+  it needs the derivative regenerated from `QR_Complete.png` and re-decoded, which is
+  an asset pass rather than a code change.
 - **No favicon.** `index.html` ships none, so tabs show the browser default. The
   bindrune cannot serve — at 16px a 1:7 column is a smear. Candidates explored and
   rejected: Othala plus legs (muddy at 16), the tripled Tiwaz alone (reads as

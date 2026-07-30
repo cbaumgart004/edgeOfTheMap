@@ -42,6 +42,15 @@
   --ember-line: #f0c49a;
   --ember-soft: #ffe8d1;
   --ember-wash: #fff6ed;
+  /* The hover half of the same palette. These were four raw hexes inside
+     .reveal-cta — exactly the "pile of one-off hexes" the note above forbids —
+     so retuning the ember shifted the resting pill and left its hover ring and
+     rune glow on the old orange. Both are channel triples rather than colours,
+     because each is used at several alphas and one source per hue is the point:
+     --ember-hover is the lit edge and its ring, --ember-glow the deeper cast
+     the shadows throw. */
+  --ember-hover: 232 147 90;
+  --ember-glow: 226 110 40;
 
   /* Shape, rhythm and pace are tokens too — the two faces differ in how they
      are *built*, not only in what colour they are. Light is tight, rounded,
@@ -56,6 +65,19 @@
   --tracking-label: 0.14em;
   --motion: 0.2s;
 
+  /* The cross-face colour fade. Deliberately *not* --motion: that one inverts
+     between faces (0.2s/0.5s), and a crossfade has to take the same time in
+     both directions or the two faces arrive at different moments. It must not
+     be redeclared in the mystic block for the same reason. It was a bare 0.35s
+     in thirteen declarations; any one left behind snapped while its neighbours
+     faded, which reads as a rendering glitch rather than a missed edit. */
+  --face-fade: 0.35s;
+
+  /* The reveal cascade. The index comes from JS (App.jsx), the interval is
+     pace and belongs here — so the stagger slows with the mystic face. */
+  --reveal-step: 80ms;
+  --reveal-dur: 0.6s;
+
   /* Every vertical rhythm token is a clamp whose *floor* is what mobile
      actually gets — the vw term only overtakes it around 640px. So the floor
      is the mobile design, and it was set far too high: 3.5rem top and bottom
@@ -66,6 +88,20 @@
   --card-pad: clamp(1.25rem, 3.5vw, 1.75rem);
   --card-gap: 1.25rem;
   --measure: 42rem;
+
+  /* The horizontal gutter, shared by the header, hero, every section and the
+     footer. It governs visible alignment — the brand mark, each section's
+     eyebrow and the footer all sit on this left edge — and it was written out
+     longhand in seven rules, where missing one leaves a section a few px off
+     at some widths: the hardest kind of layout bug to see. */
+  --gutter: clamp(1rem, 4vw, 2.5rem);
+
+  /* The rendered height of the sticky header, used as scroll-margin by
+     anything with an id so same-page anchors don't land underneath it. Two
+     rules used to guess at this independently (5.5rem and 5rem) with nothing
+     tying either to the header; change the header's padding or the toggle size
+     and both were silently wrong, by different amounts. */
+  --header-h: 5.5rem;
 
   --display-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --body-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -100,7 +136,7 @@ html {
      line-height reflows the whole document on every frame — and it would do
      it underneath the burn clone, where nothing is visible anyway. Same
      reasoning kills the letter-spacing transition on headings. */
-  transition: background-color 0.35s ease, color 0.35s ease;
+  transition: background-color var(--face-fade) ease, color var(--face-fade) ease;
 }
 
 body {
@@ -111,7 +147,19 @@ body {
   background-color: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.35s ease, color 0.35s ease;
+  transition: background-color var(--face-fade) ease, color var(--face-fade) ease;
+}
+
+/* The panels that carry a surface and a rule, and so have to cross-fade
+   together when the face flips. This was the same two-property declaration
+   written out in five separate rules for the same reason. */
+.site-header,
+.about,
+.cta-band,
+.qr-card,
+.site-footer {
+  transition: background-color var(--face-fade) ease,
+    border-color var(--face-fade) ease;
 }
 
 h1,
@@ -122,10 +170,19 @@ h3 {
   line-height: 1.18;
   letter-spacing: var(--tracking-display);
   margin: 0;
+  font-weight: 700;
   /* Set, rather than merely wrapped. Costs nothing where it is unsupported,
      and it is most of what separates a typeset headline from a default one
      when the face has no webfont to lean on. */
   text-wrap: balance;
+}
+
+/* Every section heading on the page is an h2 at this size. It used to be
+   restated in .section-head h2, .about h2, .cta-band h2 and .qr-copy h2 — all
+   four of them — so a new section rendered at the browser default until
+   someone noticed. .hero h1 and .card h3 set their own sizes. */
+h2 {
+  font-size: var(--step-2);
 }
 
 ::selection {
@@ -154,7 +211,7 @@ a {
   overflow: visible;
 }
 
-/* The bindrune is a 1:6 column, not the 1:1.33 icon box — size it by height
+/* The bindrune is a 1:7 column, not the 1:1.33 icon box — size it by height
    and let the width follow, or it crushes. `overflow: visible` matters here:
    the glow below spills well outside the viewBox. */
 .rune-bind {
@@ -253,11 +310,15 @@ a {
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.7rem clamp(1rem, 4vw, 2.5rem);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px);
+  padding: 0.7rem var(--gutter);
+  /* Near-opaque and unblurred on the light face. A frosted-glass header was
+     costing a backdrop re-blur on every scroll frame for the whole session —
+     the only permanently-on expensive compositing path on the site — to show
+     12% of a blurred backdrop through an 88%-opaque fill. It was also
+     atmosphere, which this face is not allowed (see the header comment): the
+     printed page is flat. Mystic re-enables the blur, where it earns its cost. */
+  background: color-mix(in srgb, var(--bg) 97%, transparent);
   border-bottom: 1px solid var(--border);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 .brand {
@@ -337,7 +398,7 @@ a {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: clamp(2.25rem, 6vw, 5rem) clamp(1rem, 4vw, 2.5rem)
+  padding: clamp(2.25rem, 6vw, 5rem) var(--gutter)
     clamp(2.25rem, 5vw, 4.25rem);
   /* Paper, not a teal wash. The tinted gradient that used to sit here was the
      single most template-looking thing on the site — every SaaS front page
@@ -345,7 +406,9 @@ a {
      by a hairline rule instead of fading into nothing. */
   background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg) 68%);
   border-bottom: 1px solid var(--border);
-  transition: background 0.35s ease, border-color 0.35s ease;
+  /* `background`, not background-color — this one fades a gradient, so it
+     cannot join the grouped rule above. */
+  transition: background var(--face-fade) ease, border-color var(--face-fade) ease;
 }
 
 /* Dark plate behind the hero — only lit in mystic mode. */
@@ -390,7 +453,6 @@ a {
 
 .hero h1 {
   font-size: var(--step-3);
-  font-weight: 700;
   max-width: 15ch;
 }
 
@@ -423,15 +485,15 @@ a {
   border-radius: 999px;
   cursor: pointer;
   transition: border-color 0.25s ease, box-shadow 0.25s ease,
-    transform 0.25s ease, background 0.35s ease;
+    transform 0.25s ease, background var(--face-fade) ease;
 }
 
 .reveal-cta:hover,
 .reveal-cta:focus-visible {
   transform: translateY(-1px);
-  border-color: #e8935a;
-  box-shadow: 0 0 0 4px rgba(232, 147, 90, 0.16),
-    0 10px 26px -12px rgba(226, 110, 40, 0.85);
+  border-color: rgb(var(--ember-hover));
+  box-shadow: 0 0 0 4px rgb(var(--ember-hover) / 0.16),
+    0 10px 26px -12px rgb(var(--ember-glow) / 0.85);
 }
 
 .reveal-cta-rune {
@@ -444,12 +506,12 @@ a {
   color: var(--ember);
   background: var(--ember-soft);
   border-radius: 50%;
-  transition: color 0.25s ease, background-color 0.35s ease,
+  transition: color 0.25s ease, background-color var(--face-fade) ease,
     box-shadow 0.25s ease;
 }
 
 .reveal-cta:hover .reveal-cta-rune {
-  box-shadow: 0 0 14px rgba(226, 110, 40, 0.55);
+  box-shadow: 0 0 14px rgb(var(--ember-glow) / 0.55);
 }
 
 .reveal-cta-text {
@@ -504,20 +566,17 @@ a {
    SERVICES
    ============================================================ */
 
-.services {
+/* The centred-section idiom, stated once. */
+.services,
+.qr-section {
   max-width: var(--wrap);
   margin: 0 auto;
-  padding: var(--section-y) clamp(1rem, 4vw, 2.5rem);
+  padding: var(--section-y) var(--gutter);
 }
 
 .section-head {
   max-width: 44rem;
   margin-bottom: var(--head-gap);
-}
-
-.section-head h2 {
-  font-size: var(--step-2);
-  font-weight: 700;
 }
 
 .section-sub {
@@ -536,7 +595,7 @@ a {
   position: relative;
   display: flex;
   flex-direction: column;
-  scroll-margin-top: 5.5rem;
+  scroll-margin-top: var(--header-h);
   padding: var(--card-pad);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -547,7 +606,7 @@ a {
   border-top: 2px solid var(--border-strong);
   border-radius: var(--radius);
   transition: border-color 0.25s ease, box-shadow 0.25s ease,
-    background-color 0.35s ease;
+    background-color var(--face-fade) ease;
 }
 
 .card:hover {
@@ -569,8 +628,8 @@ a {
      icon. Mystic drops the box entirely — see its own rule. */
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
   border-radius: var(--radius-sm);
-  transition: background-color 0.35s ease, border-color 0.35s ease,
-    box-shadow 0.35s ease;
+  transition: background-color var(--face-fade) ease,
+    border-color var(--face-fade) ease, box-shadow var(--face-fade) ease;
 }
 
 .card-persona {
@@ -584,7 +643,6 @@ a {
 
 .card h3 {
   font-size: 1.2rem;
-  font-weight: 700;
   margin-bottom: 0.6rem;
 }
 
@@ -649,9 +707,8 @@ a {
 .about {
   border-top: 1px solid var(--border);
   background: var(--bg-subtle);
-  padding: var(--section-y) clamp(1rem, 4vw, 2.5rem);
-  scroll-margin-top: 5rem;
-  transition: background-color 0.35s ease, border-color 0.35s ease;
+  padding: var(--section-y) var(--gutter);
+  scroll-margin-top: var(--header-h);
 }
 
 .about-inner {
@@ -660,8 +717,6 @@ a {
 }
 
 .about h2 {
-  font-size: var(--step-2);
-  font-weight: 700;
   margin-bottom: clamp(0.9rem, 2.5vw, 1.25rem);
 }
 
@@ -675,56 +730,59 @@ a {
 }
 
 /* Lore gets a longer line, looser leading, and a drop cap — it is meant to
-   be read like a page, not scanned like a bio. */
-.face.mystic-mode .about .about-inner {
-  max-width: 46rem;
-}
+   be read like a page, not scanned like a bio.
 
+   The longer line is not here: `.about-inner` already reads --measure, and the
+   mystic block already widens that token to 46rem. Restating it as a literal
+   here made the token inert — editing the mystic --measure appeared to do
+   nothing, because this override silently won with a stale copy of its value. */
 .face.mystic-mode .about p {
   font-size: 1.08rem;
   line-height: 1.75;
 }
 
-.face.mystic-mode .about em {
-  color: var(--accent);
-  font-style: italic;
-}
-
-/* `h2 + p`, not `p:first-of-type` — the eyebrow is also a <p>, and would
-   otherwise take the drop cap. */
+/* Tagged, not positional: Lore opens on a one-line fragment, and a 3.4em
+   floated capital spills straight out of it — so the class marks the first
+   *full* paragraph rather than `h2 + p` picking whatever comes first. Move the
+   class if the opening paragraph changes. */
 .face.mystic-mode .about .lore-lede::first-letter {
   float: left;
   margin: 0.08em 0.09em 0 0;
   font-size: 3.4em;
   line-height: 0.78;
   color: var(--accent);
-  text-shadow: 0 0 18px rgba(161, 231, 245, 0.45);
+  text-shadow: 0 0 18px rgb(var(--glow) / 0.45);
 }
 
 /* ============================================================
    CTA BAND + QR
    ============================================================ */
 
-.cta-band {
-  background: var(--bg-subtle);
-  border-block: 1px solid var(--border);
-  padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2.5rem);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
-}
-
-.cta-band-inner {
+/* The split row — copy on the left, one thing on the right, wrapping to stacked
+   on narrow screens. Three sections use it; it was written out three times. */
+.cta-band-inner,
+.qr-card,
+.footer-inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.cta-band-inner,
+.footer-inner {
   max-width: var(--wrap);
   margin: 0 auto;
 }
 
-.cta-band h2 {
-  font-size: var(--step-2);
-  font-weight: 700;
+.cta-band {
+  background: var(--bg-subtle);
+  border-block: 1px solid var(--border);
+  padding: clamp(2rem, 5vw, 3.5rem) var(--gutter);
+}
+
+.cta-band-inner {
+  gap: clamp(1.25rem, 3vw, 1.75rem);
 }
 
 .cta-band p {
@@ -733,32 +791,16 @@ a {
   max-width: 46ch;
 }
 
-.qr-section {
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: var(--section-y) clamp(1rem, 4vw, 2.5rem);
-}
-
 .qr-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
   gap: clamp(1.5rem, 4vw, 2.5rem);
   padding: clamp(1.4rem, 4vw, 2.75rem);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 .qr-copy {
   flex: 1 1 22rem;
-}
-
-.qr-copy h2 {
-  font-size: var(--step-2);
-  font-weight: 700;
 }
 
 .qr-copy p {
@@ -791,7 +833,6 @@ a {
 .site-footer {
   border-top: 1px solid var(--border);
   background: var(--bg-subtle);
-  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 /* The maker's mark, centred above the footer proper. Sized by height because
@@ -811,14 +852,8 @@ a {
 }
 
 .footer-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
   gap: 1.25rem;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 2rem) clamp(1rem, 4vw, 2.5rem);
+  padding: clamp(1.5rem, 4vw, 2rem) var(--gutter);
   font-size: 0.88rem;
   color: var(--ink-muted);
 }
@@ -848,11 +883,16 @@ a {
    SCROLL REVEAL
    ============================================================ */
 
+/* The stagger is computed here, not in JSX: App.jsx passes only --reveal-index
+   (the datum it owns) and the interval is a token, so the cascade slows with
+   the mystic face instead of being pinned to the light face's rhythm. */
 [data-reveal] {
+  --reveal-delay: calc(var(--reveal-index, 0) * var(--reveal-step));
   opacity: 0;
   translate: 0 16px;
-  transition: opacity 0.6s ease var(--reveal-delay, 0ms),
-    translate 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+  transition: opacity var(--reveal-dur) ease var(--reveal-delay),
+    translate var(--reveal-dur) cubic-bezier(0.22, 1, 0.36, 1)
+      var(--reveal-delay);
 }
 
 [data-reveal].is-visible {
@@ -909,6 +949,14 @@ a {
   --burn: 0px;
   --burn-bleed: 120px;
   --burn-scroll: 0px;
+  /* The origin, declared once. The *radius* was hardened into a registered
+     length precisely so its two consumers could not disagree — but the centre
+     was left as four independent literals (the mask circle's cx/cy, the ember
+     gradient, and the rim's mask) with nothing keeping them in step. That is
+     the same failure the radius comment describes: a rim that lights somewhere
+     the page is not dissolving reads as fake immediately. */
+  --burn-x: 50%;
+  --burn-y: 52%;
 }
 
 /* The end radius is the cheapest lever on cost, because the filter region
@@ -946,6 +994,17 @@ a {
   inset: 0;
 }
 
+/* Hosts the cloned page. `overflow: hidden` makes it a scroll container — which
+   is what the `.burn-page .site-header` rule below compensates for. The hole is
+   an SVG mask rather than a radial-gradient so the tear can be drawn by
+   displacing the *mask shape*: white keeps the clone, the displaced black
+   circle punches through to the real page beneath. */
+.burn-sheet {
+  overflow: hidden;
+  -webkit-mask: url(#burnMask);
+  mask: url(#burnMask);
+}
+
 /* Same filter and seed as the hole, so the rim tears in step with the edge it
    is lighting. It has to sit on the wrapper: see the note in App.jsx, and the
    `filter` before `mask` entry in DESIGN.md §6. */
@@ -953,13 +1012,9 @@ a {
   filter: url(#burn-displace);
 }
 
-/* Hosts the cloned page. The clone is laid out at its natural document size
-   and pulled back up by the scroll offset, then nudged in by the bleed, so it
-   lands exactly where the real page is on screen. */
-.burn-sheet {
-  overflow: hidden;
-}
-
+/* The clone is laid out at its natural document size and pulled back up by the
+   scroll offset, then nudged in by the bleed, so it lands exactly where the
+   real page is on screen. */
 .burn-page {
   position: absolute;
   top: calc(var(--burn-bleed) - var(--burn-scroll));
@@ -975,14 +1030,12 @@ a {
    exactly that offset, so nothing moves. */
 .burn-page .site-header {
   top: var(--burn-bleed);
-}
-
-/* The hole is an SVG mask rather than a radial-gradient so the tear can be
-   drawn by displacing the *mask shape*. White keeps the clone, the displaced
-   black circle punches through to the real page beneath. */
-.burn-sheet {
-  -webkit-mask: url(#burnMask);
-  mask: url(#burnMask);
+  /* The clone is a verbatim copy, so in mystic mode it brings a second
+     backdrop-filter with it — and this one sits inside a subtree being masked
+     by an animating shape, so the blur is re-resolved every frame of the most
+     expensive 1.8s the site has, for a strip nobody is watching while the page
+     tears open. */
+  backdrop-filter: none;
 }
 
 .burn-mask-svg {
@@ -994,14 +1047,14 @@ a {
 }
 
 .burn-hole {
-  cx: 50%;
-  cy: 52%;
+  cx: var(--burn-x);
+  cy: var(--burn-y);
   r: var(--burn);
 }
 
 .burn-ember {
   background: radial-gradient(
-    circle at 50% 52%,
+    circle at var(--burn-x) var(--burn-y),
     #fff0a8 0%,
     #ffb020 34%,
     #ff5a1f 58%,
@@ -1013,21 +1066,21 @@ a {
   /* A line, in px: a thin hot core with a short glow trailing outward into
      the paper it has not reached yet. The band used to be a percentage of the
      box, so it grew as the burn travelled and ended as a glowing donut wide
-     enough to read as decoration. Fixed px keeps it a rim the whole way. */
-  -webkit-mask-image: radial-gradient(
-    circle at 50% 52%,
+     enough to read as decoration. Fixed px keeps it a rim the whole way.
+     Hoisted into a property because the prefixed and unprefixed copies below
+     are the same twelve tuned numbers, and a retune that reached only one of
+     them would ship a different rim to one browser family. The prefix stays:
+     without it an engine lacking unprefixed mask leaves the clone opaque over
+     the page for the whole 1.8s, rather than degrading to the instant swap. */
+  --ember-rim: radial-gradient(
+    circle at var(--burn-x) var(--burn-y),
     transparent 0 calc(var(--burn) - 7px),
     #000 var(--burn),
     #000 calc(var(--burn) + 4px),
     transparent calc(var(--burn) + 18px)
   );
-  mask-image: radial-gradient(
-    circle at 50% 52%,
-    transparent 0 calc(var(--burn) - 7px),
-    #000 var(--burn),
-    #000 calc(var(--burn) + 4px),
-    transparent calc(var(--burn) + 18px)
-  );
+  -webkit-mask-image: var(--ember-rim);
+  mask-image: var(--ember-rim);
 }
 
 /* ============================================================
@@ -1036,11 +1089,18 @@ a {
 
 body.mystic-mode,
 .face.mystic-mode {
+  /* The two hues of this face, as channel triples. They are each used at seven
+     or more different alphas, and every one of those used to be a raw rgba()
+     scattered through the component rules below — so changing --accent
+     re-tinted the drop cap's colour while leaving its glow the old blue. */
+  --violet: 122 77 231;
+  --glow: 161 231 245;
+
   --bg: #101018;
   --bg-subtle: #15131f;
   --surface: #191527;
-  --border: rgba(122, 77, 231, 0.34);
-  --border-strong: rgba(161, 231, 245, 0.5);
+  --border: rgb(var(--violet) / 0.34);
+  --border-strong: rgb(var(--glow) / 0.5);
 
   --ink: #ece5ff;
   --ink-muted: #aba0c6;
@@ -1048,10 +1108,12 @@ body.mystic-mode,
   --accent: #a1e7f5;
   --accent-hover: #ffffff;
   --accent-ink: #14101f;
-  --accent-soft: rgba(122, 77, 231, 0.22);
+  --accent-soft: rgb(var(--violet) / 0.22);
 
   --shadow-sm: none;
-  --shadow-md: 0 0 40px -12px rgba(122, 77, 231, 0.75);
+  /* -6px, not -12px: .hero-visual img was the token's only consumer and it
+     overrode it with a copy that differed in the spread alone. */
+  --shadow-md: 0 0 40px -6px rgb(var(--violet) / 0.75);
 
   /* Shape and pace invert. The light face is tight, rounded and quick — a
      product page. This one is sharp-edged, unhurried and full of air: every
@@ -1071,11 +1133,15 @@ body.mystic-mode,
   --head-gap: clamp(2.25rem, 6vw, 4rem);
   --card-gap: clamp(1.6rem, 5vw, 3.5rem);
   --measure: 46rem;
+  /* The whole shorthand, so `.card { padding: var(--card-pad) }` stays
+     unbranched. This was the one rhythm value the mystic face set on the
+     component directly instead of redeclaring the token, which left
+     --card-pad reading as live while lying in one of the two faces. */
+  --card-pad: clamp(2rem, 6vw, 2.9rem) clamp(1.5rem, 4.5vw, 2.1rem)
+    clamp(1.75rem, 5vw, 2.6rem);
 
   --display-font: 'Cormorant Garamond', serif;
   --body-font: 'Cormorant Garamond', serif;
-
-  font-family: var(--body-font);
 }
 
 /* Vignette and grain. Only the dark face gets texture — the light face stays
@@ -1093,7 +1159,7 @@ body.mystic-mode::before {
   background: radial-gradient(
     ellipse 88% 68% at 50% 38%,
     transparent 38%,
-    rgba(4, 2, 10, 0.66) 100%
+    rgb(4 2 10 / 0.66) 100%
   );
 }
 
@@ -1107,14 +1173,12 @@ body.mystic-mode::after {
    shadowed product cards; here they are columns of a page divided by a rule.
    Same markup — a different kind of document. */
 /* `border: 0` also clears the light face's top keyline — the whole card
-   affordance goes, keyline included. */
+   affordance goes, keyline included. Radius and padding need no override:
+   --radius is 0 and --card-pad carries this face's shorthand. */
 .face.mystic-mode .card {
   background: none;
   border: 0;
-  border-radius: 0;
   box-shadow: none;
-  padding: clamp(2rem, 6vw, 2.9rem) clamp(1.5rem, 4.5vw, 2.1rem)
-    clamp(1.75rem, 5vw, 2.6rem);
 }
 
 /* Weathered timber. The frame lives on pseudo-elements so the displacement
@@ -1137,11 +1201,7 @@ body.mystic-mode::after {
 
 .face.mystic-mode .card::after {
   inset: 4px;
-  border: 1px solid rgba(122, 77, 231, 0.16);
-}
-
-.face.mystic-mode .card:hover {
-  box-shadow: none;
+  border: 1px solid rgb(var(--violet) / 0.16);
 }
 
 .face.mystic-mode .card:hover::before {
@@ -1175,30 +1235,35 @@ body.mystic-mode::after {
   justify-content: space-between;
 }
 
-.rune-frame-top {
-  top: 0.85rem;
+/* The inset values have to move in pairs to keep the frame square, so they are
+   declared in pairs; only the edge each row hangs from differs. */
+.rune-frame-top,
+.rune-frame-bottom {
   left: 1.6rem;
   right: 1.6rem;
+}
+
+.rune-frame-left,
+.rune-frame-right {
+  top: 2rem;
+  bottom: 2rem;
+  flex-direction: column;
+}
+
+.rune-frame-top {
+  top: 0.85rem;
 }
 
 .rune-frame-bottom {
   bottom: 0.85rem;
-  left: 1.6rem;
-  right: 1.6rem;
 }
 
 .rune-frame-left {
   left: 0.85rem;
-  top: 2rem;
-  bottom: 2rem;
-  flex-direction: column;
 }
 
 .rune-frame-right {
   right: 0.85rem;
-  top: 2rem;
-  bottom: 2rem;
-  flex-direction: column;
 }
 
 .rune-frame-glyph {
@@ -1217,7 +1282,6 @@ body.mystic-mode::after {
   font-size: 2rem;
   background: none;
   border: 0;
-  color: var(--accent);
 }
 
 /* The hairline that closes the light hero belongs to the printed face only —
@@ -1247,35 +1311,39 @@ body.mystic-mode::after {
 
 .face.mystic-mode .hero h1,
 .face.mystic-mode .cta-band h2 {
-  text-shadow: 0 0 28px rgba(122, 77, 231, 0.6);
+  text-shadow: 0 0 28px rgb(var(--violet) / 0.6);
 }
 
-.face.mystic-mode .hero-visual img {
-  box-shadow: 0 0 40px -6px rgba(122, 77, 231, 0.75);
+/* The frosted header belongs to this face only — it is atmosphere, and the
+   printed face is flat. Scoped here it is also paid for by the visitors who
+   asked for it rather than by every scroll frame of every session. */
+.face.mystic-mode .site-header {
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
 }
 
 /* In the dark world the ember has already burned — the control cools to
    the mystic palette and offers the way back. */
 .face.mystic-mode .reveal-cta {
-  background: linear-gradient(115deg, rgba(122, 77, 231, 0.28) 0%, var(--surface) 70%);
-  border-color: rgba(161, 231, 245, 0.55);
-  box-shadow: 0 0 24px -6px rgba(122, 77, 231, 0.6);
+  background: linear-gradient(115deg, rgb(var(--violet) / 0.28) 0%, var(--surface) 70%);
+  border-color: rgb(var(--glow) / 0.55);
+  box-shadow: 0 0 24px -6px rgb(var(--violet) / 0.6);
 }
 
 .face.mystic-mode .reveal-cta:hover,
 .face.mystic-mode .reveal-cta:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(161, 231, 245, 0.16),
-    0 0 32px -6px rgba(161, 231, 245, 0.75);
+  box-shadow: 0 0 0 4px rgb(var(--glow) / 0.16),
+    0 0 32px -6px rgb(var(--glow) / 0.75);
 }
 
 .face.mystic-mode .reveal-cta-rune {
   color: var(--accent);
-  background: rgba(122, 77, 231, 0.3);
+  background: rgb(var(--violet) / 0.3);
 }
 
 .face.mystic-mode .reveal-cta:hover .reveal-cta-rune {
-  box-shadow: 0 0 16px rgba(161, 231, 245, 0.7);
+  box-shadow: 0 0 16px rgb(var(--glow) / 0.7);
 }
 
 /* The glow belongs to the glyph now, not to a box behind it. */
@@ -1294,7 +1362,7 @@ body.mystic-mode::after {
 
 .face.mystic-mode .brand-mark,
 .face.mystic-mode .qr-link {
-  filter: drop-shadow(0 0 10px rgba(122, 77, 231, 0.6));
+  filter: drop-shadow(0 0 10px rgb(var(--violet) / 0.6));
 }
 
 /* ============================================================
