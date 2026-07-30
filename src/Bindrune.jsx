@@ -19,6 +19,12 @@ import { GLYPH_STROKE } from './Rune.jsx'
 
 // The stave every segment hangs from, drawn once. One unbroken vertical is
 // what makes this a single bound mark rather than seven glyphs in a stack.
+//
+// **Its top must equal Wunjo's first point, and its foot must equal Tiwaz's
+// baseline.** Nothing may extend past either. A stub of bare stave above the
+// flag is not a rounding error — Wunjo's flag *caps* the stave, and a stave
+// that continues past it is a different rune. Turned horizontal the same stub
+// becomes a tail hanging off the left end, which is where it was noticed.
 const STAVE = 'M12 4 V160'
 
 // The binding, in order, top to bottom. Coordinates are absolute within the
@@ -32,7 +38,12 @@ const BINDING = [
     rune: 'Wunjo',
     meaning: 'joy, and the wish fulfilled',
     // The pointed bowl. Raidho repeats it below; that echo is deliberate.
-    strokes: ['M12 5 L20 11 L12 17'],
+    //
+    // **Starts at y=4, the stave's own top — not y=5.** The flag has to cap the
+    // stave. At y=5 a one-unit stub stood above it, which turned horizontal
+    // becomes a tail off the left end of the band, and a stave running past the
+    // flag is no longer Wunjo. Keep this first coordinate equal to STAVE's.
+    strokes: ['M12 4 L20 11 L12 17'],
   },
   {
     rune: 'Raidho',

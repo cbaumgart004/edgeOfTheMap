@@ -364,7 +364,14 @@ rather than seven glyphs in a column.
 
 It is kept as **labelled data, not a path blob** — each segment carries its rune's
 name and meaning alongside its strokes, because the whole point of a bindrune is
-that every stroke means something. Coordinates are absolute within the viewBox so
+that every stroke means something.
+
+**The stave is capped at both ends and nothing may extend past them.** Wunjo's
+first point must equal `STAVE`'s origin and Tiwaz's baseline must equal its foot.
+Wunjo's flag *caps* the stave — a stave continuing past it is a different rune.
+This regressed once: Wunjo started at `y=5` against a stave from `y=4`, a
+one-unit stub invisible in the vertical column and plainly a tail hanging off the
+left end once the mark was turned horizontal. Coordinates are absolute within the viewBox so
 tuning one segment cannot silently reflow the others.
 
 **It is a 1:7 column, not the 1:1.33 icon box `Rune.jsx` uses.** Size it by height
