@@ -1,0 +1,760 @@
+/* Keeper.css — /keeper only.
+   ============================================================
+
+   Loaded by KeeperPage.jsx. Everything here reads the tokens declared in
+   App.css and reuses its classes where one already fits — `.btn`, `.eyebrow`,
+   `.section-head`, `.cards`/`.card`, `.cta-band` are all shared, not restated.
+   The rules below are the shapes this page needs that the home page does not.
+
+   **Face-scoped rules are `.face.mystic-mode .foo`, never `.mystic-mode .foo`.**
+   The looser form matches through the `body` class and so drags the burn's
+   detached clone into the incoming face with it — DESIGN.md §3. Every mystic
+   override in this file follows the same form as App.css for that reason.
+
+   This ships to home-page visitors too: the import is static, so it lands in the
+   one CSS bundle rather than being fetched per route. That is the right trade at
+   this size — a second stylesheet request would cost more than the ~3 KB it
+   saves — but it is the thing to revisit first if this page keeps growing. */
+
+/* ============================================================
+   PAGE SHELL
+   ============================================================ */
+
+/* The centred-section idiom, matching .services / .qr-section in App.css. */
+.keeper-section {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: var(--section-y) var(--gutter);
+  scroll-margin-top: var(--header-h);
+}
+
+/* Anything the nav or an in-page link can target has to clear the pinned
+   plate. Stated once here rather than per section, for the same reason
+   --header-h exists at all. */
+.keeper [id] {
+  scroll-margin-top: var(--header-h);
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+
+/* No dragon plate here. The banner is directly above it and the home page owns
+   the artwork; this hero is type on stock, which is what the light face does
+   best and what a page selling *clarity* ought to look like. */
+.keeper-hero {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4.5rem) var(--gutter) var(--section-y);
+}
+
+.keeper-hero-inner {
+  max-width: 46rem;
+}
+
+.keeper-hero h1 {
+  margin: 0.2rem 0 0;
+  font-size: var(--step-3);
+  /* Measured for a full-width column, not the half-width one the home hero
+     used to be — DESIGN.md §6 on what happens when a column count changes and
+     the `ch` caps inside it do not. */
+  max-width: 20ch;
+}
+
+.keeper-hero .hero-sub {
+  margin: 1.1rem 0 0;
+  max-width: 62ch;
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.keeper-hero .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.keeper-hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 2rem 0 0;
+  padding: 1.1rem 0 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.keeper-hero-trust li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.keeper-hero-trust li::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.face.mystic-mode .keeper-hero-trust li::before {
+  border-radius: 0;
+  box-shadow: 0 0 8px rgb(var(--glow) / 0.7);
+}
+
+/* ============================================================
+   THE OWNERSHIP TABLE
+   ============================================================ */
+
+/* A real <table>, because this is tabular data and a grid of divs reads as
+   noise to a screen reader. The printed face is where it belongs: ruled rows on
+   warm stock is what a spec sheet has always looked like, and it is exactly the
+   thing a gradient-and-cards page cannot do without looking borrowed. */
+.compare-wrap {
+  margin-top: var(--head-gap);
+}
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.compare th,
+.compare td {
+  padding: 0.95rem 1.1rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare thead th {
+  padding-bottom: 0.6rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom-color: var(--ink-muted);
+}
+
+/* The claim column. It carries the accent keyline so the eye knows which side
+   of the table is the argument without the copy having to say so. */
+.compare thead th:nth-child(2) {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.compare tbody th {
+  width: 9.5rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.compare-here {
+  color: var(--ink);
+}
+
+.compare-else {
+  color: var(--ink-muted);
+}
+
+.compare tbody tr:last-child th,
+.compare tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Stacked below the width where three columns of prose stop being readable.
+   The `th` becomes the block's heading and each cell is labelled from a
+   `data-label` in the markup — a horizontal scroller would technically work and
+   would bury the page's strongest section behind a swipe. */
+@media (max-width: 760px) {
+  .compare thead {
+    display: none;
+  }
+
+  .compare,
+  .compare tbody,
+  .compare tr,
+  .compare th,
+  .compare td {
+    display: block;
+    width: auto;
+  }
+
+  .compare tbody tr {
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .compare th,
+  .compare td {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .compare tbody th {
+    margin-bottom: 0.6rem;
+    font-size: var(--step-1);
+  }
+
+  .compare td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: var(--step-label);
+    font-weight: 700;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .compare td + td {
+    margin-top: 0.8rem;
+  }
+
+  .compare-here::before {
+    color: var(--accent);
+  }
+}
+
+/* A closing line under a section, set apart from the body copy. */
+.keeper-note {
+  max-width: var(--measure);
+  margin: var(--head-gap) 0 0;
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .keeper-note {
+  font-style: italic;
+}
+
+/* ============================================================
+   TWO-UP SECTIONS (editing, API)
+   ============================================================ */
+
+.keeper-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(1.75rem, 5vw, 3.5rem);
+}
+
+/* The API section mirrors the editing one so the page alternates rather than
+   marching down one side. `order` rather than a second grid definition — the
+   source order is the reading order, and it should stay that way when the
+   columns stack. */
+.keeper-split.is-reversed .keeper-split-visual {
+  order: -1;
+}
+
+@media (max-width: 880px) {
+  .keeper-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .keeper-split.is-reversed .keeper-split-visual {
+    order: 0;
+  }
+}
+
+.keeper-split-copy {
+  max-width: 44rem;
+}
+
+.keeper-split-copy .section-sub {
+  margin-bottom: 1.25rem;
+}
+
+.keeper-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.keeper-list li {
+  position: relative;
+  padding-left: 1.5rem;
+  color: var(--ink-muted);
+}
+
+.keeper-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 0.7rem;
+  height: 1px;
+  background: var(--accent);
+}
+
+.keeper-aside {
+  margin: 1.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   THE LIVE-EDIT DEMO
+   ============================================================ */
+
+/* Chrome around two contentEditable fields. It is framed as a window because
+   the claim is "this is your page, being edited" and an unframed pair of
+   editable lines just reads as a form. */
+.edit-demo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.edit-demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--step-label);
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.edit-demo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.edit-demo-title {
+  font-weight: 600;
+}
+
+.edit-demo-status {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--motion) ease;
+}
+
+.edit-demo-status.is-saving {
+  color: var(--accent);
+}
+
+.edit-demo-status.is-saved {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.edit-demo-body {
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+}
+
+/* The editable fields. They get a visible affordance on hover and focus and
+   nothing at rest, so the panel reads as a page first and an input second —
+   which is the entire pitch of editing in place. */
+.edit-demo-field {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  cursor: text;
+  transition: outline-color var(--motion) ease, background-color var(--motion) ease;
+}
+
+.edit-demo-field:hover {
+  outline-color: var(--border);
+}
+
+.edit-demo-field:focus {
+  outline: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.edit-demo-body h3.edit-demo-field {
+  font-size: var(--step-2);
+}
+
+.edit-demo-body p.edit-demo-field {
+  margin-top: 0.5rem;
+  color: var(--ink-muted);
+}
+
+/* **No `#driftwood` on this element.** The obvious move is to age the panel the
+   way mystic ages a card, and it is wrong for the same reason DESIGN.md §5
+   gives: `filter` on the element displaces its *contents*, so the editable copy
+   would bend along with the frame — and here the contents are a text field with
+   a caret in it. The cards get away with it by filtering `::before`/`::after`;
+   this panel has neither to spare, so mystic changes its palette and its
+   corners and leaves the geometry alone. */
+.face.mystic-mode .edit-demo {
+  border-color: var(--border);
+  box-shadow: 0 0 28px -8px rgb(var(--violet) / 0.5);
+}
+
+.face.mystic-mode .edit-demo-dot {
+  box-shadow: 0 0 10px rgb(var(--glow) / 0.8);
+}
+
+/* ============================================================
+   THE API CONSOLE
+   ============================================================ */
+
+.api-console {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.api-console-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.api-console-reset {
+  margin-left: auto;
+  padding: 0.2rem 0.5rem;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--motion) ease;
+}
+
+.api-console-reset:hover {
+  border-color: var(--accent);
+}
+
+.api-console-reqs {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Each request is a real button, laid out as a row of verb + path so the list
+   reads like a route table — which is what it is. */
+.api-req {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--motion) ease, color var(--motion) ease;
+}
+
+.api-req:hover {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.api-req.is-selected {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.api-req code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.api-verb {
+  flex: none;
+  min-width: 3.4rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.api-verb.is-get {
+  color: var(--accent);
+}
+
+/* The write is the one that changes something, and it should not look like the
+   reads. Ember is the light face's "this does something" colour — the same one
+   the reveal pill wears. */
+.api-verb.is-patch {
+  color: var(--ember);
+}
+
+.face.mystic-mode .api-verb.is-patch {
+  color: rgb(var(--violet));
+}
+
+.api-console-caption {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.api-console-response {
+  border-top: 1px solid var(--border);
+}
+
+.api-status {
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.api-status.is-ok {
+  color: var(--accent);
+}
+
+.api-status.is-warn {
+  color: var(--ember);
+}
+
+.face.mystic-mode .api-status.is-warn {
+  color: rgb(var(--violet));
+}
+
+/* The one place on the site that sets monospace, and it earns it: this is a
+   literal HTTP exchange, and setting it in the body face would be a lie about
+   what it is. It scrolls in its own box rather than widening the page, and it is
+   height-capped so a long response cannot push the console past the column
+   beside it. */
+.api-console-out {
+  margin: 0;
+  padding: 0 0.9rem 0.9rem;
+  max-height: 22rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--ink);
+  tab-size: 2;
+}
+
+.api-console-out.is-request {
+  padding-top: 0.2rem;
+  color: var(--ink-muted);
+}
+
+.api-console-idle {
+  margin: 0;
+  padding: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .api-console-out {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgb(var(--glow) / 0.35);
+}
+
+/* ============================================================
+   THE PLEDGE, AND THE ASIDE BESIDE BRANDING
+   ============================================================ */
+
+/* The promise that no two builds share a look. It is set apart from the body
+   copy because it is the one paragraph on the page that is a commitment to
+   named people rather than a description of the work. */
+.keeper-pledge {
+  max-width: var(--measure);
+  margin: 0 0 var(--head-gap);
+  padding-left: clamp(0.9rem, 2.5vw, 1.4rem);
+  border-left: 2px solid var(--accent);
+  font-size: var(--step-1);
+  color: var(--ink);
+}
+
+.keeper-quote {
+  padding: clamp(1.25rem, 3.5vw, 1.9rem);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.keeper-quote p {
+  margin: 0;
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .keeper-quote {
+  border-radius: 0;
+}
+
+/* ============================================================
+   LAYOUTS
+   ============================================================ */
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--card-gap);
+}
+
+/* The cards themselves are `.card` from App.css — surface, hairline, the accent
+   keyline on hover in daylight, and the whole affordance stripped in mystic.
+   Only what is *different* about a layout card lives here. */
+.layout-card h3 {
+  margin-bottom: 0;
+}
+
+.layout-suits {
+  margin: 0.3rem 0 0.7rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.layout-note {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   HEALING SPACES
+   ============================================================ */
+
+/* The vertical section takes the second stock, so it reads as a plate set into
+   the page — this is the one section aimed at a single trade rather than at
+   everyone, and it should look like a departure. */
+.keeper-vertical {
+  max-width: none;
+  background: var(--bg-subtle);
+  padding-left: max(var(--gutter), calc(50vw - var(--wrap) / 2));
+  padding-right: max(var(--gutter), calc(50vw - var(--wrap) / 2));
+  transition: background-color var(--face-fade) ease;
+}
+
+.healing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: clamp(1.25rem, 3.5vw, 2.25rem);
+}
+
+.healing-item h3 {
+  margin: 0 0 0.4rem;
+  font-size: var(--step-1);
+}
+
+.healing-item p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+/* A ruled note rather than a panel — the light face closes sections with rules,
+   not with boxes. */
+.keeper-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2rem);
+  margin-top: var(--head-gap);
+  padding-top: clamp(1.25rem, 3vw, 1.75rem);
+  border-top: 1px solid var(--border);
+}
+
+.keeper-callout p {
+  flex: 1 1 26rem;
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+.keeper-callout .btn {
+  flex: none;
+}
+
+/* ============================================================
+   CURRENTLY HOSTING
+   ============================================================ */
+
+.hosted-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: clamp(1.25rem, 3.5vw, 2.25rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hosted-item {
+  padding-top: 1rem;
+  border-top: 2px solid var(--accent);
+}
+
+.hosted-item h3 {
+  margin: 0 0 0.4rem;
+  font-size: var(--step-1);
+}
+
+.hosted-item p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+.hosted-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hosted-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   FOOT OF THE PAGE
+   ============================================================ */
+
+.keeper-back {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--gutter) var(--section-y);
+  font-size: 0.9rem;
+}
+
+.keeper-back a {
+  text-decoration: none;
+}
+
+.keeper-back a:hover {
+  text-decoration: underline;
+}
