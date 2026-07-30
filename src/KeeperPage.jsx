@@ -420,12 +420,15 @@ export default function KeeperPage({ isMystic }) {
               <li>Webhooks out, so other systems hear about changes as they happen</li>
               <li>Written docs for your data, not a generic schema dump</li>
             </ul>
+            {/* The StoryShaped citation is pulled for now — its inventory API
+                has no auth on the admin routes yet, so pointing at it as the
+                production proof invites a look nobody wants taken. The claim
+                stands on the console beside it, which is real code. Put the
+                sentence back once that endpoint is gated. */}
             <p className="keeper-aside">
               The panel is live — every response is computed when you press the
               button, not written out in advance. The write really does change
-              the data, so press it twice. <Work of="storyShaped" /> runs the
-              production version of this against a real inventory, brokering
-              Etsy and eBay from one source of truth.
+              the data, so press it twice.
             </p>
           </div>
 

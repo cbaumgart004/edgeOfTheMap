@@ -168,11 +168,25 @@ export default function HomePage({ isMystic, toggleMystic, toggleLabel }) {
               </a>
             </div>
 
+            {/* A credential row, and — where a craft has a page of its own —
+                also a way in. Only the paths with an `href` become links: a
+                trust row where one item is clickable and two are not is
+                honest, where three that look alike and behave differently is
+                not. When the Storyteller earns a page this needs no edit. */}
             <ul className="hero-trust">
               {PATHS.map((path) => (
                 <li key={path.id}>
-                  <Rune name={path.rune} />
-                  {path.title}
+                  {path.href ? (
+                    <Link href={path.href}>
+                      <Rune name={path.rune} />
+                      {path.title}
+                    </Link>
+                  ) : (
+                    <>
+                      <Rune name={path.rune} />
+                      {path.title}
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -227,7 +241,15 @@ export default function HomePage({ isMystic, toggleMystic, toggleLabel }) {
                 <Rune name={path.rune} />
               </span>
               <p className="card-persona">{path.persona}</p>
-              <h3>{path.title}</h3>
+              {/* The heading links too, not just the CTA at the foot. A card
+                  whose title looks like a heading and whose only target is one
+                  line of small text at the bottom makes people hunt. Two links
+                  to the same place in one card is the ordinary pattern; a
+                  stretched overlay is not, because this card already has a
+                  second, different link below it. */}
+              <h3>
+                {path.href ? <Link href={path.href}>{path.title}</Link> : path.title}
+              </h3>
               <p className="card-blurb">
                 {isMystic ? path.loreBlurb : path.blurb}
               </p>

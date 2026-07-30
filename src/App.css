@@ -710,6 +710,42 @@ a {
   color: var(--accent);
 }
 
+/* A craft with a page of its own is a link here. It inherits the row's
+   colour rather than taking the accent, because a row of three where one is
+   accent-coloured reads as "this one is special" rather than "this one goes
+   somewhere" — the underline on hover is what carries that, and the rune is
+   already the accent. `display: inline-flex` because it takes over the li's
+   job of holding the rune beside the label. */
+.hero-trust a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--motion) ease;
+}
+
+.hero-trust a:hover,
+.hero-trust a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* Same rule for the card's heading link: the heading keeps looking like a
+   heading, and the underline appears only on hover. */
+.card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card h3 a:hover,
+.card h3 a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
 /* The logo card moved out of the hero and into the services head — see
    .services-visual. The hero is single-column now: the banner plate is directly
    above it, so a second wordmark beside the copy was the third one above the
