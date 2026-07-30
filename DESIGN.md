@@ -31,7 +31,8 @@ Scripts: `npm run dev` (Vite dev server), `npm run build`, `npm run preview`.
 ## 2. Layout
 
 ```
-index.html              Shell. Mounts #root, loads src/main.jsx as a module.
+index.html              Shell. Mounts #root, loads src/main.jsx as a module,
+                        and preloads the masthead plate (§5).
 DESIGN.md               This file.
 vite.config.js          React plugin, root '.', outDir 'dist'.
 nixpacks.toml           Railway build phases.
@@ -50,7 +51,9 @@ src/
     logo-card.webp      Hero logo card, 800×533 (58 KB). Imported by App.jsx.
     hero-wide.webp      Mystic plate, 1536×792 (154 KB). Imported by App.jsx.
     hero-narrow.webp    Mystic plate, 960×495 (54 KB). srcSet partner.
-    logo_signature.png  Header + footer mark (67 KB). Imported by App.jsx.
+    logo_signature.png  The old compact header/footer mark (67 KB). No longer
+                        imported — the banner plate carries the wordmark in both
+                        places now, so this is not emitted at all. See §6.
     logo.png            Full-resolution master (2.3 MB). Not imported — see §6.
     qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
@@ -61,6 +64,13 @@ src/
 absolute URL from `index.html`, and a content-hashed filename would break every time
 the bundle rebuilt. Everything else is imported through the bundler so it gets
 hashed and cache-busted. Add to `public/` only when a URL has to survive a rebuild.
+
+`banner.webp` now earns that exception twice. **It is the header** and the closing
+plate (§5), referenced from `App.jsx` as `/banner.webp` rather than imported — and
+because that URL is stable and unhashed, `index.html` can name it in a
+`<link rel="preload" as="image">`. It is the page's LCP element, the page is
+client-rendered, and a bundled name could not be written into static HTML; that is
+the whole of why the old preload problem is gone.
 
 ---
 
@@ -84,11 +94,13 @@ one `window.scrollY` at the moment of a toggle. Don't come here looking for a
 scroll hot path — earlier revisions of this file described a `usePastHero()` hook
 that pinned the header past 65% of the hero, and it does not exist.
 
-`App` renders a fixed structure: a sticky `.site-header`, a two-column `.hero`
-(copy left, logo card right — the dark plate behind it is only lit in mystic mode),
-`.services` holding one `.card` per entry in the `PATHS` table, a `.cta-band`,
-`.qr-section`, and the footer. Nothing is fetched, nothing is persisted, there are
-no routes; the nav is same-page anchors.
+`App` renders a fixed structure: a sticky `.site-header` which **is** the banner
+plate, with the nav and controls laid over it (§5); a single-column `.hero` (copy only
+— the dark plate behind it is lit in mystic mode alone); `.services`, whose head is a
+row of description and the logo card, over one `.card` per entry in the `PATHS` table;
+a `.cta-band`; `.qr-section`; and the footer, which opens on the same plate at full
+width. Nothing is fetched, nothing is persisted, there are no routes; the nav is
+same-page anchors.
 
 **Where the mode class lives.** It goes on **both** `<body>` and a `.face` wrapper
 around the whole page, and the token block is declared for both
@@ -162,9 +174,32 @@ that every stroke means something. Coordinates are absolute within the viewBox s
 tuning one segment cannot silently reflow the others.
 
 **It is a 1:7 column, not the 1:1.33 icon box `Rune.jsx` uses.** Size it by height
-and let the width follow. At icon size it degrades to a hairline — the footer mark
-needs ~100px of height before it reads at all, and it is unusable as a favicon (a
-16px square cannot hold it; see §8).
+and let the width follow. At icon size it degrades to a hairline — it is unusable as
+a favicon (a 16px square cannot hold it; see §8).
+
+`orientation="horizontal"` turns the mark on its side, which is how the **footer**
+ships it: laid along the bottom edge, below the footer text, signing the page off
+rather than standing as a column above it. It is the *same* geometry — the turn is
+`(x,y) → (y, 24−x)` applied to the contents inside a 164×24 viewBox, so tuning a
+segment still tunes both forms and there is no second coordinate table to keep in
+step. The turn goes in the viewBox rather than on a CSS `rotate` so the element's
+**layout box is honest**: horizontal it really is a 7:1 band the page sizes by
+width, where a rotated column would still reserve a 1:7 column of space and hang
+outside its own footprint. Sizing inverts with it — `.rune-bind-h` takes width and
+lets the height follow. It needs ~15rem of width before the seven bound runes stop
+closing up into one smudge, the same constraint the column had in height.
+
+**The mystic glow has to turn down with it, and nothing does that automatically.**
+`drop-shadow` takes only absolute lengths, so the four-layer neon stack tuned for the
+tall column — outermost halo 30px — was inherited by a band about 40px from edge to
+edge, where 30px is most of the mark's own height and wider than the gap between two
+bound runes. The mark read as one lit smear. The radii are multiples of `--bind-glow`
+now (§5): 6px keeps the column's original tuning, the footer band takes 1.4px.
+
+**`.footer-mark` also carries no `opacity`.** It sat at `0.6`, which on a 2–4px stroke
+is not subtlety — it is the accent halfway to the background, in both faces, and it
+read as washed out. A signature that wants to be quieter than the accent wants a
+quieter *colour*; transparency just makes it look unfinished.
 
 The same binding is carved into the hero artwork's tablet (§6), so the mark appears
 twice in two materials: cut into wood in the plate, drawn in vector in the footer.
@@ -198,9 +233,20 @@ as by scan. `SITE_URL` in `App.jsx` is the single source for both.
 *Default* is **printed matter** — a well-set trade page. Warm paper stock, warm
 near-black ink, teal used as a mark with the ember as its counter, system UI type,
 filing-card sections closed by hairline rules. It should read as a legitimate working
-business and nothing else. **Nothing atmospheric leaks into it** — no glow, no serif,
-no violet, no dragons. If a change makes the default face more mystical, it belongs
-behind the toggle instead.
+business and nothing else. **Nothing atmospheric leaks into the page body** — no glow,
+no serif, no violet, no dragons. If a change makes the default face more mystical, it
+belongs behind the toggle instead.
+
+That rule now has **one deliberate exception, and it is a bounded one**: the banner
+plate that bookends the document — it is the header, and it opens the footer (below).
+Earlier revisions of this file stated the rule without exception and said "no dragons"
+flatly; the owner's call is that the brand's own artwork frames the page in both
+faces. The boundary is where the exception stops being a leak: **between those two
+bands the printed page is unchanged**, and the plate does not lend its atmosphere to
+anything outside itself — no glow reaches the paper, and the controls that sit on it
+take a plate palette rather than dragging the face's tokens dark. The field the plate is
+laid on is this face's own warm stock, so in daylight the artwork reads as a plate set
+on the page rather than as a black bar cut through it.
 
 The printed framing is what keeps the light face from reading as a template while
 staying inside that rule: paper, rules and ruled labels are *flat*, so they add
@@ -216,17 +262,18 @@ template-looking thing on the site.
 system UI: `text-wrap: balance` on every heading, the tracking tokens, and the ruled
 labels. If the face ever needs more voice than that, a display webfont is the next
 lever — but it reverses the decision that took the CSS bundle down by two thirds
-(it is 18.3 KB, 5.0 KB gzipped, most of it the two faces' token blocks and the
+(it is 18.6 KB, 5.1 KB gzipped, most of it the two faces' token blocks and the
 burn), so price it deliberately rather than reaching for it first.
 
-**The light face is also flat in the literal sense: no `backdrop-filter`.** The
-sticky header used to frost its backdrop on both faces, which is a blur re-resolved
-on every scroll frame for the whole session — the only permanently-on expensive
-compositing path the site had — to show 12% of it through an 88%-opaque fill. It
-is now near-opaque and unblurred in daylight, and the frost is scoped to
-`.face.mystic-mode .site-header`, where atmosphere is the point. The burn's cloned
-header sets `backdrop-filter: none` outright: the clone is verbatim, so in mystic
-mode it otherwise carries a *second* blur through the animating mask.
+**Neither face carries a `backdrop-filter` any more.** The sticky header used to
+frost its backdrop on both faces — a blur re-resolved on every scroll frame for the
+whole session, the only permanently-on expensive compositing path the site had, to
+show 12% of it through an 88%-opaque fill. It was first scoped to
+`.face.mystic-mode .site-header`, where atmosphere is at least the point; then the
+header became the banner plate, which is opaque artwork with nothing behind it to
+blur, and the rule went entirely. The burn no longer has to defend against it either:
+its clone is verbatim, and the second blur it used to bring through the animating mask
+does not exist to inherit.
 
 *Mystic mode* (`body.mystic-mode`) is the opposite pole: dark violet, Cormorant
 Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
@@ -288,6 +335,14 @@ Both faces re-declare the same token names, so component rules never branch on m
 | `--face-fade` | `0.35s` — *declared once, never per face* | ← same |
 | `--gutter` | `clamp(1rem, 4vw, 2.5rem)` | ← same |
 | `--header-h` | `5.5rem` | ← same |
+| `--masthead-h` | `min(100vw / var(--plate-aspect), clamp(200px, 30vw, 400px))` — the band's height, the header's, and (via the aspect) the plate's width. The `min()` is load-bearing, not a rail — see §5 | ← same |
+| `--plate-aspect` | `3.2` — the file's own aspect; the plate is shown uncropped, flush left, letterboxed to its right | ← same |
+| `--frieze-clear` | `24%` — how far off the band's foot the overlaid nav hangs, to clear the frieze. Moves with `--plate-aspect` | ← same |
+| `--plate-field` | `#04060a` — the plate's padding, **black on both faces** so a straddling nav row has one ink | `#0b0912` violet-black |
+| `--on-plate-accent` / `-hover` / `--on-plate-ink` | `#5eead4` / `#8df5e4` / `#04100e` — the artwork's mint, because this face's teal goes muddy on it | `rgb(var(--glow))` / `#ffffff` / `#14101f` — this face needs no special palette |
+| `--bar-gap` | `0.6rem` — one gap for the nav, the controls, and the join between them | ← same |
+| `--banner-max-w` | `1600px` — where the plate stops growing in the *footer* | ← same |
+| `--bind-glow` | *(light face draws no glow)* | `6px` base for the bindrune's neon stack; `1.4px` on the turned footer band |
 | `--reveal-step` | `80ms` | ← same |
 | `--section-y` | `clamp(2.75rem, 7vw, 5.75rem)` | `clamp(3.75rem, 11vw, 9rem)` |
 | `--head-gap` | `clamp(1.6rem, 4vw, 2.75rem)` | `clamp(2.25rem, 6vw, 4rem)` |
@@ -346,12 +401,135 @@ document *mid-burn*: the mystic reveal arrived in system UI and snapped to serif
 beat later. Serif type is half that face's identity; it should be resident before
 the toggle is pressed, not fetched because it was.
 
+### The header is the plate
+
+`public/banner.webp` **is** the header — not a band above one. The nav and the two
+controls are laid over the artwork, above its bound-rune frieze; the plate's own neon
+wordmark is the brand. The same plate closes the page at the top of the footer, where
+it still runs whole and full width — the header had to trade width for height to become
+a header, and the footer is under no such pressure, so the artwork gets one placement
+where it is seen at size. Below it the footer is a centred stack: nav, then the vector
+bindrune, then the copyright last (`.footer-legal`) — where a legal line belongs, and
+not up in the nav row beside a second crop of the wordmark as before.
+
+**There is no separate bar, and no mark or title in the row.** The compact
+`logo_signature.png` and the "Edge of the Map" text that used to sit there were the
+wordmark a second and third time in the same band; both are gone, and with them the
+last import of `logo_signature.png` (§2). The plate is the wordmark now, in the header
+and in the footer alike.
+
+**It stays sticky through a negative `top`.** `.site-header` is
+`top: calc(var(--header-h) - var(--masthead-h))`, so the band scrolls up until only
+its bottom `--header-h` is left and pins there — and that strip is exactly the nav row
+plus the frieze under it. The nav is reachable down the whole page without a scroll
+listener, which matters because the site has none and §3 means to keep it that way.
+`--header-h` is therefore no longer "the header's height"; it is the **pinned
+remainder**, and it is still what same-page anchors clear.
+
+**The plate is flush left, and its own wordmark is the brand.** Centring it was tried and
+reverted, and the reason is worth recording because it is not a tuning problem:
+
+- **The neon wordmark is a hard-edged black plaque pasted *over* the artwork.** It
+  truncates the dragon's back, so there is no picture behind it to recover. Centring the
+  plate carries the brand toward the middle of the page, so keeping it in the corner means
+  painting the plaque out and re-placing it — which means **inventing** the dragon's
+  continuation under it.
+- All three cheap reconstructions fail, each in its own way. A flat fill reads as a hole
+  in the artwork (the plaque interior measures `rgb(4 8 6)` and its surroundings
+  `rgb(5 13 9)`, so the *colour* matches — but flat colour against textured art still
+  reads as a patch). Interpolating from the region's four boundaries streaks the dragon's
+  lit ridge vertically upward, because the lower boundary is structured. Mirroring the
+  strip below clones the dragon's **eye** into the gap. Real inpainting is the only thing
+  that would work here, and it is not a few lines of PIL.
+- Cropping the plaque off instead is what the plate did for one revision, at 4.452:1 —
+  and that trim is what made the artwork read as compressed at its top edge: 28% of the
+  picture gone, the dragon's head cut through.
+- Flush left, none of this arises. The artwork's own wordmark lands ~23px off the page's
+  corner — which is where a re-placed one was aiming anyway — and the picture stays whole.
+  All the spare field goes to the right, where the nav sits.
+
+**The nav row is the viewport's width**, so it ends at the window's right gutter rather
+than at the artwork's edge. It can only do that because `--plate-field` is dark: the row
+straddles the plate's edge at most widths, and a straddling row needs both sides to take
+the same ink. That is the whole reason the padding is black — see the token below.
+
+**The reveal control lives on the hero's title row** (`.hero-head`), pushed to the right
+edge of the column opposite the "Edge of the Map LLC" eyebrow. It reads as the answer to
+the brand line rather than as one more button under the CTAs, and pairing it with the
+eyebrow costs the hero a row instead of adding one. It was briefly on the plate beside
+the wordmark; on paper the ember palette is in its native context, which is what it was
+designed for. Below the width where the two fit side by side the row wraps and the pill
+drops under the eyebrow rather than crushing it.
+
+**Every control on the plate is the same button — including the Raidō toggle.** The
+nav links and the toggle all carry `btn btn-primary btn-sm` — the classes reused, not a
+nav-link style restyled to match — and `.header-bar` re-declares `--accent`,
+`--accent-hover` and `--accent-ink` so `.btn-primary` resolves to the plate's neon while
+staying unbranched. The toggle used to hand-roll its own colour, border and hover, which
+is exactly why it was the one control that did not pick up the plate styling: a parallel
+implementation of the same idea holding none of the same values. All that is left of
+`.header-toggle` is shape — even padding, because it is icon-only, and a glyph sized at
+`1em` so it matches the pills' own text height and the row aligns without a hardcoded
+height to keep in step. That also
+retired the row's scrim: it existed because running nav text had to survive the
+lightning bolt crossing the band, and a filled button brings its own background. One
+`--bar-gap` governs the nav, the controls and the join between them, so the spacing is
+even across the row rather than three values agreeing by coincidence.
+
+**The letterbox is what buys the height.** `--masthead-h` caps the height and the plate is
+drawn at `height × --plate-aspect`, flush left on the field. **The band always crosses the
+whole viewport; the plate reaches as far across it as the height allows.** At 1402px that
+is a 400px band with 1280px of plate and 106px of black padding to its right. Below
+~1280px the plate fills the width outright. **The one dial is `--masthead-h`**: raise the
+cap and the plate widens toward the edge and the padding shrinks, at the cost of a taller
+header.
+
+**The `min()` in `--masthead-h` is load-bearing, not a safety rail.** It holds the band to
+exactly `--plate-aspect`, which is what keeps the plate's box the same shape as the file
+and therefore shows all of it. Let the band grow taller than `100vw / --plate-aspect` and
+the box becomes *squarer* than the artwork, at which point `cover` starts trimming again —
+**from the centre**, so it eats the frieze at the foot and the wordmark's space at the top
+at once. Raise the clamp only as far as the letterbox can pay for.
+
+`--header-h` tracks the band for the same reason: the nav sits `--frieze-clear` off the
+foot, so a taller band puts the row further from the bottom edge and the pinned strip has
+to reach further up to keep it. At 294px and 24% the row's top is 104px off the foot,
+hence 7rem. **Change one and check the other** — if the strip is shorter than the row's
+top offset, the nav is clipped out of the pinned band entirely.
+
+**`--plate-field` is the plate's padding, and it is black on both faces.** The band
+crosses the whole viewport while the plate is a fixed 3.2:1, so wherever the height cap
+bites there is field left over, and it has to read as part of the artwork rather than as
+page. It is also what lets the nav run to the viewport's right edge. It was briefly the
+face's own stock — which followed the theme handsomely and put mint pills on warm paper.
+The two faces still differ here, but it is the difference between a neutral black and a
+violet one. The plate itself takes `--radius`, so it rounds in daylight and squares off in
+mystic like every other corner.
+
+**Controls sitting on the plate take a plate palette, and it is face-aware too.**
+`--on-plate-accent`, `--on-plate-accent-hover` and `--on-plate-ink` exist because the
+light face's teal goes muddy on the dark artwork; the plate's own mint does not. In
+mystic no special palette is needed — ghost blue on dark artwork is what the whole page
+is doing — so those three point at that face's own hue. **`.header-bar` maps the three
+onto `--accent` / `--accent-hover` / `--accent-ink`**, so `.btn-primary` stays unbranched
+and the controls change with the theme without the rule knowing which face it is in. It
+re-declares `--radius-sm: 999px` the same way, which is what makes them pills — in both
+faces, where mystic squares every other corner.
+
+Four more of these tokens existed (a white, a muted ink, a scrim, two of them channel
+triples) from when the nav was running text over a gradient scrim and the toggle
+hand-rolled its own border. Both are real buttons now; all four had no consumer left.
+
+The frieze is now on screen twice at the top and bottom of the page, and the footer
+*also* signs off with the vector `Bindrune` below its plate — three appearances of one
+mark. Unresolved rather than intended; see §8.
+
 ### The burn transition
 
 Toggling does not cross-fade. A **live clone of the outgoing page** burns away from
-the centre to reveal the already-reskinned real page beneath, with an ember rim
-travelling at the burn front. It runs for 1.8s and is skipped entirely under
-`prefers-reduced-motion`.
+the centre to reveal the already-reskinned real page beneath, with a charred,
+ember-lit rim travelling at the burn front. It runs for 1.8s and is skipped entirely
+under `prefers-reduced-motion`.
 
 `BURN_MS` in `App.jsx` is the only duration. It sets the unmount timer and is passed
 to CSS as `--burn-dur`, which the mask transition reads — the two used to be
@@ -388,6 +566,21 @@ effect reads as fake, and both were broken at once:
 - **The ember must be ragged.** Its filter goes on a wrapper. `filter` runs before
   `mask`, so filtering the ember itself warps a smooth background gradient —
   invisible — and then carves a perfectly clean ring out of it (§6).
+
+**The rim is two layers, and the order is the effect.** Paper does not glow at the
+cut — it chars. A **black char layer paints on top**, opaque through the front and
+falling off outward through a scorch brown, so the inside of the band (where the mask
+is fading up) reads as a blackened edge crumbling into the hole and the glow only
+surfaces *outside* it. Without it the rim was a lit ring wiping across the page.
+
+The two layers take their stops from different references on purpose. The char is in
+`calc()` off `--burn`, like the mask, because it has to travel *with* the front. The
+hot ramp underneath keeps **percentage** stops, fixed to the box rather than the
+front, so the rim cools as it expands — white-hot at the origin, orange across the
+page, violet by the edges, which is the face it is uncovering. Retuning the char's
+outward reach and the mask band's outer stop is one edit, not two: they share that
+distance, and pulling them apart either starves the glow or lifts the black edge off
+the tear.
 
 Keep the noise period short and the excursion small: an earlier pass ran
 `baseFrequency 0.009` at `scale 110`, a ~110px period swinging the boundary ±55px,
@@ -446,10 +639,13 @@ it cools to violet and offers the way back.
   light face's rhythm and could not slow with the mystic face like every other
   pace token.
 - **`logo.png` is 2.3 MB and must not be shipped.** It is the full-resolution master,
-  kept for regenerating derivatives. `logo_signature.png` (67 KB, 300×200) is what
-  renders, as `.brand-mark` in both the header and the footer; it carries explicit
-  `width="300" height="200"` to reserve layout space, which is why `.brand-mark`
-  needs `height: auto` alongside its `width: 34px`.
+  kept for regenerating derivatives.
+- **`logo_signature.png` is no longer imported, and so no longer emitted.** It was the
+  compact 300×200 mark rendering as `.brand-mark` in the header and the footer; the
+  banner plate carries the wordmark in both places now, so the mark was the wordmark a
+  second and third time in the same band. It is kept in `src/assets/` like the other
+  masters — 68 KB off the deploy, nothing lost from the repo. `--mark-w`, `.brand-mark`
+  and `.brand-name` went with it; `.brand` survives as the plate's link back to top.
 - **The master is repainted, not original.** The artwork's tablet originally carried
   invented, meaningless glyphs. It now carries a live-edge black walnut slab with the
   real bindrune (§4) carved into it, lit by the neon spilling from the grooves. Every
@@ -478,11 +674,18 @@ it cools to violet and offers the way back.
   `logo.png`. `qr_code.png` (99 KB) is the shipped derivative: 500×750, palette-
   quantised to 256 colours with the alpha channel preserved, which matters — the
   artwork is transparent apart from the opaque black backing behind the code itself.
-- **Re-deriving the QR: verify it still scans.** The code is only ~26% of the
-  artwork's width, so downscaling eats into it fast. Every candidate size was decoded
-  before being accepted; at 220px the code renders ~57px wide and becomes unreliable
-  to scan. **`.qr-code` currently ships `260px`, not the 340px this section used to
-  claim** — see §8, it is unresolved rather than decided.
+- **Re-deriving the QR: verify it still scans.** Every candidate size was decoded
+  before being accepted; at 220px the code renders ~57px wide and becomes unreliable.
+- **The code cannot be made bigger inside the artwork — only rendered bigger.**
+  Measured on the master: the scannable tile is 311px of `QR_Complete.png`'s 1024
+  (152 of 500 in the derivative, ~30% of the width), and it is a *square inscribed in
+  the rune ring* — the ring's inner radius is 241px, so the largest square that fits
+  without its corners crossing the runes is 341px, about 10% more than it already is.
+  Enlarging the code past that is recomposing the artwork (shrinking ring and dragon),
+  not cropping or rescaling it. `.qr-code` therefore ships
+  `clamp(280px, 32vw, 400px)`: at 400px the code lands ~122px across, against ~79px
+  at the old 260px. Growing past a tested size is the safe direction, so this needed
+  no new decode; shrinking would.
 - **The domain is not connected yet.** `theedgeofthemap.com` resolves to Porkbun's
   parking IPs (`207.207.210.36/.50`) and 302s to `theedgeofthemap-com.l.ink` — their
   "A Brand New Domain!" page. `www` is a CNAME to `uixie.porkbun.com`. To go live:
@@ -510,8 +713,27 @@ it cools to violet and offers the way back.
   fallback, not a bug — but do not "simplify" the registration away.
 - **The mystic plate (`hero-wide.webp`) is `logo.png` with its own wordmark cropped
   off** (the artwork bakes in "EDGE OF THE MAP" below y=792). `logo-card.webp` is the
-  opposite — the *full* logo including the wordmark, used as the light hero's visual.
-  Re-derive each from the right crop or the wordmark ends up doubled or missing.
+  opposite — the *full* logo including the wordmark. Re-derive each from the right crop
+  or the wordmark ends up doubled or missing.
+- **The logo card is in the services head, not the hero.** With the banner plate
+  immediately above it, a hero that carried the card beside its copy put the wordmark
+  on screen three times above the fold. It is now the services section's visual,
+  right of the description, and the hero is single column. Two things followed: the
+  card is `loading="lazy"` rather than `fetchPriority="high"`, since it is below the
+  fold and the plate is the LCP element — which also leaves exactly one image on the
+  page claiming high priority — and `.services-head` has to drop `.section-head`'s
+  44rem measure, because that measure is there to keep a *line of prose* readable and
+  applied to a two-column row it caps the row instead, stranding the card mid-page.
+  The copy keeps the measure.
+- **Moving the card out of the hero left the hero's measures wrong, not just its
+  layout.** `.hero h1` was capped at 15ch and `.hero-sub` at 46ch — measures sized for
+  the *left half* of a two-column hero. Single-column, they left the copy huddled at the
+  left with a hero-sized hole beside it, which reads as a slot reserved for an image that
+  failed to load. They are 34ch and 72ch now: still measured, because prose past ~75ch is
+  hard to track back to, but measured for a full-width column. The headline is short
+  enough that `text-wrap: balance` still sets it in two lines, so the width costs no
+  readability. **Whenever a column count changes here, check the `ch` caps inside it** —
+  they are invisible in the markup and they do not follow the grid.
 - **Mystic tints the hero with a `color` blend, not `hue-rotate`.** `hue-rotate` was
   tried first and threw the rune tablet orange — the plate holds more than one source
   hue, so a single rotation cannot land them all on violet. A `mix-blend-mode: color`
@@ -523,14 +745,31 @@ it cools to violet and offers the way back.
   any headline pinned to an exact line count will reflow on toggle. Give headings room
   to breathe rather than tuning them flush; an earlier hero wordmark had to be scaled
   to 0.84 to stop the serif face wrapping to two lines and jolting the layout.
-- **A backgrounded tab breaks three different automated checks.** While
-  `document.visibilityState === 'hidden'`, Chrome defers `loading="lazy"` images (the
-  QR reports `naturalWidth: 0`), does not fire `IntersectionObserver` (every
-  `[data-reveal]` stays at `opacity: 0`), and does not deliver `scroll` events (the
-  header never unpins). Screenshots of that tab also drop fixed-position layers, so
+- **A backgrounded tab breaks every automated check of this page, and convincingly.**
+  While `document.visibilityState === 'hidden'`, Chrome defers `loading="lazy"`
+  images (the QR reports `naturalWidth: 0`), delivers no `IntersectionObserver`
+  callbacks at all, runs no CSS transitions (so `getComputedStyle().opacity` stays at
+  the *start* value however long you wait), animates no smooth scroll (so
+  `window.scrollTo` appears to do nothing while `scrollTop =` works), and delivers no
+  `scroll` events. Screenshots of that tab also drop fixed-position layers, so
   `.site-header` can be absent from a capture while `elementFromPoint` still returns
-  it. None of these are bugs — verify with `elementFromPoint` or by dispatching the
-  event manually rather than trusting a capture.
+  it. **Every one of those reads as a real bug in the page.** A session chasing
+  "the reveal is broken" produced, in order: a page that could not scroll, a
+  stylesheet missing its rules, and an `is-visible` class that did not apply —
+  all three false. Check `document.visibilityState` *first*, and prefer reading the
+  source to measuring a tab you are not looking at.
+- **A token that maps onto `--accent` cannot be *defined* from `--accent`.**
+  `.header-bar` sets `--accent: var(--on-plate-accent)`, so a face block defining
+  `--on-plate-accent: var(--accent)` closes a custom-property cycle inside that
+  subtree. A cycle computes to **invalid at computed-value time**, which is not a
+  fallback — `background: var(--accent)` becomes `unset` and the buttons lose their
+  fill entirely. The mystic block therefore names `rgb(var(--glow))`, the same hue one
+  indirection away from the loop. Watch for this whenever a scope re-declares a token
+  it also consumes.
+- **Enumerating CSSOM rules: test `instanceof CSSStyleRule`, not `rule.cssRules`.**
+  Chrome supports nesting, so *every* style rule now has a `cssRules` list; it is
+  empty but truthy, so a `if (r.cssRules) recurse(); else check()` walk silently
+  skips every rule in the sheet and reports the stylesheet as empty.
 - **No `[data-reveal]` element may take a React-computed `className`.**
   `useScrollReveal` adds `is-visible` imperatively and then *unobserves* the
   element, so it only ever fires once. A template-literal className on the same
@@ -556,11 +795,23 @@ it cools to violet and offers the way back.
   rather than `h2 + p`, because Lore opens on a one-line fragment and a 3.4em
   floated capital spills straight out of it. Move the class if the opening
   paragraph changes.
-- **`[data-reveal]` starts at `opacity: 0`**, so anything that stops
-  `useScrollReveal` from running leaves content invisible. The hook reveals
-  everything up front when `IntersectionObserver` is missing or reduced motion is
-  requested, and the reduced-motion media query repeats the reset in CSS. Keep both
-  paths if you touch it.
+- **Hiding a `[data-reveal]` section is opt-in, and the opt-in is `.reveal-ready`.**
+  The `opacity: 0` used to be unconditional, which meant *every* way
+  `useScrollReveal` could fail to run presented as several screens of tall blank
+  gaps with nothing on screen to hint why — a catastrophic failure mode for a
+  cosmetic feature, and it bit twice. The rule is now
+  `.reveal-ready [data-reveal]`, and the hook adds that class to `<html>` only
+  **after** its observer is armed. A page whose JS never got that far renders
+  visible.
+  - It arms in a **`useLayoutEffect`**, not a `useEffect`: effects run after paint,
+    so the gate would land a frame late and anything above the fold would flash in
+    and blink out before fading back.
+  - Three cases skip the animation and reveal everything up front, never arming the
+    gate: reduced motion, no `IntersectionObserver`, and **a document that is
+    `hidden` at mount** — a backgrounded tab is delivered no observer callbacks at
+    all, so arming there would hide the page and never un-hide it.
+  - The reduced-motion media query still repeats the reset, and has to name both
+    `[data-reveal]` and `.reveal-ready [data-reveal]` to out-specify the gate.
 - **`node_modules/` and `dist/` were committed** for the first several commits. They
   are now untracked via `.gitignore`; the build output is produced on the host.
 
@@ -601,30 +852,37 @@ rather than expanding the prose above.
 | # | Decision |
 | --- | --- |
 | [0001](docs/adr/0001-cleanup-v2-quality-pass.md) | Cleanup pass — shared values become tokens; atmosphere (and `backdrop-filter`) is scoped to the mystic face; Cormorant is imported as `latin-` subsets and pre-warmed on idle; the burn keeps its `-webkit-mask` prefixes |
+| [0002](docs/adr/0002-turned-bindrune-and-charred-burn-front.md) | The horizontal bindrune is a turn inside the viewBox, not a CSS `rotate`, so its layout box stays honest; the burn front's char is its own layer above the glow, with stops in `calc()` off `--burn` so it rides the tear |
 
 ### Open
 
-- **`.qr-code` is 260px in CSS; §6 recorded 340px as the decoded-and-accepted
-  size.** One of the two drifted and it is not clear which. At 260px the code renders
-  ~68px wide — above the ~57px that was measured as unreliable, but below the size
-  that was actually tested and accepted. The functional constraint lives only in
-  prose, in a file the CSS does not reference. **Resolving it needs a decode test at
-  260px, not a judgement call**; until then the shipped value is left alone.
-- **The LCP image cannot be preloaded without breaking a convention.** `logo-card`
-  carries `fetchPriority="high"`, but the page is client-rendered and `index.html`
-  ships no image hint, so the preload scanner sees nothing and the request cannot
-  start until ~203 KB of JS has parsed. `fetchPriority` only reorders requests that
-  already exist. Fixing it means either moving the file to `public/` (the exception
-  already granted to `og.webp`/`banner.webp`, at the cost of cache-busting) or a Vite
-  `transformIndexHtml` hook to emit the tag with the hashed name. Not done because
-  both are real trades against §6's import rule, not cleanups.
+- **The bound-rune frieze is now on the page three times.** The plate carries it in
+  neon at the head of the document and again at the head of the footer, and
+  `.footer-mark` signs off with the same seven-rune binding in vector below that. All
+  three were asked for a piece at a time, so all three ship, but the count is not a
+  decision anyone made. The vector mark is the one that takes the face's colour and
+  burns with the page; the plate is the one that carries the wordmark with it.
+- **The pinned strip is 136px** (`--header-h`, 5.5rem → 8.5rem), because it has to hold
+  the overlaid nav row *and* the frieze beneath it, at a band that is now 400px tall. That
+  is half again as much viewport permanently spent as the old bar, and it is also the
+  anchor offset. It tracks `--masthead-h`, so any change to the band's height needs this
+  rechecked; there are ~9px of frieze clearance, so the alternative is letting the frieze
+  scroll out of the strip and keeping only the nav.
+- **The header is the one place the toggle changes almost nothing.** `--plate-field` had
+  to go black on both faces so a nav row straddling the plate's edge would have a single
+  ink, which means the head of the page — and the footer's plate band with it — barely
+  responds to the theme. The plate's `--radius` and the controls' palette still do. If the
+  bands should visibly change again, the nav has to stop straddling: either back inside
+  the plate's width, or a palette that survives warm stock.
 - **`qr_code.png` is a 99 KB PNG on a site that otherwise ships WebP.** Lossless WebP
   with alpha typically lands 30–45% below a 256-colour PNG at identical pixels, and
   lossless is bit-exact so the scan constraint is unaffected. Not done here because
   it needs the derivative regenerated from `QR_Complete.png` and re-decoded, which is
   an asset pass rather than a code change.
 - **No favicon.** `index.html` ships none, so tabs show the browser default. The
-  bindrune cannot serve — at 16px a 1:7 column is a smear. Candidates explored and
+  bindrune cannot serve — at 16px a 1:7 column is a smear, and turning it (§4) only
+  makes it a 7:1 smear; the aspect is not the problem, seven bound runes in 16px is.
+  Candidates explored and
   rejected: Othala plus legs (muddy at 16), the tripled Tiwaz alone (reads as
   chevrons), a dragon head biting Raidho (works at 64px, marginal at 16, and reads
   more beast than dragon). Othala's bare diamond is the safe fallback; the tripled

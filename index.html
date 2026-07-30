@@ -12,6 +12,12 @@
     <link rel="canonical" href="https://theedgeofthemap.com/" />
     <meta name="theme-color" content="#0f766e" />
 
+    <!-- The header plate is the LCP element, and the page is client-rendered:
+         without this the request cannot start until the JS has parsed, because
+         the preload scanner never sees the <img>. Nameable here only because
+         the file is in public/ and so has a stable, unhashed URL. -->
+    <link rel="preload" as="image" href="/banner.webp" fetchpriority="high" />
+
     <!-- Social card. Absolute URLs are required — crawlers do not resolve
          relative paths. Served from public/ so the URL stays stable across
          builds; bundled assets are content-hashed and would break each time. -->

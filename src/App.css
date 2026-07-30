@@ -101,7 +101,88 @@
      rules used to guess at this independently (5.5rem and 5rem) with nothing
      tying either to the header; change the header's padding or the toggle size
      and both were silently wrong, by different amounts. */
-  --header-h: 5.5rem;
+  /* The **pinned strip** — how much of the plate is still on screen once the
+     header has scrolled up, and the offset same-page anchors have to clear.
+     The header *is* the plate now (see .site-header), so this is no longer the
+     header's whole height; it is the sticky remainder, and it has to be deep
+     enough to hold the overlaid nav row and the frieze beneath it. It tracks the
+     band: the nav sits at --frieze-clear off the foot, so a taller band puts the
+     row further from the bottom edge and the strip has to reach further up to keep
+     it. At 400px and 24% the row's top is 129px off the foot, so 8.5rem. */
+  --header-h: 8.5rem;
+
+  /* The plate band's height, and so the header's. The plate's width follows it at
+     --plate-aspect: 378px tall and 1211 wide at a 1402px window, letterboxed 87px
+     either side. Below ~640px the window is narrower than the clamp allows and the
+     plate goes full width instead.
+
+     **The `min()` is load-bearing, not a safety rail.** It holds the band to
+     exactly --plate-aspect, which is what keeps the plate's box the same shape as
+     the file and so shows all of it. Let the band grow taller than
+     `100vw / --plate-aspect` and the box becomes *squarer* than the artwork, at
+     which point `cover` starts trimming the picture again — and it trims from the
+     centre, so it would eat the frieze at the foot and the wordmark's own space at
+     the top at the same time. Raise the clamp only as far as the letterbox can pay
+     for. It is also what lets the nav row be positioned as a percentage of the band
+     and still land on the art. */
+  --masthead-h: min(
+    calc(100vw / var(--plate-aspect)),
+    clamp(200px, 30vw, 400px)
+  );
+
+  /* The plate's aspect — the file's own 3.2:1, because the plate is shown whole.
+     It was briefly cropped to 4.452:1 to take the baked wordmark off its top, and
+     that trim was what made the artwork look compressed at its top edge: 28% of the
+     picture gone, the dragon's head cut through. The plate is flush left instead, so
+     the artwork's own wordmark lands in the page's corner and nothing needs hiding
+     (see .brand).
+
+     The trade is horizontal: an uncropped 3.2:1 plate is a third narrower at a given
+     height than the cropped one was, so the band letterboxes wherever
+     --masthead-h's cap bites. All of that spare field goes to the right, where the
+     nav sits. That is the letterbox pass — the width buys the height back. */
+  --plate-aspect: 3.2;
+
+  /* Where the bound-rune frieze begins, as a share of the band's height. The
+     frieze runs y 502–614 of the file's 640, so it starts 21.6% off the foot and
+     the overlaid nav row hangs 24% off it to clear the rooftops. Uncropped, this
+     is a share of the artwork itself again — it was a share of the crop, and it
+     moves whenever --plate-aspect does. Re-measure if the plate is re-derived. */
+  --frieze-clear: 24%;
+
+  /* Where the plate stops growing in the *footer*, which still runs it whole and
+     full width. Its height is its width ÷ 3.2, so at 1600px that is a 500px
+     closing plate. Past the cap the surrounding field is the plate's own black,
+     so the margins do not read as letterboxing. */
+  --banner-max-w: 1600px;
+
+  /* Ink for anything sitting **on** the plate. Declared once, not per face: the
+     plate is near-black in daylight and in mystic alike, so a control laid over
+     it can never take --ink. The accent is the plate's own neon rather than the
+     light face's teal, which goes muddy on black. */
+  /* The button palette for controls sitting **on** the plate, which `.header-bar`
+     maps onto --accent / --accent-hover / --accent-ink so `.btn-primary` itself
+     stays unbranched. It exists because this face's teal goes muddy on the dark
+     artwork; the plate's own mint does not.
+
+     There were four more of these — a white, a muted ink and a scrim — left over
+     from when the nav was running text and the toggle hand-rolled a border. Both
+     are real buttons now, so all four had no consumer. */
+  --on-plate-accent: #5eead4;
+  --on-plate-accent-hover: #8df5e4;
+  --on-plate-ink: #04100e;
+
+  /* **The plate's padding, and it is black on both faces.** The band crosses the
+     whole viewport while the plate is a fixed 3.2:1, so wherever the height cap
+     bites there is field left over — and it has to read as part of the artwork, not
+     as page. That is also what lets the nav row run to the viewport's right edge:
+     the row straddles the plate's edge at most widths, and no palette reads on both
+     dark artwork and warm stock at once, so the answer is to make both sides dark.
+
+     It was briefly the face's own stock, which followed the theme handsomely and put
+     mint pills on warm paper. The two faces keep a difference here, but it is the
+     difference between two blacks. */
+  --plate-field: #04060a;
 
   --display-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --body-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -152,8 +233,9 @@ body {
 
 /* The panels that carry a surface and a rule, and so have to cross-fade
    together when the face flips. This was the same two-property declaration
-   written out in five separate rules for the same reason. */
-.site-header,
+   written out in five separate rules for the same reason. The header is not
+   among them any more: it is the plate, which is the same artwork in both
+   faces and has nothing to cross-fade to. */
 .about,
 .cta-band,
 .qr-card,
@@ -215,10 +297,23 @@ a {
    and let the width follow, or it crushes. `overflow: visible` matters here:
    the glow below spills well outside the viewBox. */
 .rune-bind {
+  /* The base radius for the mystic glow stack; every layer below is a multiple
+     of it, so the mark's core-to-halo ratio survives a change of size. 6px is
+     the tall column's tuning — the turned band overrides it, see .footer-mark. */
+  --bind-glow: 6px;
   display: block;
   width: auto;
   height: 100%;
   overflow: visible;
+}
+
+/* Quarter-turned, the constraint inverts: a 7:1 band is sized by width and the
+   height follows. Bindrune turns the geometry inside a 164×24 viewBox rather
+   than rotating the element, so this really is a wide box and `height: auto`
+   resolves off the viewBox aspect. */
+.rune-bind-h {
+  width: 100%;
+  height: auto;
 }
 
 /* Every section opens on a ruled label — the standing editorial device of the
@@ -300,94 +395,132 @@ a {
 }
 
 /* ============================================================
-   HEADER
+   HEADER — the banner plate
    ============================================================ */
 
+/* **The plate is the header.** There is no separate bar: the nav and the two
+   controls are laid over the artwork, above the frieze, and the plate's own neon
+   wordmark is the brand — which is why the compact signature mark and the "Edge
+   of the Map" text that used to sit in this row are gone. They were the wordmark
+   a second and third time in the same band.
+
+   It stays sticky through a **negative `top`**: the band scrolls up until only
+   its bottom --header-h is left, and pins there. That strip is the nav row and
+   the frieze under it, so the nav stays reachable down the whole page without a
+   scroll listener — the site has none and does not want one. */
 .site-header {
+  --plate-w: min(100%, calc(var(--masthead-h) * var(--plate-aspect)));
   position: sticky;
-  top: 0;
+  top: calc(var(--header-h) - var(--masthead-h));
   z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  padding: 0.7rem var(--gutter);
-  /* Near-opaque and unblurred on the light face. A frosted-glass header was
-     costing a backdrop re-blur on every scroll frame for the whole session —
-     the only permanently-on expensive compositing path on the site — to show
-     12% of a blurred backdrop through an 88%-opaque fill. It was also
-     atmosphere, which this face is not allowed (see the header comment): the
-     printed page is flat. Mystic re-enables the blur, where it earns its cost. */
-  background: color-mix(in srgb, var(--bg) 97%, transparent);
-  border-bottom: 1px solid var(--border);
+  height: var(--masthead-h);
+  /* Follows the face now — see --plate-field. It used to be a fixed near-black,
+     which made the head and foot of the page the two things the toggle could not
+     reach. */
+  background: var(--plate-field);
 }
 
+/* Sized to the plate exactly — the band's height times its *displayed* aspect —
+   and centred on the field. The wordmark no longer holds it to the left edge,
+   because the wordmark is not in the picture any more (below). */
+/* **Flush left, and the wordmark is back in the picture where the artwork put it.**
+   Centring it was tried and reverted: the plate's neon wordmark is a hard-edged black
+   plaque *pasted over* the art, so it truncates the dragon's back and there is nothing
+   behind it to recover. Painting it out and re-placing it in the corner therefore means
+   inventing the dragon's continuation — a flat fill reads as a hole, interpolating from
+   the boundaries streaks the lit ridge upward, and mirroring the strip below clones the
+   dragon's eye. Left-aligned, the artwork's own wordmark lands ~30px off the page's
+   corner, which is where a re-placed one was aiming anyway, and the picture stays whole.
+   The spare field all goes to the right, which is where the nav sits. */
 .brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  text-decoration: none;
-  color: var(--ink);
+  display: block;
+  width: var(--plate-w);
+  height: 100%;
+  /* The plate reads as a plate on a field that is paper in daylight, so it takes the
+     face's corner. Square in mystic, where every corner is. */
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.brand-mark {
-  width: 34px;
-  height: auto;
-  border-radius: 4px;
+/* The box is the file's own aspect, so nothing is trimmed — `cover` here only
+   absorbs sub-pixel rounding. */
+.masthead-plate {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.brand-name {
-  font-family: var(--display-font);
-  font-size: 0.98rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
+/* The overlaid row. Hung off the bottom by --frieze-clear so it sits above the
+   bound runes, and run to the **page's** full width rather than the plate's, so
+   the whole row ends flush at the right gutter. That is the point of the
+   left-flush plate: the nav occupies the width the artwork gave up.
 
-.site-nav {
+   Everything in it is a pill, so the row needs no scrim. It used to carry a
+   faded gradient because running nav text had to survive the lightning bolt
+   crossing this band; a filled button brings its own background and does not.
+
+   One `gap` governs the nav, the controls and the join between them, so the
+   spacing is even across the whole row rather than three values that agree by
+   coincidence. */
+.header-bar {
+  --bar-gap: 0.6rem;
+  /* Rounded, and fully — the controls are pills. Re-declared rather than set on
+     each button for the same reason the accents are: `.btn` reads --radius-sm and
+     stays unbranched. It holds in both faces, so these stay pills where mystic
+     squares every other corner on the site. */
+  --radius-sm: 999px;
+  /* Re-declared, not overridden per component: the buttons in here consume the
+     accent tokens like every other button on the site, and on the plate those
+     tokens have to be the plate palette. `.btn-primary` stays unbranched, and
+     because the plate palette is itself face-aware, the controls change with the
+     theme without this rule knowing which face it is in. */
+  --accent: var(--on-plate-accent);
+  --accent-hover: var(--on-plate-accent-hover);
+  --accent-ink: var(--on-plate-ink);
+  position: absolute;
+  bottom: var(--frieze-clear);
+  left: 0;
+  z-index: 3;
   display: flex;
-  gap: 1.6rem;
-  margin-left: auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--bar-gap);
+  /* The **viewport's** width, so the row ends at the window's right edge rather
+     than at the artwork's. It can only do that because --plate-field is dark: the
+     row straddles the plate's edge at most widths, and a straddling row needs both
+     sides to take the same ink. */
+  right: 0;
+  padding: 0 var(--gutter);
 }
 
-.site-nav a {
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-decoration: none;
-  color: var(--ink-muted);
-  transition: color 0.2s ease;
-}
-
-.site-nav a:hover,
-.site-nav a:focus-visible {
-  color: var(--ink);
-}
-
+.site-nav,
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--bar-gap);
 }
 
+/* The toggle **is** one of the row's buttons — it carries `btn btn-primary
+   btn-sm` like the nav and Contact do, so it takes the plate's neon from the
+   accent tokens `.header-bar` re-declares and cannot drift from them again. It
+   used to hand-roll its own colour, border and hover here, which is why it was
+   the one control in the row that did not pick up the plate styling: a parallel
+   implementation of the same idea, with none of the same values.
+
+   All that is left is the shape. It is icon-only, so the padding goes even on
+   all four sides instead of `btn-sm`'s wide-and-short. */
 .header-toggle {
-  display: grid;
-  place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  font-size: 0.95rem;
-  color: var(--ink-muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: color var(--motion) ease, border-color var(--motion) ease,
-    background-color var(--motion) ease;
+  padding: 0.55rem;
 }
 
-.header-toggle:hover,
-.header-toggle:focus-visible {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+/* `1em` is the button's own font-size, which with `.btn`'s `line-height: 1` is
+   exactly the height of the text in the pills either side of it — so the glyph
+   sits on their baseline and the row lines up without a hardcoded height to keep
+   in step. Width follows the 24:32 viewBox. */
+.header-toggle .rune {
+  width: auto;
+  height: 1em;
 }
 
 /* ============================================================
@@ -443,24 +576,46 @@ a {
 }
 
 .hero-inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(1.5rem, 5vw, 4.5rem);
   max-width: var(--wrap);
   margin: 0 auto;
 }
 
+/* The hero's title line and the reveal pill share a row, the pill pushed to the
+   right edge of the column. Wrapping is the mobile behaviour: below the point where
+   the two fit side by side the pill drops under the eyebrow rather than crushing
+   it. The eyebrow's own bottom margin is dropped here — the row owns the spacing,
+   or the pill sits 0.7rem above where it should. */
+.hero-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero-head .eyebrow {
+  margin: 0;
+}
+
+/* The hero runs the full content column now. The 15ch and 46ch measures here
+   were sized for the *left half* of a two-column hero; with the logo card moved
+   to the services section they left the copy huddled at the left with a hero-sized
+   hole beside it, which reads as a slot reserved for an image that never loads.
+   The headline is short enough that `text-wrap: balance` still sets it in two
+   lines across the column, so widening the measure costs no readability. */
 .hero h1 {
   font-size: var(--step-3);
-  max-width: 15ch;
+  max-width: 34ch;
 }
 
 .hero-sub {
   margin: 0.9rem 0 1.5rem;
   font-size: var(--step-1);
   color: var(--ink-muted);
-  max-width: 46ch;
+  /* Still measured — prose past ~75ch is hard to track back — but measured for a
+     full-width column rather than half of one. */
+  max-width: 72ch;
 }
 
 .hero-actions {
@@ -470,12 +625,13 @@ a {
 }
 
 /* The mode toggle, made unmissable. Ember palette on the light face so the
-   control visually promises the burn it triggers. */
+   control visually promises the burn it triggers. It sits on the hero's title row
+   (see .hero-head) rather than under the CTAs, which reads as the answer to the
+   brand line and costs the hero a row instead of adding one. */
 .reveal-cta {
   display: inline-flex;
   align-items: center;
   gap: 0.9rem;
-  margin-top: 1.25rem;
   padding: 0.72rem 1.3rem 0.72rem 0.75rem;
   font-family: inherit;
   text-align: left;
@@ -554,13 +710,10 @@ a {
   color: var(--accent);
 }
 
-.hero-visual img {
-  width: 100%;
-  height: auto;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
-}
+/* The logo card moved out of the hero and into the services head — see
+   .services-visual. The hero is single-column now: the banner plate is directly
+   above it, so a second wordmark beside the copy was the third one above the
+   fold. */
 
 /* ============================================================
    SERVICES
@@ -577,6 +730,32 @@ a {
 .section-head {
   max-width: 44rem;
   margin-bottom: var(--head-gap);
+}
+
+/* The services head is a row: description left, the logo card right. It drops
+   .section-head's 44rem measure because that measure exists to keep a *line of
+   prose* readable — applied to a two-column row it would cap the whole row and
+   leave the card in the middle of the page rather than at its right edge. The
+   copy keeps the measure instead, where it belongs. */
+.services-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: clamp(1.5rem, 5vw, 3.5rem);
+  max-width: none;
+}
+
+.services-head-copy {
+  max-width: 44rem;
+}
+
+.services-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
 .section-sub {
@@ -818,10 +997,16 @@ a {
   transform: scale(1.02);
 }
 
-/* The code is only ~26% of the artwork's width, so the image has to be
-   generous or the QR renders too small to scan. */
+/* The scannable code is a black tile inscribed in the rune ring, so it is
+   locked at ~30% of the artwork's width — 152px of 500 — and the ring's inner
+   circle leaves it only about 10% of room to grow. **Making the code bigger
+   therefore means rendering the artwork bigger**; it cannot be cropped or
+   scaled out of the frame it was drawn into. At 400px the code lands ~122px
+   across, where the old 260px gave ~79px — not far above the ~57px measured as
+   unreliable to scan, and well under the 340px that was actually decoded and
+   accepted. Growing past a tested size is the safe direction. */
 .qr-code {
-  width: 260px;
+  width: clamp(280px, 32vw, 400px);
   max-width: 100%;
   height: auto;
 }
@@ -835,33 +1020,74 @@ a {
   background: var(--bg-subtle);
 }
 
-/* The maker's mark, centred above the footer proper. Sized by height because
-   the binding is a 1:7 column — see .rune-bind. */
+/* The same plate that opens the page, closing it. Here it still runs *whole and
+   full width* — the header had to trade width for height to become a header, and
+   the footer is under no such pressure, so the artwork gets one placement where
+   it is seen at size. --banner-max-w is where that stops. */
+.footer-banner {
+  background: var(--plate-field);
+  line-height: 0;
+}
+
+.footer-banner img {
+  display: block;
+  width: 100%;
+  max-width: var(--banner-max-w);
+  height: auto;
+  margin: 0 auto;
+}
+
+/* The maker's mark, laid on its side and centred along the bottom edge — it
+   signs the page off below the footer text rather than standing as a column
+   above it. Turned, it is a 7:1 band, so it is sized by width and the height
+   follows; the vertical form is the one that needs height (see .rune-bind). */
 .footer-mark {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: clamp(1.5rem, 4vw, 2.5rem) 1rem 0;
+  padding: 0 var(--gutter) clamp(0.9rem, 2.5vw, 1.4rem);
+  /* No opacity here. It used to sit at 0.6, which on a 2–4px stroke is not
+     "subtle" — it is a mark rendered in a colour that exists nowhere else on the
+     page, halfway to the background, and it read as washed out in both faces.
+     The mark is a signature; if it wants to be quieter than the accent, that is
+     a quieter colour, not a transparent one. */
   color: var(--accent);
-  opacity: 0.6;
 }
 
-/* A 1:7 column is only ~21px wide at 145px tall, so it needs real height to
-   read at all — at footer-icon size it degrades to a hairline. */
-.footer-mark .rune-bind {
-  height: clamp(6.5rem, 14vw, 9rem);
+/* The stroke thins with the mark, and seven runes bound adjacent close up into
+   a smudge before they get small — a 7:1 band needs ~20rem of width before the
+   individual runes read, the same constraint the column had in height.
+
+   Turned, the band is only ~1/7 of the column's height at the same longest
+   dimension, so it needs the glow scaled down with it — at the column's 6px
+   base the halo is wider than the gap between two bound runes and the mark
+   reads as a lit smear rather than as seven glyphs. */
+.footer-mark .rune-bind-h {
+  width: clamp(15rem, 52vw, 27rem);
+  --bind-glow: 1.4px;
 }
 
+/* One child now the copyright has moved out, so the shared `space-between` from
+   the split-row rule above would leave the nav hard left under a centred mark and
+   a centred legal line. Centred, the footer is one stack. */
 .footer-inner {
+  justify-content: center;
   gap: 1.25rem;
   padding: clamp(1.5rem, 4vw, 2rem) var(--gutter);
   font-size: 0.88rem;
   color: var(--ink-muted);
 }
 
-.footer-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
+/* The last line on the page, below the mark that signs it. The copyright used to
+   sit up in the nav row beside a 104px crop of the wordmark; the plate carries
+   the wordmark now, so the row is the nav alone and the legal line closes the
+   document where a legal line belongs. */
+.footer-legal {
+  margin: 0;
+  padding: 0 var(--gutter) clamp(1.4rem, 3.5vw, 2.25rem);
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
 }
 
 .footer-nav {
@@ -883,11 +1109,21 @@ a {
    SCROLL REVEAL
    ============================================================ */
 
-/* The stagger is computed here, not in JSX: App.jsx passes only --reveal-index
-   (the datum it owns) and the interval is a token, so the cascade slows with
-   the mystic face instead of being pinned to the light face's rhythm. */
+/* **Gated behind `.reveal-ready`, and that is the whole point.** `useScrollReveal`
+   adds that class to <html> only after its observer is armed, so a page whose JS
+   never got that far renders its sections *visible* instead of presenting several
+   screens of blank gaps with nothing to explain them. Hiding content is opt-in;
+   see the hook's comment in App.jsx.
+
+   The delay is computed here, not in JSX: App.jsx passes only --reveal-index (the
+   datum it owns) and the interval is a token, so the cascade slows with the mystic
+   face instead of being pinned to the light face's rhythm. It stays outside the
+   gate so it is available to both. */
 [data-reveal] {
   --reveal-delay: calc(var(--reveal-index, 0) * var(--reveal-step));
+}
+
+.reveal-ready [data-reveal] {
   opacity: 0;
   translate: 0 16px;
   transition: opacity var(--reveal-dur) ease var(--reveal-delay),
@@ -895,7 +1131,7 @@ a {
       var(--reveal-delay);
 }
 
-[data-reveal].is-visible {
+.reveal-ready [data-reveal].is-visible {
   opacity: 1;
   translate: 0 0;
 }
@@ -1027,15 +1263,15 @@ a {
    cloned header sticks to *its* top edge — one bleed above the viewport. Push
    the sticky threshold down by the bleed so it pins where the real one does.
    Correct unscrolled too: the clone's natural header position is already at
-   exactly that offset, so nothing moves. */
+   exactly that offset, so nothing moves.
+
+   The real header's threshold is negative now — it pins with only its bottom
+   --header-h showing — so the bleed is added *to that*, not substituted for it.
+   Dropping the negative term here would leave the clone's plate fully extended
+   while the live one underneath is a strip, and the burn would open onto a
+   header sliding into place. */
 .burn-page .site-header {
-  top: var(--burn-bleed);
-  /* The clone is a verbatim copy, so in mystic mode it brings a second
-     backdrop-filter with it — and this one sits inside a subtree being masked
-     by an animating shape, so the blur is re-resolved every frame of the most
-     expensive 1.8s the site has, for a strip nobody is watching while the page
-     tears open. */
-  backdrop-filter: none;
+  top: calc(var(--burn-bleed) + var(--header-h) - var(--masthead-h));
 }
 
 .burn-mask-svg {
@@ -1052,21 +1288,46 @@ a {
   r: var(--burn);
 }
 
+/* Two layers, and the order is the whole effect. Paper does not glow at the
+   cut — it chars, and the char is what makes it read as burning rather than as
+   a lit ring wiping across the page: black at the edge itself, the combustion
+   line just outside it, then a scorch browning off into paper the fire has not
+   reached.
+
+   So the char rides on top, and its stops are in calc() off --burn like the
+   mask's — it has to travel *with* the front. The hot ramp underneath keeps its
+   percentage stops on purpose: those are fixed to the box, not to the front, so
+   the rim cools as it expands — white-hot at the origin, orange across the
+   page, and violet by the edges, which is the face it is uncovering. */
 .burn-ember {
-  background: radial-gradient(
-    circle at var(--burn-x) var(--burn-y),
-    #fff0a8 0%,
-    #ffb020 34%,
-    #ff5a1f 58%,
-    #7a4de7 80%,
-    transparent 92%
-  );
+  background:
+    /* Char. Opaque through the front, so the inside of the band (where the
+       mask is fading up) reads as a blackened edge crumbling into the hole,
+       and the glow below only surfaces outside it. */
+    radial-gradient(
+      circle at var(--burn-x) var(--burn-y),
+      rgb(10 7 6 / 0.97) 0 calc(var(--burn) - 1px),
+      rgb(20 12 8 / 0.88) calc(var(--burn) + 2px),
+      rgb(48 23 10 / 0.42) calc(var(--burn) + 8px),
+      rgb(72 34 13 / 0) calc(var(--burn) + 17px)
+    ),
+    /* The combustion line itself. */
+      radial-gradient(
+        circle at var(--burn-x) var(--burn-y),
+        #fff0a8 0%,
+        #ffb020 34%,
+        #ff5a1f 58%,
+        #7a4de7 80%,
+        transparent 92%
+      );
   /* Softening only — the tear comes from the wrapper above. */
   filter: blur(2px) saturate(1.4);
-  /* A line, in px: a thin hot core with a short glow trailing outward into
-     the paper it has not reached yet. The band used to be a percentage of the
-     box, so it grew as the burn travelled and ended as a glowing donut wide
-     enough to read as decoration. Fixed px keeps it a rim the whole way.
+  /* A line, in px: a thin core with a short trail outward into the paper it has
+     not reached yet. The band used to be a percentage of the box, so it grew as
+     the burn travelled and ended as a glowing donut wide enough to read as
+     decoration. Fixed px keeps it a rim the whole way — and the outward reach is
+     what the char and the glow have to share, so widening it is how you give the
+     glow room without pulling the black edge off the tear.
      Hoisted into a property because the prefixed and unprefixed copies below
      are the same twelve tuned numbers, and a retune that reached only one of
      them would ship a different rim to one browser family. The prefix stays:
@@ -1074,10 +1335,10 @@ a {
      the page for the whole 1.8s, rather than degrading to the instant swap. */
   --ember-rim: radial-gradient(
     circle at var(--burn-x) var(--burn-y),
-    transparent 0 calc(var(--burn) - 7px),
-    #000 var(--burn),
-    #000 calc(var(--burn) + 4px),
-    transparent calc(var(--burn) + 18px)
+    transparent 0 calc(var(--burn) - 8px),
+    #000 calc(var(--burn) - 2px),
+    #000 calc(var(--burn) + 7px),
+    transparent calc(var(--burn) + 22px)
   );
   -webkit-mask-image: var(--ember-rim);
   mask-image: var(--ember-rim);
@@ -1100,6 +1361,21 @@ body.mystic-mode,
   --bg-subtle: #15131f;
   --surface: #191527;
   --border: rgb(var(--violet) / 0.34);
+
+  /* A violet-black rather than the light face's neutral one — the only theme the
+     plate's padding carries, since it has to stay dark on both faces. */
+  --plate-field: #0b0912;
+
+  /* On this face the plate needs no special palette — ghost blue on dark artwork
+     is exactly what the rest of the page is doing — so these just point at the
+     face's own accent. **As `rgb(var(--glow))`, not `var(--accent)`**: the accent
+     is what `.header-bar` *assigns* from these, so naming it here would close a
+     custom-property cycle, and a cycle computes to invalid rather than to
+     anything visible — the buttons would lose their fill entirely. --glow is the
+     same hue, one indirection away from the loop. */
+  --on-plate-accent: rgb(var(--glow));
+  --on-plate-accent-hover: #ffffff;
+  --on-plate-ink: #14101f;
   --border-strong: rgb(var(--glow) / 0.5);
 
   --ink: #ece5ff;
@@ -1111,8 +1387,9 @@ body.mystic-mode,
   --accent-soft: rgb(var(--violet) / 0.22);
 
   --shadow-sm: none;
-  /* -6px, not -12px: .hero-visual img was the token's only consumer and it
-     overrode it with a copy that differed in the spread alone. */
+  /* -6px, not -12px: the logo card (now .services-visual img) is the token's
+     only consumer and it overrode it with a copy that differed in the spread
+     alone. */
   --shadow-md: 0 0 40px -6px rgb(var(--violet) / 0.75);
 
   /* Shape and pace invert. The light face is tight, rounded and quick — a
@@ -1314,13 +1591,11 @@ body.mystic-mode::after {
   text-shadow: 0 0 28px rgb(var(--violet) / 0.6);
 }
 
-/* The frosted header belongs to this face only — it is atmosphere, and the
-   printed face is flat. Scoped here it is also paid for by the visitors who
-   asked for it rather than by every scroll frame of every session. */
-.face.mystic-mode .site-header {
-  backdrop-filter: blur(10px);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-}
+/* The header used to frost its backdrop here — atmosphere the printed face was
+   not allowed, scoped to the face that wanted it. It is the banner plate now:
+   opaque artwork, nothing behind it to blur, and identical in both faces. The
+   rule is gone rather than moved, and with it the last backdrop-filter on the
+   site outside the burn. */
 
 /* In the dark world the ember has already burned — the control cools to
    the mystic palette and offers the way back. */
@@ -1354,13 +1629,21 @@ body.mystic-mode::after {
 /* The plate's neon is a tight white core inside a wide coloured halo, which
    takes four layered shadows — a single large drop-shadow reads as a blur,
    not as a lit tube. Only the mystic face lights it; in daylight the mark is
-   printed flat like everything else on that face. */
+   printed flat like everything else on that face.
+
+   The radii are multiples of --bind-glow because `drop-shadow` takes only
+   absolute lengths, so a stack tuned at one size is wrong at every other one.
+   These four were tuned for the 164-unit column and then inherited by the
+   turned band, which is ~40px from edge to edge in the footer: a 30px outer
+   halo was most of the mark's own height, and seven runes bound adjacent
+   dissolved into one glowing bar. Set --bind-glow where the mark is placed. */
 .face.mystic-mode .rune-bind {
-  filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 5px currentColor)
-    drop-shadow(0 0 14px currentColor) drop-shadow(0 0 30px currentColor);
+  filter: drop-shadow(0 0 calc(var(--bind-glow) * 0.34) #ffffff)
+    drop-shadow(0 0 calc(var(--bind-glow) * 0.84) currentColor)
+    drop-shadow(0 0 calc(var(--bind-glow) * 2.34) currentColor)
+    drop-shadow(0 0 calc(var(--bind-glow) * 5) currentColor);
 }
 
-.face.mystic-mode .brand-mark,
 .face.mystic-mode .qr-link {
   filter: drop-shadow(0 0 10px rgb(var(--violet) / 0.6));
 }
@@ -1370,16 +1653,21 @@ body.mystic-mode::after {
    ============================================================ */
 
 @media (max-width: 880px) {
-  .hero-inner {
+  /* The card stacks under the description rather than squeezing beside it. */
+  .services-head {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .hero-visual {
-    order: -1;
   }
 
   .site-nav {
     display: none;
+  }
+
+  /* Below this width the plate is only ~120px tall, and --header-h would pin
+     nearly all of it — a phone cannot spare that much of the viewport to a
+     sticky band. The nav is hidden here anyway, so the strip only has to hold
+     the two controls and the frieze. */
+  :root {
+    --header-h: 4.5rem;
   }
 }
 
@@ -1388,9 +1676,11 @@ body.mystic-mode::after {
     scroll-behavior: auto;
   }
 
-  /* useScrollReveal reveals everything up front under this preference; this
-     makes sure nothing is left stuck at opacity 0 either way. */
-  [data-reveal] {
+  /* useScrollReveal reveals everything up front under this preference and never
+     arms the gate, so this is belt-and-braces — but it has to out-specify the
+     gated rule to be worth anything, hence the second selector. */
+  [data-reveal],
+  .reveal-ready [data-reveal] {
     opacity: 1;
     translate: none;
   }

@@ -1,5 +1,11 @@
 // App.jsx
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import './App.css'
 import Rune from './Rune.jsx'
 import Bindrune from './Bindrune.jsx'
@@ -8,8 +14,15 @@ import RuneFrame from './RuneFrame.jsx'
 import heroWide from './assets/hero-wide.webp'
 import heroNarrow from './assets/hero-narrow.webp'
 import logoCard from './assets/logo-card.webp'
-import mark from './assets/logo_signature.png'
 import qrCode from './assets/qr_code.png'
+
+// The full banner plate — the neon wordmark, the dragon, and the bound-rune
+// frieze on one 3.2:1 field. Referenced by path rather than imported because it
+// lives in public/: it is also the social banner, which needs a stable URL that
+// survives a rebuild (see DESIGN §2). That exception is what lets index.html
+// preload it — it is the page's LCP element now, and a hashed bundle name could
+// not be named in static HTML.
+const BANNER = '/banner.webp'
 
 const SITE_URL = 'https://theedgeofthemap.com'
 
@@ -178,13 +191,36 @@ function AboutLore() {
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Fades sections in as they enter view. Opts out entirely under
- *  prefers-reduced-motion by revealing everything up front. */
+/** Fades sections in as they enter view.
+ *
+ *  **Visible is the default state; hiding is opt-in.** The `opacity: 0` in CSS
+ *  is gated behind `.reveal-ready` on <html>, which this hook adds only once the
+ *  observer that un-hides is actually armed. Ungated, every way this hook can
+ *  fail to run — a throw earlier in the effect, a browser without the API, a tab
+ *  the browser has frozen — presents as a page of tall blank gaps rather than as
+ *  a missing animation, and there is nothing on screen to hint why. That has bit
+ *  twice; DESIGN.md §6 records the first.
+ *
+ *  Three cases skip the animation and reveal everything up front: reduced
+ *  motion, no IntersectionObserver, and a document that is *hidden* at mount —
+ *  the last because a backgrounded tab does not deliver IntersectionObserver
+ *  callbacks at all, so arming the gate there would hide the page and then never
+ *  un-hide it. In all three the gate is never added, so the CSS never hides.
+ *
+ *  A **layout** effect, not an effect: `useEffect` runs after the browser paints,
+ *  so the gate would arm a frame late and anything above the fold would flash in
+ *  and then blink out before fading back. Arming before first paint is the whole
+ *  reason the gate is affordable. */
 function useScrollReveal() {
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const root = document.documentElement
     const els = document.querySelectorAll('[data-reveal]')
 
-    if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
+    if (
+      prefersReducedMotion() ||
+      !('IntersectionObserver' in window) ||
+      document.visibilityState === 'hidden'
+    ) {
       els.forEach((el) => el.classList.add('is-visible'))
       return
     }
@@ -201,7 +237,13 @@ function useScrollReveal() {
     )
 
     els.forEach((el) => io.observe(el))
-    return () => io.disconnect()
+    // Armed last, so nothing is hidden before something can reveal it.
+    root.classList.add('reveal-ready')
+
+    return () => {
+      io.disconnect()
+      root.classList.remove('reveal-ready')
+    }
   }, [])
 }
 
@@ -324,34 +366,61 @@ function App() {
       )}
 
       <div className={`face ${isMystic ? 'mystic-mode' : ''}`} ref={faceRef}>
+      {/* The plate *is* the header. The nav and the controls are laid over the
+          artwork above its bound-rune frieze, and the plate's own neon wordmark
+          is the brand — so the compact signature mark and the "Edge of the Map"
+          text that used to sit in this row are gone rather than repeated.
+
+          The plate is not lazy and not deprioritised: it is the largest thing
+          above the fold, so it is the LCP element, and index.html preloads it by
+          the same stable URL. */}
       <header className="site-header">
-        <a className="brand" href="#top">
-          <img src={mark} alt="" className="brand-mark" width="300" height="200" />
-          <span className="brand-name">Edge of the Map</span>
+        <a className="brand" href="#top" aria-label="Edge of the Map LLC — back to top">
+          <img
+            className="masthead-plate"
+            src={BANNER}
+            alt="Edge of the Map LLC"
+            width="2048"
+            height="640"
+            fetchPriority="high"
+            decoding="async"
+          />
         </a>
 
-        <nav className="site-nav" aria-label="Sections">
-          {PATHS.map((path) => (
-            <a key={path.id} href={`#${path.id}`}>
-              {path.title}
+        <div className="header-bar">
+          {/* The nav wears the same button as Contact rather than a nav-link
+              style of its own — one shape for every control on the plate. The
+              classes are reused, not restyled: `.header-bar` re-declares the
+              accent tokens so `.btn-primary` resolves to the plate's neon. */}
+          <nav className="site-nav" aria-label="Sections">
+            {PATHS.map((path) => (
+              <a
+                key={path.id}
+                className="btn btn-primary btn-sm"
+                href={`#${path.id}`}
+              >
+                {path.title}
+              </a>
+            ))}
+            <a className="btn btn-primary btn-sm" href="#about">
+              {isMystic ? 'Lore' : 'About'}
             </a>
-          ))}
-          <a href="#about">{isMystic ? 'Lore' : 'About'}</a>
-        </nav>
+          </nav>
 
-        <div className="header-actions">
-          <button
-            className="header-toggle"
-            onClick={toggleMystic}
-            aria-pressed={isMystic}
-            title={toggleLabel}
-          >
-            <Rune name="raido" />
-            <span className="visually-hidden">{toggleLabel}</span>
-          </button>
-          <a className="btn btn-primary btn-sm" href={GENERAL_ENQUIRY}>
-            Contact
-          </a>
+          <div className="header-actions">
+            <button
+              className="btn btn-primary btn-sm header-toggle"
+              onClick={toggleMystic}
+              aria-pressed={isMystic}
+              title={toggleLabel}
+            >
+              <Rune name="raido" />
+              <span className="visually-hidden">{toggleLabel}</span>
+            </button>
+            <a className="btn btn-primary btn-sm" href={GENERAL_ENQUIRY}>
+              Contact
+            </a>
+          </div>
         </div>
       </header>
 
@@ -379,7 +448,30 @@ function App() {
 
           <div className="hero-inner">
             <div className="hero-copy">
-              <p className="eyebrow">Edge of the Map LLC</p>
+              {/* The section's title line, with the signature interaction set
+                  against it on the right. The pill reads as the answer to the
+                  brand line rather than as one more button under the CTAs, and
+                  the pairing costs the hero a row instead of adding one. */}
+              <div className="hero-head">
+                <p className="eyebrow">Edge of the Map LLC</p>
+                <button
+                  className="reveal-cta"
+                  onClick={toggleMystic}
+                  aria-pressed={isMystic}
+                >
+                  <span className="reveal-cta-rune" aria-hidden="true">
+                    <Rune name="raido" />
+                  </span>
+                  <span className="reveal-cta-text">
+                    <strong>{toggleLabel}</strong>
+                    <small>
+                      {isMystic
+                        ? 'Put out the fire and return to daylight'
+                        : 'Burn the map away and see what lies beneath'}
+                    </small>
+                  </span>
+                </button>
+              </div>
               <h1>
                 Narration, software, and woodwork — from one workshop.
               </h1>
@@ -397,26 +489,6 @@ function App() {
                 </a>
               </div>
 
-              {/* The signature interaction, stated outright rather than hidden
-                  behind an icon — the ember palette foreshadows the burn. */}
-              <button
-                className="reveal-cta"
-                onClick={toggleMystic}
-                aria-pressed={isMystic}
-              >
-                <span className="reveal-cta-rune" aria-hidden="true">
-                  <Rune name="raido" />
-                </span>
-                <span className="reveal-cta-text">
-                  <strong>{toggleLabel}</strong>
-                  <small>
-                    {isMystic
-                      ? 'Put out the fire and return to daylight'
-                      : 'Burn the map away and see what lies beneath'}
-                  </small>
-                </span>
-              </button>
-
               <ul className="hero-trust">
                 {PATHS.map((path) => (
                   <li key={path.id}>
@@ -426,27 +498,36 @@ function App() {
                 ))}
               </ul>
             </div>
+          </div>
+        </section>
 
-            <div className="hero-visual">
+        {/* The logo card sits here rather than in the hero. With the banner
+            plate directly above it, the hero was showing the wordmark twice
+            above the fold; down here the card is the section's visual and the
+            only place the full logo appears in the page body.
+
+            className stays a constant string — see the note on .about below. */}
+        <section className="services" id="services">
+          <div className="section-head services-head" data-reveal>
+            <div className="services-head-copy">
+              <p className="eyebrow">Services</p>
+              <h2>Three disciplines, one point of contact.</h2>
+              <p className="section-sub">
+                Every engagement runs through the same person from first call to
+                handover — no account layer, no handoffs.
+              </p>
+            </div>
+
+            <div className="services-visual">
               <img
                 src={logoCard}
                 alt="Edge of the Map LLC"
                 width="800"
                 height="533"
-                fetchPriority="high"
+                loading="lazy"
+                decoding="async"
               />
             </div>
-          </div>
-        </section>
-
-        <section className="services" id="services">
-          <div className="section-head" data-reveal>
-            <p className="eyebrow">Services</p>
-            <h2>Three disciplines, one point of contact.</h2>
-            <p className="section-sub">
-              Every engagement runs through the same person from first call to
-              handover — no account layer, no handoffs.
-            </p>
           </div>
 
           {/* --reveal-index carries only the index — the stagger interval is
@@ -536,17 +617,22 @@ function App() {
       </main>
 
       <footer className="site-footer">
-        {/* The maker's mark: the same seven-rune binding carved into the
-            tablet in the hero artwork, drawn here as vector so it takes the
-            face's colour and lights in mystic mode. */}
-        <div className="footer-mark">
-          <Bindrune title="The Edge of the Map bindrune" />
+        {/* The same plate that opens the page, closing it — full width, so the
+            two bookend the document. It carries the wordmark itself, which is
+            why the copyright row below no longer repeats the signature mark.
+            Lazy here: it is the last thing on the page, not the first. */}
+        <div className="footer-banner">
+          <img
+            src={BANNER}
+            alt=""
+            width="2048"
+            height="640"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
+
         <div className="footer-inner">
-          <div className="footer-brand">
-            <img src={mark} alt="" className="brand-mark" width="300" height="200" />
-            <span>&copy; 2025 Edge of the Map LLC. All rights reserved.</span>
-          </div>
           <nav className="footer-nav" aria-label="Footer">
             {PATHS.map((path) => (
               <a key={path.id} href={`#${path.id}`}>
@@ -556,6 +642,20 @@ function App() {
             <a href={GENERAL_ENQUIRY}>Contact</a>
           </nav>
         </div>
+
+        {/* The maker's mark: the same seven-rune binding carved into the
+            tablet in the hero artwork, drawn here as vector so it takes the
+            face's colour and lights in mystic mode. Laid on its side and set
+            last, so it signs the page off along the bottom edge rather than
+            standing as a column above the footer text. */}
+        <div className="footer-mark">
+          <Bindrune orientation="horizontal" title="The Edge of the Map bindrune" />
+        </div>
+
+        {/* Last line on the page, under the mark that signs it. */}
+        <p className="footer-legal">
+          &copy; 2025 Edge of the Map LLC. All rights reserved.
+        </p>
       </footer>
       </div>
     </>

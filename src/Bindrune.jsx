@@ -12,7 +12,8 @@
 // PROPORTIONS: seven stacked runes make a tall column — viewBox 24×164,
 // aspect ~1:7 — not the 24×32 icon box Rune.jsx uses. It is a signature mark,
 // not a card icon; sizing it like one will crush it. Give it height and let
-// the width follow.
+// the width follow. Quarter-turned (`orientation="horizontal"`) it is the same
+// mark as a 7:1 band, and then the constraint inverts: size it by width.
 import React from 'react'
 import { GLYPH_STROKE } from './Rune.jsx'
 
@@ -78,23 +79,39 @@ const BINDING = [
   },
 ]
 
+// The horizontal form is the *same* geometry laid on its side — (x,y) → (y, 24−x)
+// — so the binding stays one set of coordinates and tuning a segment still tunes
+// both forms. Turning the contents inside a 164×24 viewBox rather than putting a
+// CSS `rotate` on the element keeps the layout box honest: the element really is
+// a 7:1 band the page can size by width, where a rotated column would still
+// reserve a 1:7 column of space and hang out of its own footprint.
+//
+// -90° (head to the left) rather than +90°, so the mark reads Wunjo-first,
+// left to right, the way the vertical form reads top to bottom.
+const TURN = 'translate(0 24) rotate(-90)'
+
 export default function Bindrune({
   className = '',
+  orientation = 'vertical',
   title = 'The Edge of the Map bindrune',
 }) {
+  const horizontal = orientation === 'horizontal'
+
   return (
     <svg
-      className={`rune-bind ${className}`}
-      viewBox="0 0 24 164"
+      className={`rune-bind ${horizontal ? 'rune-bind-h' : ''} ${className}`}
+      viewBox={horizontal ? '0 0 164 24' : '0 0 24 164'}
       {...GLYPH_STROKE}
       role="img"
       aria-label={title}
     >
       <title>{title}</title>
-      <path d={STAVE} />
-      {BINDING.flatMap((seg) =>
-        seg.strokes.map((d, i) => <path key={`${seg.rune}-${i}`} d={d} />)
-      )}
+      <g transform={horizontal ? TURN : undefined}>
+        <path d={STAVE} />
+        {BINDING.flatMap((seg) =>
+          seg.strokes.map((d, i) => <path key={`${seg.rune}-${i}`} d={d} />)
+        )}
+      </g>
     </svg>
   )
 }

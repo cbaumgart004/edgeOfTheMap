@@ -13,6 +13,7 @@ here into the map.
 | # | Decision | Status |
 | --- | --- | --- |
 | [0001](0001-cleanup-v2-quality-pass.md) | Cleanup pass: shared values become tokens, atmosphere is scoped to the mystic face, fonts are subset and pre-warmed | Accepted |
+| [0002](0002-turned-bindrune-and-charred-burn-front.md) | The bindrune turns inside its viewBox rather than by CSS rotate, and the burn front chars in its own layer keyed off `--burn` | Accepted |
 
 ## Writing a new one
 
