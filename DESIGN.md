@@ -880,12 +880,12 @@ it cools to violet and offers the way back.
   `clamp(280px, 32vw, 400px)`: at 400px the code lands ~122px across, against ~79px
   at the old 260px. Growing past a tested size is the safe direction, so this needed
   no new decode; shrinking would.
-- **The domain is not connected yet.** `theedgeofthemap.com` resolves to Porkbun's
-  parking IPs (`207.207.210.36/.50`) and 302s to `theedgeofthemap-com.l.ink` — their
-  "A Brand New Domain!" page. `www` is a CNAME to `uixie.porkbun.com`. To go live:
-  add the custom domain in Railway, then in Porkbun **delete the URL forward and the
-  parking A records** before pointing an ALIAS (apex) and CNAME (`www`) at the target
-  Railway gives you. Leaving the forward in place will keep overriding the records.
+- **The domain is live.** Earlier revisions of this file said it was not connected and
+  listed the steps to connect it; that is done. `theedgeofthemap.com` and
+  `www.theedgeofthemap.com` both serve the Railway deployment — verified by
+  `Server: railway-hikari` and by both hosts returning the same content-hashed bundle
+  as the generated URL. Porkbun's parking A records and the URL forward to
+  `theedgeofthemap-com.l.ink` are gone. Details in §7.
 - **Editing `App.css` from PowerShell 5.1 will mojibake it.** `Get-Content` decodes
   the file as the system ANSI codepage, so every em dash comes back mangled and
   writing it out re-encodes the damage. Use
@@ -1054,9 +1054,32 @@ output.
 
 ### DNS
 
-The apex is registered at **Porkbun**, on Porkbun nameservers
-(`{fortaleza,curitiba,maceio,salvador}.ns.porkbun.com`). Connecting the domain means
-removing Porkbun's parking first — see §6.
+The apex is registered at **Porkbun** and still on Porkbun nameservers
+(`{fortaleza,curitiba,maceio,salvador}.ns.porkbun.com`) — that part did not change.
+What changed is where the records point: **the domain is connected and serving.**
+
+| Record | Points at |
+| --- | --- |
+| apex `theedgeofthemap.com` | Railway's edge (`69.46.46.26` at time of writing) |
+| `www` | CNAME → `ter6pkml.up.railway.app` |
+| generated URL | `edgeofthemap-production.up.railway.app` |
+
+All three serve the same deployment. The quickest way to confirm a deploy actually
+landed is to compare the **content-hashed bundle name** across hosts rather than
+trusting a `200`:
+
+```
+curl -s https://theedgeofthemap.com/keeper | grep -o 'index-[A-Za-z0-9_-]*\.js'
+```
+
+A stale result there means the host has not rebuilt; a *fresh* result while the
+browser still shows the old page means the browser is holding a cached
+`index.html` — the one file in the build that is **not** content-hashed, and so the
+only one that can go stale. Hard-reload before debugging anything else.
+
+**Do not restore the parking records.** The A records that pointed at
+`207.207.210.36/.50` and the URL forward to `theedgeofthemap-com.l.ink` were deleted
+to make this work; a forward left in place overrides the records silently.
 
 ---
 
