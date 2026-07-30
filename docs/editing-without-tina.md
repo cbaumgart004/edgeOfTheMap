@@ -32,8 +32,11 @@ editing UI).
 
 - **Not a general-purpose CMS.** It serves sites we build, with block types we ship. No
   arbitrary content modelling by the customer.
-- **Not multi-tenant SaaS on day one.** One deployment per customer is fine and much
-  simpler; the schema below does not preclude tenancy later.
+- ~~**Not multi-tenant SaaS on day one.**~~ **Superseded.** This said one deployment per
+  customer was fine. The decision to publish self-serve tiers (§9) overrides it: a
+  customer who signs up without talking to anyone cannot be given a bespoke deployment.
+  Multi-tenancy moves from "the schema does not preclude it later" to a phase-0
+  requirement — which is why `sites` and `site_members` are in §3.1 rather than assumed.
 - **Not a page builder that can produce any layout.** Customers choose a structure and
   edit content within it. Unbounded layout freedom is how these products become
   unmaintainable and how every site starts looking like a template.
@@ -215,6 +218,16 @@ The split that keeps what is good about the idea:
 - **Owning:** a scheduled export writes media *and* a content dump back into a git repo
   the customer holds.
 
+**Decided: repo first, object storage second.** Phase 0 keeps the existing
+`public/uploads` pipeline rather than standing up new infrastructure, and the move
+happens when upload latency becomes a real complaint instead of a predicted one. Two
+things to hold onto while that is true. **Store media by a stable key from the start,
+not by its `public/` path** — an image referenced as `/uploads/x.webp` in a hundred
+content documents is a hundred rewrites at migration time, where an indirection through
+the `media` table is one. And **the deploy-on-upload latency is a known, accepted, and
+temporary cost** — it is the one place the product does not yet deliver what it
+promises, so it should not be described to a customer as anything else.
+
 That gives the durability and the "it is in my repository" ownership story without
 putting a rebuild in the upload path — and it is a better fit for what `/keeper` already
 promises: *"A full export on demand, in a format that reads without their software."*
@@ -359,10 +372,32 @@ can buy without talking to you — a different business, and one that needs phas
 complete plus signup, billing and self-service onboarding, none of which are in this
 plan. Pick the model first; the number follows from it.
 
-Also unresolved: whether the add-on is **per site or per editor**. Per site is simpler to
-explain and matches a one-practitioner client. Per editor is where the market has landed
-(Framer, Webflow both charge per seat) and is the only model that pays for itself when a
-client adds a receptionist who edits hours.
+**Decided: per site, with a seat cap.** One price covering up to ~3 editors; additional
+seats charged. Keeps the simple pitch for a one-practitioner client while a larger team's
+support cost still lands somewhere. The cap needs `site_members` (§3.1) to be enforceable
+rather than an honour system, and enforcement should refuse the *fourth invite* with a
+clear upgrade path — never silently degrade an existing editor's access.
+
+### Decided: published tiers, self-serve
+
+This is the largest commercial decision in the document and it reaches back into the
+engineering. Publishing prices that someone can act on without a conversation means:
+
+- **Multi-tenancy is phase 0**, not deferred (see §2, superseded).
+- **Signup, billing and provisioning** are a real surface — a new customer must get a
+  working site without anyone touching it. Stripe is already a dependency in
+  `marketplace/`, so the billing half has a precedent to lift.
+- **Template robustness stops being a nice-to-have.** A self-serve customer picks a
+  structure with no one advising them, so [item 6](../.boards/items/6.md) becomes
+  blocking: three skeletons covering a hero and one band cannot be the thing a stranger
+  builds a business on.
+- **Support scales with signups, not with relationships.** The current model has a
+  natural throttle — every client came through a conversation. Published tiers remove it.
+
+**And `/keeper`'s closing copy will contradict this.** It currently says the panel is
+the easy part and the real work is everything after, which is an argument *for* quoted
+project pricing. That paragraph has to change when prices go on the page, or the site
+argues against its own pricing table.
 
 ## 10. Open questions
 
@@ -379,7 +414,9 @@ client adds a receptionist who edits hours.
   undo stack does not survive React re-renders. Deleting a block (capability 3) needs at
   minimum an immediate undo affordance, because a revision restore is far too blunt for
   a misclick.
-- **Per site or per editor** for the editing add-on — see §9.
+- **Where the self-serve boundary sits.** Published tiers do not have to mean a
+  fully automated signup on day one — prices can be published while onboarding is
+  still manual. Deciding which is being promised changes phase 1 substantially.
 - **Does `chrome` (header/footer content) get revisions too?** It is edited far less
   often than pages but a bad edit is visible on every page at once, which argues yes.
 - **Media export cadence.** §4.5 proposes a scheduled export to a customer-held repo.
