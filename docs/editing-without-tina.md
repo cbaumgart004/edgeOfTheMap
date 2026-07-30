@@ -150,6 +150,77 @@ block. This is a real concession — the panel is the thing the ownership table 
 as inferior — and the honest framing is that what you *see* never moves into a panel,
 only what you *configure*.
 
+### 4.4 The capability list
+
+What the owner must actually be able to do, with the piece of work each one implies.
+Ordered roughly by how much new machinery it needs.
+
+| # | Capability | What it needs |
+| --- | --- | --- |
+| 1 | **Reorder blocks** on a page | Array splice — the index already *is* the order. Must re-run the `imageSide: 'auto'` alternation. |
+| 2 | **Add a block** from a palette | Schema registry `defaultItem` presets (§5) so it lands populated, not blank. |
+| 3 | **Delete / duplicate a block** | Trivial once §3.4 saving exists. Delete needs undo — see §10. |
+| 4 | **Create a page** | Row insert + slug uniqueness. Lift `slugify()` + the collision loop from `marketplace/app/admin/actions.ts`. |
+| 5 | **Show in nav — yes / no** | `show_in_nav` boolean. **Already exists** in the LSS page model. |
+| 6 | **Reorder the navbar** | `nav_order` number. **Already exists** (`order`, missing → 999). Drag-reorder rewrites the set. |
+| 7 | **Multiple images per block** | `images` is `string[]` today and must become objects. **Schema migration — see below.** |
+| 8 | **Reorder images within a block** | Same splice as blocks, one level down. |
+| 9 | **Move an image between blocks** | Cross-container drag. The first capability here that needs a real DnD library rather than HTML5 drag events. |
+| 10 | **Per-image opacity** | New field on the image object; renders as a CSS custom property, not a filter (§8). |
+| 11 | **Inline images in body copy** | Cursor-position markdown splice — **already built** in `ProductForm.tsx`, lifts almost unchanged. |
+| 12 | **Customise the header / nav** | New. Nav is currently *generated* from the page list and the bar's shape is per-structure in code. |
+| 13 | **Customise the footer** | New, same reason. |
+
+**Capability 7 is a schema migration, and it is the sharp edge in this list.** LSS stores
+`images: string[]`. Opacity, alt text, and a focal point all need a per-image object:
+
+```
+"images": [{ "src": "...", "alt": "...", "opacity": 0.85, "focal": [0.5, 0.35] }]
+```
+
+That is a breaking change to existing content, so it needs a migration that rewrites
+every `string` to `{ src }` and a reader that tolerates both during rollout. This is
+precisely the case where `CREATE TABLE IF NOT EXISTS` silently does nothing and the
+content model breaks quietly — the reason migration tooling is phase 0 and not later.
+
+**Capabilities 12 and 13 are bigger than they look.** The header and footer are not
+content today. `Nav.jsx` *derives* the nav from the CMS page list, and the bar's DOM
+shape is chosen by the active structure in code. Making them editable means introducing
+a third content document alongside pages and settings — call it `chrome` — holding the
+parts an owner may change (logo, tagline, CTA label and target, footer columns, legal
+line, social links) while the *arrangement* stays the structure's business. Without that
+line, "customise the header" becomes "build a general-purpose layout editor", which §2
+rules out.
+
+**Drag-and-drop needs a keyboard equivalent, not as politeness but as function.** Every
+reorder above (blocks, nav, images) must be operable without a mouse. At least one of
+these owners works on a tablet, and a pointer-only reorder simply fails there.
+
+### 4.5 Media storage — and where repo storage does and does not work
+
+Media in the repo is how LSS works today (`public/uploads`, compressed by a push-time
+GitHub Action) and it has real merits: no storage bill, assets versioned with the site,
+served from the same CDN as the build, and the backup story is "it is the repository".
+
+**But it reintroduces the exact problem this project exists to remove.** Adding an image
+*is* an edit. In the repo, an upload is a commit and a rebuild, so a customer adding
+twelve gallery photographs triggers a deploy and waits on it — observed at 1–2 minutes
+on Railway. Content would be instant and images would not, which is a worse experience
+to explain than either extreme. Git also handles binaries badly: the repo grows
+permanently, and it is already carrying a 2.3 MB `logo.png` and a 2 MB `QR_Complete.png`.
+
+The split that keeps what is good about the idea:
+
+- **Serving:** object storage, addressed by URL, no deploy. Upload is instant.
+- **Owning:** a scheduled export writes media *and* a content dump back into a git repo
+  the customer holds.
+
+That gives the durability and the "it is in my repository" ownership story without
+putting a rebuild in the upload path — and it is a better fit for what `/keeper` already
+promises: *"A full export on demand, in a format that reads without their software."*
+Ownership is a property of being able to leave with everything, not of where the bytes
+happen to sit while the site is running.
+
 ## 5. The schema registry
 
 Tina's `config.ts` is the single biggest artifact to replace: it defines field types,
@@ -222,7 +293,78 @@ table exists, so an evolving content model breaks quietly and in production.
 - **`filter` runs before `mask`,** so filtering an element displaces its contents. Do not
   put a texture filter on anything containing an editable field; the caret goes with it.
 
-## 9. Open questions
+## 9. Pricing
+
+Self-editing should be an **add-on**, and the instinct is right for three reasons — one
+of which is easy to miss.
+
+1. Not every client wants it. Some would rather send an email and have the change made.
+2. It carries genuine ongoing cost: auth, object storage, backups, and a support surface
+   that does not exist when nobody else can touch the site.
+3. **It cannibalises billable work.** Content tweaks currently arrive as small paid jobs.
+   Handing the owner the keys removes that revenue, so the add-on has to be priced to
+   replace it, not merely to cover its hosting.
+
+### What the market charges
+
+| | Entry | Mid | Top |
+| --- | --- | --- | --- |
+| Wix (annual billing) | $17 Light | $29 Core / $39 Business | $159 Business Elite |
+| Squarespace (annual) | $16 Basic | $23 Core / $39 Plus | $99 Advanced |
+| Framer | $10 Basic | $30 Pro | $100+ Scale |
+| Webflow | $25 Premium | $39 Business site | $19/seat workspace |
+| Freelance maintenance retainer | $50–150 basic | **$150–250 most common** | $400+ |
+
+Two figures matter more than the rest:
+
+- **Framer sells a "Content Editor" seat at $10/month** — CMS access only, no design
+  rights, introduced May 2026. That is the closest direct analogue in the market to what
+  this add-on *is*, and it is a real signal for what "let a non-technical person edit"
+  is worth as a line item.
+- **Small businesses average $100–200/month** for full-service maintenance, and the most
+  common freelance retainer tier is $150–250. That is the band a solo builder with a
+  human relationship actually occupies.
+
+### The positioning trap
+
+**Do not price against Wix.** At $17–39/month Wix is self-serve with no human in it, and
+anchoring near that number invites precisely the comparison this offering loses —
+features per dollar — while discarding the one it wins, which is ownership plus a person
+who answers. `/keeper`'s comparison table already argues on ownership and deliberately
+never mentions price; the pricing should not contradict the page.
+
+The honest comp is the **maintenance retainer**. Self-editing is a capability *of* that
+relationship, not a competitor to a SaaS product.
+
+### A structure that fits
+
+- **Build** — project fee, quoted per job. Unchanged; matches the commission framing of
+  the other two crafts.
+- **Hosting & keeping** — base retainer. Certificates, backups, dependency updates,
+  monitoring. Sits naturally in the $50–150 "basic plan" band.
+- **Self-editing** — **+$25–50/month on top.** Above Framer's $10 content seat, because
+  this includes support and a human; below a second full retainer, because the
+  infrastructure is shared.
+
+Bundled, that lands around $100–175/month — inside the small-business average, above Wix
+with a defensible reason, and below the $250 ceiling where a client starts pricing an
+agency instead.
+
+### Decide before publishing a number
+
+**A price list next to a working chooser implies self-serve.** `/keeper` currently
+closes by saying the panel is the easy part and the real work is everything after, which
+supports quoted project pricing. Publishing per-month tiers signals a product someone
+can buy without talking to you — a different business, and one that needs phases 0–5
+complete plus signup, billing and self-service onboarding, none of which are in this
+plan. Pick the model first; the number follows from it.
+
+Also unresolved: whether the add-on is **per site or per editor**. Per site is simpler to
+explain and matches a one-practitioner client. Per editor is where the market has landed
+(Framer, Webflow both charge per seat) and is the only model that pays for itself when a
+client adds a receptionist who edits hours.
+
+## 10. Open questions
 
 - **Where does the editor bundle live?** Shipping it to every visitor to serve one owner
   is wasteful; a dynamic import behind an auth check is the obvious answer but it means
@@ -234,4 +376,11 @@ table exists, so an evolving content model breaks quietly and in production.
   change. Keeping it that way is defensible and is what §2 assumes.
 - **Undo.** Revisions give coarse undo at save granularity. In-session keystroke undo
   inside `contentEditable` is a separate and much harder problem, and browsers' native
-  undo stack does not survive React re-renders.
+  undo stack does not survive React re-renders. Deleting a block (capability 3) needs at
+  minimum an immediate undo affordance, because a revision restore is far too blunt for
+  a misclick.
+- **Per site or per editor** for the editing add-on — see §9.
+- **Does `chrome` (header/footer content) get revisions too?** It is edited far less
+  often than pages but a bad edit is visible on every page at once, which argues yes.
+- **Media export cadence.** §4.5 proposes a scheduled export to a customer-held repo.
+  Nightly is simple; on-write is truer to "your data is your own" and much chattier.
