@@ -17,6 +17,7 @@ here into the map.
 | [0003](0003-a-route-for-the-keeper.md) | The Keeper gets `/keeper`, served by a hand-rolled history-API router rather than `react-router`; `useScrollReveal` re-arms per route | Accepted |
 | [0004](0004-shipped-work-is-evidence-not-a-gallery.md) | Client work is cited as evidence inside each claim, never offered as a reusable look; the API is demonstrated against a fictional dataset with a real implementation over it | Accepted |
 | [0005](0005-site-modes-primitive.md) | Site modes become a primitive that owns the bookkeeping and not the look; scope is an element rather than only `<body>`; the first value is the null case and takes no class | Accepted |
+| [0006](0006-narration-profile-is-mirrored-not-polled.md) | The ACX profile is mirrored into the repo rather than polled — it is behind an Amazon login, sends no CORS headers, and the site has no backend; samples resolve through a glob so a missing file is not a build error; the audio transport is ours because `<audio controls>` takes no tokens | Accepted |
 
 ## Writing a new one
 

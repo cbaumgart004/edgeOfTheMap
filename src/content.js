@@ -25,7 +25,11 @@ export const SITE_HOST = new URL(SITE_URL).host
 // back to this one.
 export const CONTACT_EMAIL = 'keeper@theedgeofthemap.com'
 
-// TODO(confirm): inferred from the repo owner. Change here, not in the copy.
+// Confirmed against the owner's ACX listing, which credits him as
+// **Christopher S Baumgart**. The familiar form is kept here on purpose: this
+// appears in the About copy, which is the maker talking about himself, and the
+// full form belongs on a credit. `PROFILE.name` in narration.js is that form —
+// the two are registers of one person, so change both or neither.
 export const MAKER_NAME = 'Chris Baumgart'
 
 // Drives both the unmount timer in App and the mask animation in CSS, which
@@ -49,10 +53,12 @@ export const GENERAL_ENQUIRY = mailto('Enquiry — Edge of the Map')
 // one because the cards render in both faces, and letting the mystic copy
 // through to daylight is exactly the leak §5 of DESIGN.md warns about.
 //
-// `href` is how a path reaches its own page. Only the Keeper has one; the other
-// two are still anchors into the home page's card, and the nav reads this field
-// rather than assuming. When the Storyteller earns a route, it gets an `href`
-// here and nothing else changes.
+// `href` is how a path reaches its own page. The Keeper and the Storyteller
+// have one; the Wright is still an anchor into its card on the home page, and
+// the nav reads this field rather than assuming. The Storyteller's arrival is
+// the proof the field works as designed — it gained an `href` and the nav, the
+// footer nav and the card's destination all followed, with no edit outside this
+// table, the route list, and the switch in App.jsx.
 export const PATHS = [
   {
     id: 'keeper',
@@ -77,6 +83,7 @@ export const PATHS = [
     rune: 'ansuz',
     title: 'Audio Narration',
     persona: 'The Storyteller',
+    href: '/storyteller',
     blurb:
       'Audiobook narration made in collaboration with the author — characters voiced as faithfully to your original intent as I can get them.',
     loreBlurb:

@@ -2,8 +2,8 @@
 
 A marketing site for **Edge of the Map LLC**, a one-person, three-craft brand:
 **The Keeper** (web, systems, hosting), **The Storyteller** (audiobook narration and
-voice), and **The Wright** (woodworking). One home page, plus `/keeper` — the one
-craft with more to say than a card holds (§4).
+voice), and **The Wright** (woodworking). One home page, plus `/keeper` and
+`/storyteller` — the two crafts with more to say than a card holds (§4).
 
 This file is a *map*, not a spec. It should stay short enough to read in one sitting.
 
@@ -18,7 +18,7 @@ This file is a *map*, not a spec. It should stay short enough to read in one sit
 | Language | Plain JSX — no TypeScript |
 | Styling | Hand-written CSS with custom properties. No framework, no CSS modules. |
 | Fonts | `@fontsource/cormorant-garamond` only, and only its `latin-` subsets — self-hosted, bundled. Mystic face only; see §5. |
-| Routing | Two routes (`/`, `/keeper`), on ~40 lines of history API. No router dependency — [ADR 0003](docs/adr/0003-a-route-for-the-keeper.md) |
+| Routing | Three routes (`/`, `/keeper`, `/storyteller`), on ~40 lines of history API. No router dependency — [ADR 0003](docs/adr/0003-a-route-for-the-keeper.md) |
 | State | `useState` in `App.jsx`. No store, no context. |
 | Tests | None |
 
@@ -48,6 +48,11 @@ src/
   router.jsx            useRoute, navigate, Link. Two routes, no dependency.
   HomePage.jsx          `/` — the hero, services, About/Lore, CTA, QR.
   KeeperPage.jsx        `/keeper` — the Web & Systems pitch (§4).
+  StorytellerPage.jsx   `/storyteller` — the Audio Narration pitch (§4).
+  narration.js          The Storyteller's profile and sample table, mirrored
+                        from ACX rather than fetched from it (§4).
+  SamplePlayer.jsx      The audio transport: one headless <audio> for the whole
+                        list, themed controls over it (§4).
   demoApi.js            A fictional practice's dataset, and a real API over it —
                         pagination, error codes, a transactional write (§4).
   ApiConsole.jsx        The panel that fires those requests for real (§4).
@@ -58,6 +63,8 @@ src/
   App.css               Theme tokens, both faces, layout, the burn.
   Keeper.css            /keeper only. Reads App.css's tokens, reuses its
                         classes; holds the shapes that page alone needs.
+  Storyteller.css       /storyteller only. Same contract as Keeper.css; mostly
+                        the sample transport, which nothing else needs.
   Rune.jsx              Elder Futhark glyphs as SVG (§4). Exports RUNE_NAMES.
   Bindrune.jsx          The maker's bindrune — seven runes on one stave (§4).
   RuneFrame.jsx         Inscribed rune border for mystic cards (§5).
@@ -73,6 +80,9 @@ src/
     logo.png            Full-resolution master (2.3 MB). Not imported — see §6.
     qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by HomePage.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
+    audio/              Narration samples, resolved by `import.meta.glob` rather
+                        than named imports so a table entry with no file yet is
+                        an unplayable row, not a build error (§4).
 ```
 
 `public/` holds exactly two files — `banner.webp` (2048×640, 3.2:1) and `og.webp`
@@ -92,7 +102,7 @@ the whole of why the old preload problem is gone.
 
 ## 3. Runtime architecture
 
-A shell, two pages, four small hooks, no store.
+A shell, three pages, four small hooks, no store.
 
 ```
 main.jsx  ──renders──>  App  (the shell: plate/header, footer, burn)
@@ -105,8 +115,16 @@ main.jsx  ──renders──>  App  (the shell: plate/header, footer, burn)
                          │                            .is-visible to [data-reveal]
                          ├─ useRouteScroll(route)  → top, or the named fragment
                          │
-                         └─ route === '/keeper' ? <KeeperPage> : <HomePage>
+                         └─ PAGES[route] ?? HomePage
 ```
+
+**The route switch is a table, not a ternary chain.** `PAGES` in `App.jsx` maps route
+to component; the second craft page turned the branch into a nest and a third would be
+unreadable. Every page is called at one site with the same props and the craft pages
+ignore the two they do not use, so a page cannot be added and then handed a different
+set of props by accident. `ROUTES` in `router.jsx` still decides what *is* a route —
+`PAGES` only decides what renders, and anything missing from it falls through to
+`HomePage`, which is where `normalizePath` has already sent the URL.
 
 **The router is ~40 lines and owns less than it looks like it does.**
 `history.pushState` does not fire `popstate`, so `navigate` synthesises the event
@@ -216,8 +234,13 @@ earns a page by gaining an `href` here, and nothing else changes.
 | Path | Discipline | Rune | Page | CTA |
 | --- | --- | --- | --- | --- |
 | The Keeper | Web & Systems | Othala ᛟ | `/keeper` | See what I build |
-| The Storyteller | Audio Narration | Ansuz ᚨ | *(card only)* | Request a demo |
+| The Storyteller | Audio Narration | Ansuz ᚨ | `/storyteller` | Request a demo |
 | The Wright | Woodworking | Berkano ᛒ | *(card only)* | Discuss a commission |
+
+**The Storyteller's route is the `href` field working exactly as advertised.** It was
+added to the table, named in `ROUTES` and in `PAGES`, and the nav, the footer nav and
+the card's destination all followed with no further edit. That is the claim the field
+was introduced on, and it has now been paid once.
 
 **Two link helpers, because the nav and the cards do not want the same target.**
 `navHref` sends you to a path's page if it has one and to its card on the home page
@@ -234,10 +257,11 @@ furniture commissioners — but that is a job for distinct sections or routes in
 one site. It is also the reversible direction: splitting later is easy, merging is
 not. If woodworking ever needs a storefront, it earns a subdomain then.
 
-`/keeper` is the first exercise of that plan's own escape hatch — "distinct sections
-or routes inside one site" — and it does not weaken the argument above, which is
-about **domains**. One site, one brand, one SEO surface; the audience that differs
-gets a route, not a registrar.
+`/keeper` was the first exercise of that plan's own escape hatch — "distinct sections
+or routes inside one site" — and `/storyteller` is the second. Neither weakens the
+argument above, which is about **domains**. One site, one brand, one SEO surface; the
+audiences that differ get routes, not registrars. Authors and publishers are exactly
+the audience that argument had in mind, and they now have a page rather than a card.
 
 That claim holds **structurally** — `PATHS` drives the nav, the hero trust row, the
 cards and the footer nav, and `.cards` is `auto-fit` so a fourth reflows without a
@@ -351,8 +375,111 @@ printed matter is more at home on this face than it would be on theirs.
   closing copy says why, so its absence reads as a choice rather than an omission.
 
 `Keeper.css` is a static import, so it lands in the one CSS bundle and ships to home
-page visitors too. That is the right trade at ~3 KB — a second request would cost
-more — but it is the first thing to revisit if the page keeps growing.
+page visitors too. That was the right trade at ~3 KB — a second request would cost
+more — but it is the first thing to revisit if the page keeps growing, and
+`Storyteller.css` has now made the same trade a second time. The three page
+stylesheets together are the larger share of a 43.4 KB bundle (§5); route-splitting
+the CSS is closer to worth it than it was, and a fourth page is where it stops being
+theoretical.
+
+### The Storyteller's page (`/storyteller`)
+
+Narration is the one craft here that can simply be **demonstrated**, so the samples
+are the first section rather than a gallery at the foot: a narrator who makes you read
+three paragraphs before you can hear anything has buried the only thing you came to
+check. Five sections — hero, samples, the narrator, the process, the ask.
+
+- **The profile is mirrored from ACX, never fetched from it.** Both narrator tabs
+  answer an anonymous request with `302` to Amazon's sign-in and a cross-origin one
+  with a bare `403`, so there is no runtime poll, no build-time scrape, and no proxy
+  short of storing Amazon credentials. `narration.js` holds the bio and the sample
+  table; the audio is files in this repo, on this domain. **The cost is drift** — the
+  page can fall out of step with ACX and nothing will say so — and it is accepted
+  because the failure mode is *stale*, which is visible and cheap, rather than *empty*,
+  which is what every polled version fails to. [ADR 0006](docs/adr/0006-narration-profile-is-mirrored-not-polled.md).
+  ACX is still linked, twice: it is where a producer actually hires a narrator, so it
+  is the destination and not the data source.
+- **A sample with no file is a listed row that says so, not a build error.**
+  `import.meta.glob` resolves `src/assets/audio/` — a hit gives a hashed asset URL, a
+  miss gives `undefined`. Same idiom as `WORK`'s optional `href` on the Keeper's page:
+  ship honest rather than broken. The trap is that a **typo in a filename is
+  indistinguishable from a sample not yet recorded**, so the table and the folder have
+  to be read against each other. Until a file lands, the row shows the runtime ACX
+  reports; once one does, the element's own metadata wins, because that is the truth
+  about what the visitor is hearing.
+- **`SOURCES` is the expansion joint, and samples are grouped by it.** ACX is the
+  first listing and deliberately not the last — a second casting site, a demo reel,
+  work with its own profile page. Adding one is an entry in that table plus samples
+  pointing at it; the page grows a heading per source and links each to its own
+  listing, and **nothing downstream hardcodes `acx`**. With one source the heading is
+  suppressed, because a lone "ACX" label over the only list on the page is a
+  distinction without a difference. A source with no `url` — samples cut for this site —
+  renders as a heading with nothing to click.
+- **The credentials block is derived from the samples, not asserted beside them.**
+  Language, accents, voice ages, styles and genres are computed across `SAMPLES`, so
+  every value on screen is backed by a recording on the same page and the block cannot
+  drift out of step with the list. **The labels say "demonstrated" on purpose** — a
+  derived list describes what is shown here, and phrasing it as a range would quietly
+  turn a sample set into a ceiling.
+- **The performance notes are the owner's own words and render unchanged in both
+  faces.** That is a deliberate exception to the `blurb`/`loreBlurb` pairing: the
+  convention exists to stop *mystic* copy leaking into daylight (§5), and these are
+  daylight copy already. Writing a grander mystic variant would mean inventing words
+  for a real person's first-person aside. They are also the best copy on the page — a
+  narrator explaining why he picked a poem from a collection called *Nightmares* tells
+  a producer more than any amount of positioning does — so they are set as quotations
+  rather than buried as captions.
+- **The transport is ours because `<audio controls>` takes no tokens.** The native
+  widget would land in both faces identically — no `--radius`, no `--accent`, no
+  serif — which on a site whose thesis is that the two faces are different documents
+  makes it the one element arguing the toggle is a recolour. So the `<audio>` element
+  is headless and the controls are a real `<button>` and `<input type="range">`.
+  **One element serves the whole list**, which is what makes "only one sample plays at
+  a time" true by construction rather than by remembering to pause the others.
+  All transport state is read from the element's own `play`/`pause`/`ended` events, so
+  a `play()` that rejects cannot leave the button claiming to be playing.
+- **The samples are a ruled list, not a rack of cards.** The section's argument is that
+  these are four registers of *one* voice; four floating panels would read as four
+  products. It is also what a track listing has always looked like on paper (§5).
+- **The bio is a `bio` / `loreBio` pair**, the same convention as `PATHS` — both faces
+  render this page. The credentials and the process steps stay single: they are
+  inventory, and they read straight either way.
+
+**The bio is the owner's own ACX text, edited and not rewritten.** The source is kept
+verbatim in a comment above it in `narration.js`, so the next edit can see exactly what
+was claimed. Three changes: the three sentences all opened `I have / I am / I have`, so
+the openings vary; **"amateur" is kept but no longer leads**, because a bio that opens
+on its own disclaimer has argued against itself before the first full stop; and a second
+paragraph turns the eleven years of *listening* into the thing they actually qualify him
+for, since the original was entirely about the narrator with nothing in it for the
+author reading it. `PROFILE.tagline` is his ACX line, verbatim and untouched — his own
+line about his own work is not the site's to tune.
+
+**`PROFILE.name` is the full form and `MAKER_NAME` is the familiar one, on purpose.**
+The home page's About copy is the maker talking about himself; a narration credit is
+what a rights holder puts in the front matter. Two registers of one person — so they
+have to stay the same person, and change together or not at all.
+
+**Everything the owner has not actually said is either absent or switched off.** The
+first draft of this page invented a language, an accent list, a voice-age range, a
+studio, a delivery spec, an ACX-compliance claim and a corrections policy — none of
+which appeared in any source. They are gone, and:
+
+- `credentials` is computed from the sample metadata, so it states only what the
+  listing itself demonstrates.
+- The hero's trust row reads the Storyteller's own `points` out of `PATHS` instead of
+  restating them, so the page and the home page's card cannot come to disagree.
+- **The process section is written but gated behind `SHOW_PROCESS = false`.** Same call
+  `SHOW_HOSTED` makes on the Keeper's page: a section describing a working process
+  nobody has agreed to costs more credibility than the gap does. Flip it when the real
+  process is in `PROFILE.process`.
+
+`SAMPLES` now holds the five real entries off the ACX listing — title, work, runtime,
+genre, accent, voice age, style and the owner's performance notes. **The audio itself
+is still to come**, which is the one gap that flags itself: every row currently renders
+"not yet posted". One correction was made in transcription — *Shelly* → **Shelley** —
+because a poet's name is a fact rather than a turn of phrase, and it is the single
+thing on this page a literary producer would certainly catch.
 
 ### The bindrune
 
@@ -476,9 +603,14 @@ template-looking thing on the site.
 **The light face still ships no webfont**, so its typography has to be earned from
 system UI: `text-wrap: balance` on every heading, the tracking tokens, and the ruled
 labels. If the face ever needs more voice than that, a display webfont is the next
-lever — but it reverses the decision that took the CSS bundle down by two thirds
-(it is 18.6 KB, 5.1 KB gzipped, most of it the two faces' token blocks and the
-burn), so price it deliberately rather than reaching for it first.
+lever — but it reverses the decision that took the CSS bundle down by two thirds,
+so price it deliberately rather than reaching for it first.
+
+> The bundle is **43.4 KB, 9.3 KB gzipped** as of `/storyteller`. Earlier revisions of
+> this file said 18.6 KB / 5.1 KB and called it "most of it the two faces' token blocks
+> and the burn"; that stopped being true once the craft pages arrived and brought
+> `Keeper.css`, `Studio.css` and `Storyteller.css` with them — those three are now the
+> larger share. The two faces' token blocks did not grow.
 
 **Neither face carries a `backdrop-filter` any more.** The sticky header used to
 frost its backdrop on both faces — a blur re-resolved on every scroll frame for the
@@ -542,6 +674,7 @@ Both faces re-declare the same token names, so component rules never branch on m
 | `--ember` | `#c2410c` (+ `-line`, `-soft`, `-wash`, `-hover`, `-glow`) | *(unused — mystic overrides `.reveal-cta` wholesale)* |
 | `--violet` / `--glow` | *(light face has neither)* | `122 77 231` / `161 231 245`, as **channel triples** |
 | `--display-font` | system UI stack | Cormorant Garamond |
+| `--body-font` | system UI stack | Cormorant Garamond — mystic sets **both**, so that face is serif throughout and "back to the body font" is not an escape from it |
 | `--radius` / `--radius-sm` | `10px` / `6px` | `0` — every corner squares off |
 | `--lead` | `1.6` | `1.85` |
 | `--tracking-display` | `-0.018em` | `0.012em` |
@@ -1073,6 +1206,29 @@ it cools to violet and offers the way back.
   `App.jsx` now also sets `tabindex="-1"` on every focusable node in the clone and
   strips `contenteditable` outright — otherwise tabbing mid-burn walks into a copy of
   the page that is about to be deleted, and the caret goes with it.
+- **The burn clones the `<audio>` element, and it stays silent only because nothing
+  gives it `autoplay`.** `cloneNode(true)` copies attributes, and `el.src = …` reflects
+  to the `src` attribute, so the clone that lives for 1.8s mid-burn is a fully-formed
+  media element pointing at the same file. It does not play because a media element
+  needs `autoplay` or a `play()` call to start, and the clone gets neither. **Do not add
+  an `autoplay` attribute to the transport** — toggling the face mid-sample would start
+  a second, unstoppable copy of the audio underneath the real one, and `App.jsx`'s
+  inert-ing pass strips `contenteditable` and tabbability but has no reason to know
+  about media.
+- **A range input is painted by the browser unless all three pseudo-elements are
+  overridden.** `appearance: none` on `.sample-scrub` alone still leaves a system
+  slider: the track and thumb need `::-webkit-slider-runnable-track` /
+  `::-webkit-slider-thumb` *and* their `::-moz-` counterparts, and the webkit thumb
+  needs a negative `margin-top` of half its own height less half the track's or it sits
+  on the track's top edge rather than centred on it. Same objection that ruled out
+  `<audio controls>` (§4) — a control the tokens cannot reach reads as another
+  website's.
+- **Sample audio is deploy weight in a way images are not.** Every file in
+  `src/assets/audio/` ships, and a visitor pays for the ones they press. Samples are
+  auditions rather than chapters: a minute or two, 96–128 kbps mono, which is
+  transparent for spoken word. The ACX delivery masters stay in the studio — same rule
+  as `logo.png`. `preload="none"` on the element means nothing is fetched until a play
+  button is actually pressed, so the page costs nothing for a visitor who only reads.
 - **`node_modules/` and `dist/` were committed** for the first several commits. They
   are now untracked via `.gitignore`; the build output is produced on the host.
 
@@ -1142,6 +1298,7 @@ rather than expanding the prose above.
 | [0003](docs/adr/0003-a-route-for-the-keeper.md) | The Keeper gets `/keeper`, served by ~40 lines of history API rather than `react-router`; `PATHS` grows an optional `href`; `useScrollReveal` re-arms per route |
 | [0004](docs/adr/0004-shipped-work-is-evidence-not-a-gallery.md) | Shipped client work is cited as evidence inside each claim, never offered as a reusable look; the API section ships a fictional dataset with a real implementation over it |
 | [0005](docs/adr/0005-site-modes-primitive.md) | Site modes become a primitive owning the bookkeeping and not the look; scope is an element rather than only `<body>`, because the burn needs two faces alive at once; the default value takes no class |
+| [0006](docs/adr/0006-narration-profile-is-mirrored-not-polled.md) | The ACX profile is mirrored into the repo rather than polled — it is behind an Amazon login, sends no CORS headers, and the site has no backend; samples resolve through a glob so a missing file is an unplayable row rather than a build error; the audio transport is hand-built because `<audio controls>` takes no tokens |
 
 ### Open
 
