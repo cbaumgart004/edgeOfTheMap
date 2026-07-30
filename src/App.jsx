@@ -1,4 +1,8 @@
 // App.jsx
+//
+// The shell: the banner plate that is the header, the footer, the burn, and
+// whichever route's page goes between them. The page bodies live in
+// HomePage.jsx and KeeperPage.jsx; everything all three need is in content.js.
 import React, {
   useCallback,
   useEffect,
@@ -10,183 +14,25 @@ import './App.css'
 import Rune from './Rune.jsx'
 import Bindrune from './Bindrune.jsx'
 import SvgDefs from './SvgDefs.jsx'
-import RuneFrame from './RuneFrame.jsx'
-import heroWide from './assets/hero-wide.webp'
-import heroNarrow from './assets/hero-narrow.webp'
-import logoCard from './assets/logo-card.webp'
-import qrCode from './assets/qr_code.png'
+import HomePage from './HomePage.jsx'
+import KeeperPage from './KeeperPage.jsx'
+import { Link, useRoute } from './router.jsx'
+import { useSiteMode } from './useSiteMode.js'
+import {
+  BANNER,
+  BURN_MS,
+  GENERAL_ENQUIRY,
+  PATHS,
+  navHref,
+} from './content.js'
 
-// The full banner plate — the neon wordmark, the dragon, and the bound-rune
-// frieze on one 3.2:1 field. Referenced by path rather than imported because it
-// lives in public/: it is also the social banner, which needs a stable URL that
-// survives a rebuild (see DESIGN §2). That exception is what lets index.html
-// preload it — it is the page's LCP element now, and a hashed bundle name could
-// not be named in static HTML.
-const BANNER = '/banner.webp'
-
-const SITE_URL = 'https://theedgeofthemap.com'
-
-// The visible link label, derived rather than retyped — a domain change used to
-// leave the anchor text pointing at the old host while its href and alt updated.
-const SITE_HOST = new URL(SITE_URL).host
-
-// Single source for every CTA — change here, not in the markup.
-// If the crafts ever want separate inboxes, add an `email` to PATHS and fall
-// back to this one.
-const CONTACT_EMAIL = 'keeper@theedgeofthemap.com'
-
-// TODO(confirm): inferred from the repo owner. Change here, not in the copy.
-const MAKER_NAME = 'Chris Baumgart'
-
-// Drives both the unmount timer below and the mask animation in CSS, which
-// reads it as --burn-dur. Changing it here changes both.
-const BURN_MS = 1800
-
-// One brand, three crafts. Kept as data so a fourth path — or splitting one
-// out to its own route later — is an edit here, not a layout rewrite.
-//
-// `blurb` is the light face: plain, professional, no atmosphere. `loreBlurb`
-// is the mystic face, in the same voice as AboutLore. Two fields rather than
-// one because the cards render in both faces, and letting the mystic copy
-// through to daylight is exactly the leak §5 of DESIGN.md warns about.
-const PATHS = [
-  {
-    id: 'keeper',
-    rune: 'othala',
-    title: 'Web & Systems',
-    persona: 'The Keeper',
-    blurb:
-      'Web applications you own outright — your data exportable on demand, a real API behind it, and full control of your own content.',
-    loreBlurb:
-      'A system is an idea that someone has to keep. It will outlive the immediate, the budget, and probably me, and one day a stranger will open it and have to understand it. I build for that stranger.',
-    points: [
-      'Your data, yours to export',
-      'Robust, documented API access',
-      'Template starts, then edit inline',
-    ],
-    cta: 'Start a project',
-    subject: 'Project enquiry — Web & Systems',
-  },
-  {
-    id: 'storyteller',
-    rune: 'ansuz',
-    title: 'Audio Narration',
-    persona: 'The Storyteller',
-    blurb:
-      'Audiobook narration made in collaboration with the author — characters voiced as faithfully to your original intent as I can get them.',
-    loreBlurb:
-      'A story is only ink until someone says it aloud. And then it is a voice in a stranger’s ear, in the car, in the dark, over the dishes, for hours. I say it aloud.',
-    points: [
-      'Author-led character work',
-      'Audiobook and commercial VO',
-      'Studio-quality delivery',
-    ],
-    cta: 'Request a demo',
-    subject: 'Booking enquiry — Audio Narration',
-  },
-  {
-    id: 'wright',
-    rune: 'berkano',
-    title: 'Woodworking',
-    persona: 'The Wright',
-    blurb:
-      'Commissioned fine woodwork decor and accessories, cut and joined by hand for the room it will live in.',
-    loreBlurb:
-      'This was a tree once, and it was reaching for something the whole time it stood. It is still reaching. I shape it by hand into the thing it was already becoming, and it will hold long after the room it was made for is gone.',
-    points: ['Bespoke Decor', 'Hardwood joinery', 'Finish and restoration'],
-    cta: 'Discuss a commission',
-    subject: 'Commission enquiry — Woodworking',
-  },
-]
-
-const mailto = (subject) =>
-  `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
-
-// The one subject line that isn't path-specific, and so the only one that could
-// drift: it was typed out at four call sites, and editing three of four splits
-// inbound mail into two differently-named threads with nothing visible on the
-// page to show it. Per-path subjects live in PATHS.subject.
-const GENERAL_ENQUIRY = mailto('Enquiry — Edge of the Map')
-
-/* The one place the two faces diverge in *content* rather than styling.
-   Everything else on the page is the same markup re-themed; here the mode
-   genuinely changes what is said. The professional face earns trust, the
-   mystic face rewards the visitor who pulled the thread. */
-
-function AboutProfessional() {
-  return (
-    <>
-      <h2>One workshop, three trades.</h2>
-      <p>
-        I&rsquo;m {MAKER_NAME}. I run Edge of the Map LLC on my own: I build
-        software, I narrate audiobooks, and I make furniture.
-      </p>
-      <p>
-        That combination raises an eyebrow, and it should. So here is the honest
-        version — they are not secretly the same craft. What they share is how
-        the work gets done. You describe what you need, and the person you spoke
-        to is the person who builds it. No account layer, no handoff, no junior
-        picking it up on Thursday.
-      </p>
-      <p>
-        The other thing they share is a time horizon. A table outlives the room
-        it was bought for. A narration sits in someone&rsquo;s ears for eleven
-        hours. A system gets inherited by whoever comes next. I would rather
-        make things that survive contact with that.
-      </p>
-    </>
-  )
-}
-
-function AboutLore() {
-  return (
-    <>
-      <h2>Every story starts at the beginning.</h2>
-      <p>With the exception of those that don&rsquo;t.</p>
-      <p className="lore-lede">
-        There are three branches here, and they look like three different
-        things, and people tell me so. They sprout from a single trunk. A
-        website is an idea, or an amalgam of ideas, and every one of them must
-        start somewhere. Every narration is a tale from start to end. Every
-        finished piece of woodwork first was a seedling, sprouted, grew, and was
-        shaped. All of it born of star stuff.
-      </p>
-      <p>
-        And the wood remembers. It remembers every year it stood and every dry
-        summer, and it will tell you so in the grain, and it will fight you if
-        you do not read it. And the story remembers too, because someone dreamed
-        it once, and someone must say it aloud, or it stays ink. And the system
-        remembers longest of all. Someone will inherit it. Someone I will never
-        meet will open it at two in the morning and either bless me or curse me,
-        and I will never know which.
-      </p>
-      <p>So I shape. And I tell. And I keep.</p>
-      <p>
-        The runes were not chosen for their shapes. Othala, the homestead you
-        keep. Ansuz, the breath that carries a word. Berkano, the birch, which
-        is to say growth, and very literally growth in wood itself. Three branches, one trunk. I did
-        not choose them. But they are here, and they have spoken.
-      </p>
-      <p>
-        Each of these branches shares in common one single thing. Wonder.
-      </p>
-      <p>
-        That is the whole of it. Not the wood, not the code, not the voice. The
-        held breath before a thing exists, and the smaller one after. I have
-        chased it into all three trades and found it waiting in each, patient,
-        and entirely unwilling to explain itself.
-      </p>
-      <p>
-        We are the keepers of wonder. A shaper of stories, a teller of tales, a
-        dreamer of dreams.
-      </p>
-      <p>
-        They told me the map ended here. It does not end. It is only where
-        someone else stopped drawing.
-      </p>
-    </>
-  )
-}
+/** The site's one mode axis. **The values are the class names**, not semantic
+ *  labels the hook maps to classes: `mystic-mode` is written into ~40 selectors
+ *  across two stylesheets and into most of DESIGN.md, and renaming it to suit a
+ *  refactor that is supposed to change no behaviour is a bad trade.
+ *
+ *  `light` is first, so it is the null case and gets no class at all. */
+const FACES = ['light', 'mystic-mode']
 
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -210,8 +56,16 @@ const prefersReducedMotion = () =>
  *  A **layout** effect, not an effect: `useEffect` runs after the browser paints,
  *  so the gate would arm a frame late and anything above the fold would flash in
  *  and then blink out before fading back. Arming before first paint is the whole
- *  reason the gate is affordable. */
-function useScrollReveal() {
+ *  reason the gate is affordable.
+ *
+ *  **It re-arms per route, and that dependency is load-bearing.** The observer
+ *  unobserves each element as it fires, so it is spent once used; the gate,
+ *  though, is a class on `<html>` that outlives the page under it. Left as a
+ *  mount-only effect, navigating to a second route would leave `.reveal-ready`
+ *  set with an observer watching nodes that no longer exist — every section of
+ *  the new page hidden at `opacity: 0` with nothing left to reveal it. That is
+ *  the same failure DESIGN.md §6 records, arrived at from a new direction. */
+function useScrollReveal(route) {
   useLayoutEffect(() => {
     const root = document.documentElement
     const els = document.querySelectorAll('[data-reveal]')
@@ -244,11 +98,55 @@ function useScrollReveal() {
       io.disconnect()
       root.classList.remove('reveal-ready')
     }
-  }, [])
+  }, [route])
+}
+
+/** Puts a new route at the top, or at the fragment it was asked for.
+ *
+ *  A browser restores scroll position across a `pushState`, which is right for
+ *  back/forward and wrong for a link click: arriving at `/keeper` two thirds of
+ *  the way down is disorienting in a way no visitor blames on the router.
+ *
+ *  Same-document fragment links never reach here — `Link` leaves those to the
+ *  browser — so the hash branch is for the cross-page case only, plus a deep
+ *  link opened cold. `scrollIntoView` rather than an offset calculation because
+ *  the targets already carry `scroll-margin-top: var(--header-h)`, which is the
+ *  one thing keeping anchors out from under the sticky plate. */
+function useRouteScroll(route) {
+  useLayoutEffect(() => {
+    const hash = window.location.hash.slice(1)
+    const target = hash ? document.getElementById(hash) : null
+
+    // `behavior: 'instant'` explicitly, because `html { scroll-behavior: smooth }`
+    // otherwise animates this. Smooth is right for a fragment link *within* a page
+    // — it shows you where you were carried from. Across a route it animates
+    // through content that has already been replaced, which reads as a glitch.
+    if (target) target.scrollIntoView({ behavior: 'instant' })
+    else window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [route])
 }
 
 function App() {
-  const [isMystic, setIsMystic] = useState(false)
+  const route = useRoute()
+
+  // The face axis. `light` is first, so it is the null case and takes no class —
+  // the light tokens are the bare `:root, .face` block and mystic is the
+  // override on top. `body: true` writes to <body> because mystic repaints the
+  // whole viewport, gutters included; `face.className` is written to the wrapper
+  // as well, which is what lets the burn's detached clone hold the *opposite*
+  // face. See useSiteMode's header and DESIGN.md §3.
+  //
+  // `persistence: 'none'` is deliberate, not a default left unconsidered: a
+  // restored mode has to be applied before first paint or it flashes, and this
+  // site has no build-time bake and no paint gate to hang that on. Recorded as
+  // an open question in ADR 0005.
+  const face = useSiteMode({
+    name: 'face',
+    values: FACES,
+    persistence: 'none',
+  })
+  const isMystic = face.value === 'mystic-mode'
+
   // The burn holds a *clone of the outgoing page*, captured at the moment of
   // the toggle. The clone keeps the old face because `.face` re-declares the
   // theme tokens, so it renders in the outgoing world while the live wrapper
@@ -258,13 +156,8 @@ function App() {
   const faceRef = useRef(null)
   const sheetRef = useRef(null)
 
-  useScrollReveal()
-
-  // Mystic mode themes the whole page, not just the centred container,
-  // so the class lives on <body>.
-  useEffect(() => {
-    document.body.classList.toggle('mystic-mode', isMystic)
-  }, [isMystic])
+  useScrollReveal(route)
+  useRouteScroll(route)
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
@@ -278,18 +171,31 @@ function App() {
   const toggleMystic = useCallback(() => {
     if (burn) return // already mid-transition
 
-    const face = faceRef.current
-    if (prefersReducedMotion() || !face) {
-      setIsMystic((prev) => !prev)
+    // `faceEl`, not `face` — the hook above owns that name now, and shadowing it
+    // here would silently call `cloneNode` on the mode object and `toggle` on a
+    // DOM element.
+    const faceEl = faceRef.current
+    if (prefersReducedMotion() || !faceEl) {
+      face.toggle()
       return
     }
 
-    const clone = face.cloneNode(true)
+    const clone = faceEl.cloneNode(true)
     clone.classList.add('burn-page')
     clone.setAttribute('aria-hidden', 'true')
     // Duplicate ids would briefly shadow the real ones for anchor links.
     clone.removeAttribute('id')
     clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'))
+    // Nothing in a clone is reachable, and the clone outlives the tab order for
+    // 1.8s. Without this, tabbing mid-burn walks into a copy of the page that is
+    // about to be deleted — including the demo's contentEditable fields, which
+    // are focusable and would take the caret out of the real document.
+    clone
+      .querySelectorAll('a, button, input, textarea, select, [contenteditable]')
+      .forEach((n) => {
+        n.setAttribute('tabindex', '-1')
+        n.removeAttribute('contenteditable')
+      })
 
     // The sticky header needs no JS: it stays in flow (moving it out shifts
     // everything below it up by its own height) and CSS retargets its sticky
@@ -298,7 +204,7 @@ function App() {
       clone,
       lit: false,
       scrollY: window.scrollY,
-      width: face.offsetWidth,
+      width: faceEl.offsetWidth,
     })
 
     // Let the clone paint before the theme underneath changes, then start the
@@ -309,12 +215,12 @@ function App() {
     // the whole session.
     timers.current = [
       setTimeout(() => {
-        setIsMystic((prev) => !prev)
+        face.toggle()
         setBurn((b) => (b ? { ...b, lit: true } : b))
       }, 60),
       setTimeout(() => setBurn(null), BURN_MS + 260),
     ]
-  }, [burn])
+  }, [burn, face])
 
   const toggleLabel = isMystic ? 'Return to the Known' : 'Reveal the Mystery'
 
@@ -365,7 +271,11 @@ function App() {
         </div>
       )}
 
-      <div className={`face ${isMystic ? 'mystic-mode' : ''}`} ref={faceRef}>
+      {/* `face.className` rather than a ternary: the hook owns the mapping from
+          value to class, and this wrapper is the whole reason it can write to an
+          element instead of only to <body> — the burn's clone carries a bare
+          `.face` and so resolves the *outgoing* tokens. See ADR 0005. */}
+      <div className={`face ${face.className}`} ref={faceRef}>
       {/* The plate *is* the header. The nav and the controls are laid over the
           artwork above its bound-rune frieze, and the plate's own neon wordmark
           is the brand — so the compact signature mark and the "Edge of the Map"
@@ -375,7 +285,15 @@ function App() {
           above the fold, so it is the LCP element, and index.html preloads it by
           the same stable URL. */}
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="Edge of the Map LLC — back to top">
+        {/* `/#top` rather than `#top`: the header renders on every route, and a
+            bare fragment from /keeper would look for an anchor on the page it is
+            already on. Both pages carry id="top", so this is a scroll at home
+            and a route change from anywhere else. */}
+        <Link
+          className="brand"
+          href="/#top"
+          aria-label="Edge of the Map LLC — back to top"
+        >
           <img
             className="masthead-plate"
             src={BANNER}
@@ -385,7 +303,7 @@ function App() {
             fetchPriority="high"
             decoding="async"
           />
-        </a>
+        </Link>
 
         <div className="header-bar">
           {/* The nav wears the same button as Contact rather than a nav-link
@@ -394,17 +312,18 @@ function App() {
               accent tokens so `.btn-primary` resolves to the plate's neon. */}
           <nav className="site-nav" aria-label="Sections">
             {PATHS.map((path) => (
-              <a
+              <Link
                 key={path.id}
                 className="btn btn-primary btn-sm"
-                href={`#${path.id}`}
+                href={navHref(path)}
+                aria-current={route === path.href ? 'page' : undefined}
               >
                 {path.title}
-              </a>
+              </Link>
             ))}
-            <a className="btn btn-primary btn-sm" href="#about">
+            <Link className="btn btn-primary btn-sm" href="/#about">
               {isMystic ? 'Lore' : 'About'}
-            </a>
+            </Link>
           </nav>
 
           <div className="header-actions">
@@ -424,197 +343,15 @@ function App() {
         </div>
       </header>
 
-      <main id="top">
-        <section className="hero">
-          {/* Only lit in mystic mode — the default face is a clean light page.
-              It stays in the document rather than mounting on toggle, because
-              the burn clones the outgoing page and a plate that appears with
-              the flip would pop in behind the tear instead of being revealed
-              by it. It is, though, explicitly deprioritised: every visitor
-              fetches and decodes it, and most never toggle, so it must not
-              compete with the hero card for bandwidth on first paint. */}
-          <div className="hero-media" aria-hidden="true">
-            <img
-              className="hero-image"
-              src={heroWide}
-              srcSet={`${heroNarrow} 960w, ${heroWide} 1536w`}
-              sizes="100vw"
-              alt=""
-              fetchPriority="low"
-              decoding="async"
-            />
-            <div className="hero-scrim" />
-          </div>
-
-          <div className="hero-inner">
-            <div className="hero-copy">
-              {/* The section's title line, with the signature interaction set
-                  against it on the right. The pill reads as the answer to the
-                  brand line rather than as one more button under the CTAs, and
-                  the pairing costs the hero a row instead of adding one. */}
-              <div className="hero-head">
-                <p className="eyebrow">Edge of the Map LLC</p>
-                <button
-                  className="reveal-cta"
-                  onClick={toggleMystic}
-                  aria-pressed={isMystic}
-                >
-                  <span className="reveal-cta-rune" aria-hidden="true">
-                    <Rune name="raido" />
-                  </span>
-                  <span className="reveal-cta-text">
-                    <strong>{toggleLabel}</strong>
-                    <small>
-                      {isMystic
-                        ? 'Put out the fire and return to daylight'
-                        : 'Burn the map away and see what lies beneath'}
-                    </small>
-                  </span>
-                </button>
-              </div>
-              <h1>
-                Narration, software, and woodwork — from one workshop.
-              </h1>
-              <p className="hero-sub">
-                A single practitioner across three disciplines. Clear scope, direct
-                communication, and work that outlasts the brief.
-              </p>
-
-              <div className="hero-actions">
-                <a className="btn btn-primary" href={GENERAL_ENQUIRY}>
-                  Start a conversation
-                </a>
-                <a className="btn btn-ghost" href="#services">
-                  Explore services
-                </a>
-              </div>
-
-              <ul className="hero-trust">
-                {PATHS.map((path) => (
-                  <li key={path.id}>
-                    <Rune name={path.rune} />
-                    {path.title}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* The logo card sits here rather than in the hero. With the banner
-            plate directly above it, the hero was showing the wordmark twice
-            above the fold; down here the card is the section's visual and the
-            only place the full logo appears in the page body.
-
-            className stays a constant string — see the note on .about below. */}
-        <section className="services" id="services">
-          <div className="section-head services-head" data-reveal>
-            <div className="services-head-copy">
-              <p className="eyebrow">Services</p>
-              <h2>Three disciplines, one point of contact.</h2>
-              <p className="section-sub">
-                Every engagement runs through the same person from first call to
-                handover — no account layer, no handoffs.
-              </p>
-            </div>
-
-            <div className="services-visual">
-              <img
-                src={logoCard}
-                alt="Edge of the Map LLC"
-                width="800"
-                height="533"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          </div>
-
-          {/* --reveal-index carries only the index — the stagger interval is
-              pace, and pace is a token here, so CSS multiplies it by
-              --reveal-step. As a `${i * 80}ms` literal the cascade was stuck at
-              the light face's rhythm and could not slow with the mystic face. */}
-          <div className="cards">
-            {PATHS.map((path, i) => (
-              <article
-                key={path.id}
-                id={path.id}
-                className="card"
-                data-reveal
-                style={{ '--reveal-index': i }}
-              >
-                {isMystic && <RuneFrame />}
-                <span className="card-icon">
-                  <Rune name={path.rune} />
-                </span>
-                <p className="card-persona">{path.persona}</p>
-                <h3>{path.title}</h3>
-                <p className="card-blurb">
-                  {isMystic ? path.loreBlurb : path.blurb}
-                </p>
-                <ul className="card-points">
-                  {path.points.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-                <a className="card-link" href={mailto(path.subject)}>
-                  {path.cta}
-                  <span aria-hidden="true">→</span>
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* className must stay a constant string. useScrollReveal adds
-            `is-visible` imperatively and then unobserves the element, so any
-            React-computed className here would wipe that class on the next
-            mode toggle and strand the section at opacity 0 forever. The lore
-            styling keys off body.mystic-mode instead. */}
-        <section className="about" id="about" data-reveal>
-          <div className="about-inner">
-            <p className="eyebrow">{isMystic ? 'Lore' : 'About'}</p>
-            {isMystic ? <AboutLore /> : <AboutProfessional />}
-          </div>
-        </section>
-
-        <section className="cta-band" data-reveal>
-          <div className="cta-band-inner">
-            <div>
-              <h2>Start where the map ends.</h2>
-              <p>
-                Tell me what you are building, recording, or commissioning —
-                whichever path brought you here.
-              </p>
-            </div>
-            <a className="btn btn-primary btn-lg" href={GENERAL_ENQUIRY}>
-              {CONTACT_EMAIL}
-            </a>
-          </div>
-        </section>
-
-        <section className="qr-section" data-reveal>
-          <div className="qr-card">
-            <div className="qr-copy">
-              <p className="eyebrow">Carry the map</p>
-              <h2>Keep this page in your pocket.</h2>
-              <p>
-                Scan the code, or visit <a href={SITE_URL}>{SITE_HOST}</a>.
-              </p>
-            </div>
-            <a href={SITE_URL} className="qr-link">
-              <img
-                src={qrCode}
-                alt={`QR code linking to ${SITE_URL}`}
-                width="500"
-                height="750"
-                className="qr-code"
-                loading="lazy"
-              />
-            </a>
-          </div>
-        </section>
-      </main>
+      {route === '/keeper' ? (
+        <KeeperPage isMystic={isMystic} />
+      ) : (
+        <HomePage
+          isMystic={isMystic}
+          toggleMystic={toggleMystic}
+          toggleLabel={toggleLabel}
+        />
+      )}
 
       <footer className="site-footer">
         {/* The same plate that opens the page, closing it — full width, so the
@@ -635,9 +372,9 @@ function App() {
         <div className="footer-inner">
           <nav className="footer-nav" aria-label="Footer">
             {PATHS.map((path) => (
-              <a key={path.id} href={`#${path.id}`}>
+              <Link key={path.id} href={navHref(path)}>
                 {path.title}
-              </a>
+              </Link>
             ))}
             <a href={GENERAL_ENQUIRY}>Contact</a>
           </nav>

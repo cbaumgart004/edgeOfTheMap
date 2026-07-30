@@ -1,8 +1,9 @@
 # Edge of the Map — Design Map
 
-A single-page marketing site for **Edge of the Map LLC**, a two-sided personal brand:
-**The Keeper** (full-stack development, systems design) and **The Storyteller**
-(audiobook narration, voice artistry).
+A marketing site for **Edge of the Map LLC**, a one-person, three-craft brand:
+**The Keeper** (web, systems, hosting), **The Storyteller** (audiobook narration and
+voice), and **The Wright** (woodworking). One home page, plus `/keeper` — the one
+craft with more to say than a card holds (§4).
 
 This file is a *map*, not a spec. It should stay short enough to read in one sitting.
 
@@ -17,7 +18,7 @@ This file is a *map*, not a spec. It should stay short enough to read in one sit
 | Language | Plain JSX — no TypeScript |
 | Styling | Hand-written CSS with custom properties. No framework, no CSS modules. |
 | Fonts | `@fontsource/cormorant-garamond` only, and only its `latin-` subsets — self-hosted, bundled. Mystic face only; see §5. |
-| Routing | None — one page |
+| Routing | Two routes (`/`, `/keeper`), on ~40 lines of history API. No router dependency — [ADR 0003](docs/adr/0003-a-route-for-the-keeper.md) |
 | State | `useState` in `App.jsx`. No store, no context. |
 | Tests | None |
 
@@ -40,22 +41,37 @@ railway.json            Railway build command + output dir.
 
 src/
   main.jsx              React root (StrictMode). Imports the font faces → <App />
-  App.jsx               The whole UI + the PATHS table (§4).
+  App.jsx               The shell: the plate/header, the footer, the burn, and
+                        the route switch. No page body of its own.
+  content.js            Every value the shell and both pages must agree on —
+                        the PATHS table (§4), the contact address, BURN_MS.
+  router.jsx            useRoute, navigate, Link. Two routes, no dependency.
+  HomePage.jsx          `/` — the hero, services, About/Lore, CTA, QR.
+  KeeperPage.jsx        `/keeper` — the Web & Systems pitch (§4).
+  demoApi.js            A fictional practice's dataset, and a real API over it —
+                        pagination, error codes, a transactional write (§4).
+  ApiConsole.jsx        The panel that fires those requests for real (§4).
+  StudioDemo.jsx        The three-axis chooser, working: structure, per-role
+                        type, colour, live preview (§4).
+  Studio.css            /keeper only. Two halves — controls on the page's own
+                        tokens, preview sealed behind --sd-* (§4).
   App.css               Theme tokens, both faces, layout, the burn.
+  Keeper.css            /keeper only. Reads App.css's tokens, reuses its
+                        classes; holds the shapes that page alone needs.
   Rune.jsx              Elder Futhark glyphs as SVG (§4). Exports RUNE_NAMES.
   Bindrune.jsx          The maker's bindrune — seven runes on one stave (§4).
   RuneFrame.jsx         Inscribed rune border for mystic cards (§5).
   SvgDefs.jsx           Shared SVG filters: #burn-displace, #driftwood (§5).
   index.css             Reset: zero margins, full-height root, border-box.
   assets/
-    logo-card.webp      Hero logo card, 800×533 (58 KB). Imported by App.jsx.
-    hero-wide.webp      Mystic plate, 1536×792 (154 KB). Imported by App.jsx.
+    logo-card.webp      Hero logo card, 800×533 (58 KB). Imported by HomePage.
+    hero-wide.webp      Mystic plate, 1536×792 (154 KB). Imported by HomePage.
     hero-narrow.webp    Mystic plate, 960×495 (54 KB). srcSet partner.
     logo_signature.png  The old compact header/footer mark (67 KB). No longer
                         imported — the banner plate carries the wordmark in both
                         places now, so this is not emitted at all. See §6.
     logo.png            Full-resolution master (2.3 MB). Not imported — see §6.
-    qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by App.jsx.
+    qr_code.png         The QR actually shipped (99 KB, 500×750). Imported by HomePage.
     QR_Complete.png     Full-resolution master (2 MB). Not imported — see §6.
 ```
 
@@ -66,7 +82,7 @@ the bundle rebuilt. Everything else is imported through the bundler so it gets
 hashed and cache-busted. Add to `public/` only when a URL has to survive a rebuild.
 
 `banner.webp` now earns that exception twice. **It is the header** and the closing
-plate (§5), referenced from `App.jsx` as `/banner.webp` rather than imported — and
+plate (§5), referenced from `content.js` as `/banner.webp` rather than imported — and
 because that URL is stable and unhashed, `index.html` can name it in a
 `<link rel="preload" as="image">`. It is the page's LCP element, the page is
 client-rendered, and a bundled name could not be written into static HTML; that is
@@ -76,31 +92,58 @@ the whole of why the old preload problem is gone.
 
 ## 3. Runtime architecture
 
-One component, three small hooks, no store.
+A shell, two pages, four small hooks, no store.
 
 ```
-main.jsx  ──renders──>  App
+main.jsx  ──renders──>  App  (the shell: plate/header, footer, burn)
                          │
+                         ├─ useRoute()         → '/' | '/keeper', from history
                          ├─ useState: isMystic
                          │    └─ useEffect: body.classList.toggle('mystic-mode', …)
                          ├─ useState: burn     → the outgoing page's clone (§5)
-                         └─ useScrollReveal()  → IntersectionObserver adds .is-visible
-                                                  to every [data-reveal]
+                         ├─ useScrollReveal(route) → IntersectionObserver adds
+                         │                            .is-visible to [data-reveal]
+                         ├─ useRouteScroll(route)  → top, or the named fragment
+                         │
+                         └─ route === '/keeper' ? <KeeperPage> : <HomePage>
 ```
 
-**There are no scroll or resize handlers anywhere.** The header is plain CSS
-`position: sticky`; the only `window` reads in the whole app are `matchMedia` and
-one `window.scrollY` at the moment of a toggle. Don't come here looking for a
+**The router is ~40 lines and owns less than it looks like it does.**
+`history.pushState` does not fire `popstate`, so `navigate` synthesises the event
+— which leaves exactly one listener serving both the back button and every link.
+`Link` renders a real anchor and only calls `preventDefault` when it is going to
+handle the click itself, so modified clicks, "open in new tab" and "copy link
+address" all behave normally, and a crawler running no JS still finds `/keeper`.
+**Same-document fragment links are handed to the browser deliberately** — native
+fragment navigation honours `scroll-margin-top` and scrolls again on a repeat
+click, neither of which survives being routed through `pushState`. See
+[ADR 0003](docs/adr/0003-a-route-for-the-keeper.md) for why this is not
+`react-router`.
+
+**`useScrollReveal` takes `route` as a dependency, and that is load-bearing.**
+Its observer unobserves each element as it fires, so it is spent once used; the
+`.reveal-ready` gate it arms is a class on `<html>` that outlives the page under
+it. Mount-only, a navigation would leave the gate set with the observer watching
+unmounted nodes — every section of the new page stranded at `opacity: 0`. That
+is the §6 catastrophic mode reached from a third direction. **Any change to how
+pages mount has to be checked against that gate.**
+
+**There are still no scroll or resize handlers anywhere.** The header is plain CSS
+`position: sticky`; the app's only `window` listener is the router's `popstate`, and
+its only reads are `matchMedia`, `window.location`, and one `window.scrollY` at the
+moment of a toggle. Routing did not change that and should not. Don't come here looking for a
 scroll hot path — earlier revisions of this file described a `usePastHero()` hook
 that pinned the header past 65% of the hero, and it does not exist.
 
-`App` renders a fixed structure: a sticky `.site-header` which **is** the banner
-plate, with the nav and controls laid over it (§5); a single-column `.hero` (copy only
-— the dark plate behind it is lit in mystic mode alone); `.services`, whose head is a
-row of description and the logo card, over one `.card` per entry in the `PATHS` table;
-a `.cta-band`; `.qr-section`; and the footer, which opens on the same plate at full
-width. Nothing is fetched, nothing is persisted, there are no routes; the nav is
-same-page anchors.
+`App` renders a fixed frame around a swappable middle: a sticky `.site-header`
+which **is** the banner plate, with the nav and controls laid over it (§5); the
+route's page; and the footer, which opens on the same plate at full width.
+`HomePage` is a single-column `.hero` (copy only — the dark plate behind it is lit
+in mystic mode alone), then `.services`, whose head is a row of description and the
+logo card, over one `.card` per entry in the `PATHS` table, then `.about`, a
+`.cta-band` and `.qr-section`. `KeeperPage` is described in §4. Nothing is fetched
+and nothing is persisted; the nav is root-relative links, which are same-page
+anchors from home and route changes from anywhere else.
 
 **Where the mode class lives.** It goes on **both** `<body>` and a `.face` wrapper
 around the whole page, and the token block is declared for both
@@ -115,23 +158,74 @@ ancestor, so a clone with a bare `.face` renders light even while sitting inside
 `.mystic-mode .foo` — the looser form would match through the body class and drag the
 clone into the new face with it.
 
+### Site modes
+
+**A site mode is a named axis of presentation that reskins the whole page**, and it is
+a recurring shape across this workshop rather than a thing this site invented. Three
+sites ship one and each had re-derived it: the light ⇄ mystic faces here, Live Spirit
+Seeds' season × UX-style (four palettes crossed with four structures), and StoryShaped
+Studios' daylight ⇄ blacklight. They look nothing alike and are the same three steps
+underneath — **read an initial value, write it to the DOM, persist it** — differing
+only in where the value is kept.
+
+`useSiteMode.js` is that shape extracted. It is deliberately small: the interesting
+part of a mode is its CSS, and a primitive that owned the CSS would be worse than the
+duplication it replaced. What it owns is the bookkeeping all three got differently.
+
+Four rules it encodes, all of them earned:
+
+- **The value list is declared once**, and derives the validator, the classes to strip,
+  and the cycle order. `FACES` in `App.jsx` is that list here.
+- **The first value is the null case and takes no class.** Light is the bare
+  `:root, .face` block; mystic is the override. Live Spirit Seeds arrived at the same
+  answer independently — its `body.style-watercolor` deliberately matches nothing.
+  Writing a class for the default invites a second source of truth for "normal".
+- **Scope can be an element, not only `<body>`** — the rule the burn depends on
+  entirely, and the one a body-only primitive would have foreclosed.
+- **Persistence is an explicit choice.** This site uses `none`, which is why mystic
+  does not survive a reload and cannot be shared by URL. Persisting means restoring
+  before first paint, which means a flash to solve; see
+  [ADR 0005](docs/adr/0005-site-modes-primitive.md) for the two known-good answers and
+  why neither is wired up here yet.
+
+Two things it deliberately does not do. **Assets**: tokens cannot recolour a JPEG, and
+each of the three sites answered that differently enough that there is nothing to
+extract — only a question every mode must answer. **Transitions**: the burn is this
+site's business, and so is how it degrades under reduced motion.
+
+`values` here are the class names (`['light', 'mystic-mode']`) rather than semantic
+labels, because `mystic-mode` appears in ~40 selectors across two stylesheets and
+throughout this file. Renaming it to please a refactor that changes no behaviour is a
+bad trade.
+
 ---
 
 ## 4. Domain model
 
 The site expresses one idea: a single practitioner, three crafts. Each craft is a
-**path**, defined by an entry in the `PATHS` array in `App.jsx` — adding a fourth,
-or later splitting one onto its own route, is an edit to that table rather than a
-layout rewrite.
+**path**, defined by an entry in the `PATHS` array in `content.js` — adding a
+fourth, or splitting one onto its own route, is an edit to that table rather than a
+layout rewrite. (It was in `App.jsx` until the Keeper got a page; the shell and both
+pages read it, and three copies would have drifted.)
 
 Each entry carries both faces' copy — `blurb` and `loreBlurb` (§5) — alongside its
-rune, CTA and subject line.
+rune, CTA, subject line, and an **optional `href`**: the page of its own, if it has
+one. That field is how the split anticipated above actually happens — the Storyteller
+earns a page by gaining an `href` here, and nothing else changes.
 
-| Path | Discipline | Rune | Accent | CTA |
+| Path | Discipline | Rune | Page | CTA |
 | --- | --- | --- | --- | --- |
-| The Keeper | Web & Systems | Othala ᛟ | `--accent-keeper` | Build with Me |
-| The Storyteller | Audio Narration | Ansuz ᚨ | `--accent-storyteller` | Speak with Me |
-| The Wright | Woodworking | Berkano ᛒ | `--accent-wright` | Make with Me |
+| The Keeper | Web & Systems | Othala ᛟ | `/keeper` | See what I build |
+| The Storyteller | Audio Narration | Ansuz ᚨ | *(card only)* | Request a demo |
+| The Wright | Woodworking | Berkano ᛒ | *(card only)* | Discuss a commission |
+
+**Two link helpers, because the nav and the cards do not want the same target.**
+`navHref` sends you to a path's page if it has one and to its card on the home page
+otherwise — root-relative (`/#storyteller`, never `#storyteller`), because the nav
+renders on every route and a bare fragment from `/keeper` looks for an anchor that
+is not there. `cardHref` sends you to the page if there is one and opens a
+discipline-filed enquiry if there is not: a card with nothing more to read should ask
+for the work rather than scroll you to itself.
 
 **Why one site and not three.** The brand is the umbrella and the tagline already
 names the crafts. Three domains would split SEO authority, triple maintenance, and
@@ -139,6 +233,11 @@ leave each thin. The audiences genuinely differ — publishers and authors are n
 furniture commissioners — but that is a job for distinct sections or routes inside
 one site. It is also the reversible direction: splitting later is easy, merging is
 not. If woodworking ever needs a storefront, it earns a subdomain then.
+
+`/keeper` is the first exercise of that plan's own escape hatch — "distinct sections
+or routes inside one site" — and it does not weaken the argument above, which is
+about **domains**. One site, one brand, one SEO surface; the audience that differs
+gets a route, not a registrar.
 
 That claim holds **structurally** — `PATHS` drives the nav, the hero trust row, the
 cards and the footer nav, and `.cards` is `auto-fit` so a fourth reflows without a
@@ -159,6 +258,101 @@ speech and the spoken word. Berkano is the birch — growth, and literally wood.
 A fourth rune sits outside the `PATHS` table: **Raidō (ᚱ), the journey**, reserved
 for the mode toggle — the control that carries you between the site's two worlds
 rather than describing a craft.
+
+### The Keeper's page (`/keeper`)
+
+The card is the one-line version; this is the argument. Nine sections, in the order
+a hosted site-builder's marketing page uses — value proposition, the
+differentiator, capabilities with something to look at, a layout gallery, a
+vertical page for one trade, proof, closing ask — because visitors already know how
+to read that shape. **What is not borrowed is the grammar**: no gradient hero, no
+floating drop-shadow cards. §5 threw those out, and a comparison table set in ruled
+printed matter is more at home on this face than it would be on theirs.
+
+- **Ownership is the wedge**, and it is a `<table>` because "your data is your own"
+  means nothing without a column beside it. **The right-hand column names no
+  competitor and must not start to** — it describes the common shape of hosted
+  page-builders, which is defensible; naming a company turns each row into a claim
+  about a product whose terms change next quarter, with nobody watching.
+- **Live editing is demonstrated, not described.** Two real `contentEditable`
+  fields, uncontrolled on purpose: their text children are constant strings, so
+  React never writes to those nodes after mount and typing survives a mode toggle.
+  Wiring them to state would fight the caret for nothing — none of it is persisted.
+- **The API section is a working console, not a code block.** `demoApi.js` holds
+  an invented dataset for a fictional practice and **implements** the endpoints
+  over it — cursor pagination, a 404 that says what to do next, and a write that
+  moves a product, draws down every component its bill of materials links to,
+  reports anything that crossed a low-stock threshold, and refuses the lot if any
+  part of it cannot be applied. Responses are computed on press. The write mutates
+  module state, so repeated presses really deplete stock; `resetDemo()` reseeds.
+  **The dataset is fictional on purpose** — the claim is demonstrated without a
+  client's records being anywhere near the page. Seed values are tuned so the
+  behaviour is reachable: calendula starts *above* its threshold so the crossing
+  can actually fire, and the product runs out on the fifth press so the 409 is
+  reachable too. Changing those numbers can silently make a feature undemonstrable.
+- **The chooser is a working demo, not a mockup** (`StudioDemo.jsx`). Three
+  structures, a face per text role, three colours, rendered live.
+  **The three structures are separate DOM trees, not one skeleton with
+  modifiers**, and that is the whole point of the section: what a customer picks
+  is *element placement*, not paint. The hero has no image / an image beside the
+  copy / the copy inside the image; the masthead is brand-plus-nav on a rule /
+  a centred stack / floating over the artwork; the services are a ruled list /
+  arch tiles in a grid / one contiguous edge-to-edge strip. A single `DEMO`
+  object feeds all three, so the same words visibly become three different
+  pages. The first pass restyled one fixed arrangement — radius, rules,
+  tracking — and misrepresented what choosing a structure does; the real Live
+  Spirit Seeds styles branch the DOM too (`Nav.jsx`, `SplashSection`).
+  Anything shared lives in the `.studio-preview` block so type and colour reach
+  all three; **a placement decision must never be hoisted there.**
+  Two further rules hold it together. **The preview is sealed**: everything it paints with comes from
+  `--sd-*` properties set inline, so the visitor's choices cannot leak out and
+  the page's face cannot leak in — a preview that inherited `--ink` would invert
+  itself when someone hit the Raidō toggle, which is exactly the bug that makes a
+  chooser untrustworthy. **Nothing inside `.studio-preview` may read a token that
+  is not `--sd-`.** And **the structures are skeletons, not any client's
+  appearance** — same promise as the layouts below, and this is where it is
+  easiest to lose.
+  Every font offered is already bundled (Cormorant) or already on the machine, so
+  the picker costs zero bytes; the note under the control says the real catalogue
+  is larger and loads on demand, because a visitor who counts the options should
+  not conclude that eight is the offer.
+  The contrast readout is **truncated, not rounded** — 4.4996 rounds to "4.5" and
+  would print beside a "large text only" verdict, the readout contradicting itself
+  at precisely the boundary someone is scrutinising.
+- **`RuneFrame` is home-page only.** It renders on the three service cards, where
+  three inscribed borders read as a flourish. It was on this page's layout and
+  capability grids too — nine of them — where the same device reads as clutter.
+  The mystic plank frame on `.card::before/::after` still applies here; only the
+  glyphs are gone.
+- **Layouts are structure, never appearance, and that is a promise to named
+  people.** Both shipped projects the page cites are named with their owners'
+  permission, and both gave it on the same condition: each is proud of having a
+  site that looks like *theirs*, and neither wants to become a look someone else
+  can order. So the section says outright that the skeleton is what gets reused
+  and the appearance stops with the client, and `.keeper-pledge` states it as a
+  commitment. **Do not turn these into "start from this design" tiles** — see
+  [ADR 0004](docs/adr/0004-shipped-work-is-evidence-not-a-gallery.md).
+  Layouts are named in the brand's register — The Practice, The Stall, The
+  Ledger — matching the crafts' own *The* nouns. They carry no runes: `Rune` draws
+  exactly four glyphs and renders *nothing* for a name it does not know, so six
+  decorative runes would be five silent blanks.
+- **The healing/massage vertical is the one section aimed at a single trade**, and
+  takes `--bg-subtle` full-bleed so it reads as a departure. Its compliance note
+  claims the structural half only — intake in your own database — and says
+  explicitly that the rest is a scoping conversation. **Do not let that become a
+  badge**; nothing here is a certification claim.
+- **There is no "currently hosting" section on screen.** The markup exists behind
+  `SHOW_HOSTED = false` in `KeeperPage.jsx`, because a proof section proving
+  nothing costs more credibility than the gap does. The shipped work is cited
+  inline instead, through the `WORK` table and the `<Work>` component — whose
+  `href` is optional, so a project renders as a plain name until a live URL is
+  confirmed rather than shipping a dead link.
+- **No pricing**, matching the commission framing of the other two crafts. The
+  closing copy says why, so its absence reads as a choice rather than an omission.
+
+`Keeper.css` is a static import, so it lands in the one CSS bundle and ships to home
+page visitors too. That is the right trade at ~3 KB — a second request would cost
+more — but it is the first thing to revisit if the page keeps growing.
 
 ### The bindrune
 
@@ -210,10 +404,10 @@ and no form service — the site is static, and `mailto` needs neither. If a rea
 is ever wanted it needs a third-party endpoint; that is a deliberate trade, not an
 oversight.
 
-`MAKER_NAME` in `App.jsx` is `Chris Baumgart`, inferred from the repo owner and not
+`MAKER_NAME` in `content.js` is `Chris Baumgart`, inferred from the repo owner and not
 yet confirmed. It appears in the About copy only.
 
-`CONTACT_EMAIL` in `App.jsx` is `keeper@theedgeofthemap.com`. Every CTA and the
+`CONTACT_EMAIL` in `content.js` is `keeper@theedgeofthemap.com`. Every CTA and the
 contact band resolve from that one constant. If the crafts ever want separate
 inboxes — `storyteller@`, `wright@` — add an `email` field to `PATHS` and fall back
 to `CONTACT_EMAIL`; the subject lines already file enquiries by discipline, so this
@@ -222,7 +416,7 @@ is only worth doing if the volume justifies separate mailboxes.
 **The QR.** `qr_code.png` is branded artwork — a dragon coiled around a rune circle —
 with a QR at its centre encoding `https://theedgeofthemap.com`, the site's own
 canonical URL. It is also rendered as a link to that URL, so it works by tap as well
-as by scan. `SITE_URL` in `App.jsx` is the single source for both.
+as by scan. `SITE_URL` in `content.js` is the single source for both.
 
 ---
 
@@ -282,7 +476,7 @@ Garamond, the dragon plate lit behind the hero, glow on the logo and runes.
 its *content*: **About** in the light face — a straight professional bio — and
 **Lore** in mystic, which tells the same three-trades fact as cosmology: one trunk,
 three branches, all of it star stuff, the shared thing being wonder. `AboutProfessional`
-and `AboutLore` in `App.jsx`; the nav label swaps with it.
+and `AboutLore` in `HomePage.jsx`; the nav label swaps with it.
 
 Lore is written in the owner's own voice and seeded from his own draft — earnest,
 polysyndetic (*And… And… And…*), fragments as sentences, repetition rather than
@@ -531,7 +725,7 @@ the centre to reveal the already-reskinned real page beneath, with a charred,
 ember-lit rim travelling at the burn front. It runs for 1.8s and is skipped entirely
 under `prefers-reduced-motion`.
 
-`BURN_MS` in `App.jsx` is the only duration. It sets the unmount timer and is passed
+`BURN_MS` in `content.js` is the only duration. It sets the unmount timer and is passed
 to CSS as `--burn-dur`, which the mask transition reads — the two used to be
 separate literals that could drift.
 
@@ -812,6 +1006,27 @@ it cools to violet and offers the way back.
     all, so arming there would hide the page and never un-hide it.
   - The reduced-motion media query still repeats the reset, and has to name both
     `[data-reveal]` and `.reveal-ready [data-reveal]` to out-specify the gate.
+- **`serve -s` is now load-bearing, not just tidy.** The `-s` is the SPA rewrite: it
+  serves `index.html` for any path that is not a file, which is the only reason a cold
+  request for `/keeper` — a shared link, a bookmark, a crawler — returns the app rather
+  than a 404. It was previously harmless on a one-page site. Dropping the flag, or
+  moving to a host without an equivalent, breaks every direct link to a route while
+  leaving in-app navigation working perfectly, so it will not show up in casual testing.
+- **A `[data-reveal]` section on a new route needs the gate re-armed, and that is a
+  dependency, not a detail.** See §3. This is the third distinct route to the same
+  catastrophic mode — a page of tall blank gaps with nothing on screen to explain them.
+  The first two are recorded above: an unconditional `opacity: 0`, and a
+  React-computed `className` wiping `is-visible`.
+- **Don't put `#driftwood` on an element whose contents are text you can type into.**
+  Same rule as the cards (§5) — `filter` displaces contents, not just the frame — but
+  the failure is worse on the live-edit demo, because the thing being bent has a caret
+  in it. The cards get away with it by filtering `::before`/`::after`; that panel has
+  neither to spare, so mystic changes its palette and leaves its geometry alone.
+- **The burn clone is made inert, and `contenteditable` is why.** The clone is
+  `aria-hidden` and lives for 1.8s, which was fine when everything in it was a link.
+  `App.jsx` now also sets `tabindex="-1"` on every focusable node in the clone and
+  strips `contenteditable` outright — otherwise tabbing mid-burn walks into a copy of
+  the page that is about to be deleted, and the caret goes with it.
 - **`node_modules/` and `dist/` were committed** for the first several commits. They
   are now untracked via `.gitignore`; the build output is produced on the host.
 
@@ -825,6 +1040,8 @@ Generated URL: `edgeofthemap-production.up.railway.app`.
 - `nixpacks.toml` — build only: setup installs `nodejs` + `npm`, then `npm install`
   and `npm run build`.
 - `railway.json` — `startCommand: npx serve -s dist -l $PORT`, restart on failure.
+  **The `-s` is the SPA rewrite and is now required**, not cosmetic — it is what makes
+  a cold request for `/keeper` return the app. See §6.
 
 **A static build still needs a process.** The original config had `[start] cmd = ""`
 in `nixpacks.toml` and `outputDirectory` in `railway.json` — the latter is a Vercel
@@ -853,6 +1070,9 @@ rather than expanding the prose above.
 | --- | --- |
 | [0001](docs/adr/0001-cleanup-v2-quality-pass.md) | Cleanup pass — shared values become tokens; atmosphere (and `backdrop-filter`) is scoped to the mystic face; Cormorant is imported as `latin-` subsets and pre-warmed on idle; the burn keeps its `-webkit-mask` prefixes |
 | [0002](docs/adr/0002-turned-bindrune-and-charred-burn-front.md) | The horizontal bindrune is a turn inside the viewBox, not a CSS `rotate`, so its layout box stays honest; the burn front's char is its own layer above the glow, with stops in `calc()` off `--burn` so it rides the tear |
+| [0003](docs/adr/0003-a-route-for-the-keeper.md) | The Keeper gets `/keeper`, served by ~40 lines of history API rather than `react-router`; `PATHS` grows an optional `href`; `useScrollReveal` re-arms per route |
+| [0004](docs/adr/0004-shipped-work-is-evidence-not-a-gallery.md) | Shipped client work is cited as evidence inside each claim, never offered as a reusable look; the API section ships a fictional dataset with a real implementation over it |
+| [0005](docs/adr/0005-site-modes-primitive.md) | Site modes become a primitive owning the bookkeeping and not the look; scope is an element rather than only `<body>`, because the burn needs two faces alive at once; the default value takes no class |
 
 ### Open
 

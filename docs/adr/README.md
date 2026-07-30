@@ -14,6 +14,9 @@ here into the map.
 | --- | --- | --- |
 | [0001](0001-cleanup-v2-quality-pass.md) | Cleanup pass: shared values become tokens, atmosphere is scoped to the mystic face, fonts are subset and pre-warmed | Accepted |
 | [0002](0002-turned-bindrune-and-charred-burn-front.md) | The bindrune turns inside its viewBox rather than by CSS rotate, and the burn front chars in its own layer keyed off `--burn` | Accepted |
+| [0003](0003-a-route-for-the-keeper.md) | The Keeper gets `/keeper`, served by a hand-rolled history-API router rather than `react-router`; `useScrollReveal` re-arms per route | Accepted |
+| [0004](0004-shipped-work-is-evidence-not-a-gallery.md) | Client work is cited as evidence inside each claim, never offered as a reusable look; the API is demonstrated against a fictional dataset with a real implementation over it | Accepted |
+| [0005](0005-site-modes-primitive.md) | Site modes become a primitive that owns the bookkeeping and not the look; scope is an element rather than only `<body>`; the first value is the null case and takes no class | Accepted |
 
 ## Writing a new one
 

@@ -1,0 +1,717 @@
+/* Studio.css — the three-axis chooser demo on /keeper.
+   ============================================================
+
+   Two halves with two different jobs, and the split matters:
+
+   **The controls** are part of this site. They read Edge of the Map's own
+   tokens (`--ink`, `--accent`, `--border`, `--radius`) so the panel belongs to
+   whichever face is showing, and they follow the same face-scoping rule as
+   everything else — `.face.mystic-mode .foo`, never `.mystic-mode .foo`, or the
+   burn's detached clone gets dragged into the incoming face (DESIGN.md §3).
+
+   **The preview** is emphatically NOT part of this site. Every value it paints
+   with comes from `--sd-*` custom properties set inline by the component, so
+   the visitor's choices cannot leak out and this page's face cannot leak in. A
+   preview that inherited `--ink` would silently invert when someone hit the
+   Raidō toggle, which is precisely the bug that makes a chooser untrustworthy.
+   **Nothing inside `.studio-preview` may read a token that is not `--sd-`.**
+
+   The three structures are skeletons — flat/ruled, soft/arched, full-bleed —
+   and are not reproductions of any client's appearance. See the header comment
+   in StudioDemo.jsx for why that boundary is a promise and not a preference. */
+
+.studio {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.25rem);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   CONTROLS — these belong to the page
+   ============================================================ */
+
+.studio-controls {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.studio-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.studio-group legend {
+  padding: 0;
+  margin-bottom: 0.6rem;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.studio-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* One control, three states — a segmented row rather than three buttons, so it
+   reads as a single choice being made. */
+.studio-segmented {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.studio-seg {
+  flex: 1;
+  padding: 0.5rem 0.4rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--motion) ease, color var(--motion) ease;
+}
+
+.studio-seg + .studio-seg {
+  border-left: 1px solid var(--border);
+}
+
+.studio-seg:hover {
+  color: var(--ink);
+}
+
+.studio-seg.is-on {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.studio-fonts {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.studio-field {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+/* The select previews its own choice — the point of a type control is seeing
+   the face, and a list of names set in one face tells you nothing. */
+.studio-field select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.studio-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.studio-preset {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.35rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--motion) ease, color var(--motion) ease;
+}
+
+.studio-preset:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.studio-preset span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 0.12);
+}
+
+.studio-swatches {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.studio-swatch {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+.studio-swatch input[type='color'] {
+  width: 2rem;
+  height: 1.6rem;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.studio-swatch code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+/* The contrast readout. A colour picker that permits an unreadable pair and
+   says nothing is worse than none — and this page is arguing that the work is
+   done properly, so it should be visibly done properly. */
+.studio-ratios {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.studio-ratio {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+  border-left: 2px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.studio-ratio strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--ink);
+}
+
+.studio-ratio em {
+  font-style: normal;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studio-ratio.is-pass {
+  border-left-color: var(--accent);
+}
+
+.studio-ratio.is-warn {
+  border-left-color: var(--ember);
+}
+
+.studio-ratio.is-fail {
+  border-left-color: var(--ember);
+  color: var(--ember);
+}
+
+.face.mystic-mode .studio-ratio.is-warn,
+.face.mystic-mode .studio-ratio.is-fail {
+  border-left-color: rgb(var(--violet));
+}
+
+.face.mystic-mode .studio-ratio.is-fail {
+  color: rgb(var(--violet));
+}
+
+.studio-reset {
+  justify-self: start;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.studio-reset:hover {
+  border-color: var(--accent);
+}
+
+/* ============================================================
+   STAGE — browser chrome around the preview
+   ============================================================ */
+
+.studio-stage {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.studio-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.studio-chrome span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.studio-chrome p {
+  margin: 0 0 0 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   PREVIEW — a separate world; only --sd-* tokens below this line
+   ============================================================
+
+   Three sibling layouts (.sd-r / .sd-s / .sd-b), not one skeleton with
+   modifiers. They differ in **element placement**, which is what a customer is
+   actually choosing:
+
+     hero      no image  |  image beside the copy  |  copy inside the image
+     masthead  brand + nav on a rule  |  centred stack  |  floating over art
+     services  ruled list  |  arch tiles in a grid  |  contiguous strip
+
+   Everything shared lives in the `.studio-preview` block so type and colour
+   apply across all three; anything that is a *placement* decision belongs to
+   its own layout and must not be hoisted into the shared block. */
+
+.studio-preview {
+  /* Set inline by the component: --sd-bg, --sd-ink, --sd-accent,
+     --sd-font-h1 / -h2 / -h3 / -body. */
+  --sd-pad: clamp(1rem, 3cqw, 2rem);
+  --sd-radius: 4px;
+  --sd-muted: color-mix(in srgb, var(--sd-ink) 66%, var(--sd-bg));
+  --sd-hair: color-mix(in srgb, var(--sd-ink) 16%, transparent);
+  /* Stands in for photography. All three layouts use it; only the shape and
+     the placement differ, which is the entire point. */
+  --sd-art: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sd-accent) 38%, var(--sd-bg)),
+    color-mix(in srgb, var(--sd-ink) 22%, var(--sd-bg))
+  );
+
+  background: var(--sd-bg);
+  color: var(--sd-ink);
+  font-family: var(--sd-font-body);
+  line-height: 1.55;
+  /* Queried by the layouts below. The preview is a column inside the page, so
+     it must size against its own width and never the viewport's — a media
+     query here would collapse the split hero based on the wrong box. */
+  container-type: inline-size;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.studio-preview h1 {
+  font-family: var(--sd-font-h1);
+  margin: 0;
+  color: var(--sd-ink);
+  font-size: clamp(1.35rem, 4.4cqw, 2.3rem);
+  line-height: 1.12;
+}
+
+.studio-preview h2 {
+  font-family: var(--sd-font-h2);
+  margin: 0;
+  color: var(--sd-ink);
+  font-size: clamp(1.05rem, 2.6cqw, 1.5rem);
+}
+
+.studio-preview h3 {
+  font-family: var(--sd-font-h3);
+  margin: 0;
+  color: var(--sd-ink);
+  font-size: 0.95rem;
+}
+
+.studio-preview p {
+  margin: 0;
+}
+
+.studio-preview nav {
+  display: flex;
+  gap: 0.9rem;
+  font-size: 0.68rem;
+  color: var(--sd-muted);
+}
+
+.sd-eyebrow {
+  font-family: var(--sd-font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sd-accent);
+}
+
+.sd-lede {
+  font-size: 0.82rem;
+  color: var(--sd-muted);
+}
+
+.sd-dur {
+  font-family: var(--sd-font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sd-accent);
+}
+
+.sd-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-family: var(--sd-font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sd-bg);
+  background: var(--sd-accent);
+  border: 1px solid var(--sd-accent);
+  border-radius: var(--sd-radius);
+}
+
+/* ---------- Editorial: masthead, no picture, a ruled list ---------- */
+
+.sd-r {
+  --sd-radius: 2px;
+}
+
+.sd-r-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem var(--sd-pad);
+  border-bottom: 1px solid var(--sd-hair);
+}
+
+.sd-r-brand {
+  font-family: var(--sd-font-h2);
+  font-size: 0.92rem;
+}
+
+/* Type only. There is no media element in this tree at all — that is the
+   layout decision, not a hidden image. */
+.sd-r-hero {
+  padding: calc(var(--sd-pad) * 1.4) var(--sd-pad);
+  max-width: 34rem;
+}
+
+.sd-r-hero h1 {
+  margin: 0.45rem 0 0;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+.sd-r-hero .sd-lede {
+  margin: 0.6rem 0 1rem;
+}
+
+.sd-r .sd-btn {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.64rem;
+}
+
+.sd-r-band {
+  padding: var(--sd-pad);
+  border-top: 1px solid var(--sd-hair);
+}
+
+.sd-r-band h2 {
+  text-align: center;
+  font-weight: 500;
+}
+
+/* The centred lozenge — the device that makes this read as typeset rather than
+   merely plain. */
+.sd-r-band h2::after {
+  content: '\2756';
+  display: block;
+  margin: 0.4rem 0 1rem;
+  font-size: 0.62em;
+  color: var(--sd-accent);
+}
+
+.sd-r-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sd-r-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--sd-hair);
+}
+
+.sd-r-list li:last-child {
+  border-bottom: 1px solid var(--sd-hair);
+}
+
+.sd-r-list p {
+  font-size: 0.78rem;
+  color: var(--sd-muted);
+}
+
+@container (max-width: 26rem) {
+  .sd-r-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sd-r-list p {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- Sanctuary: centred masthead, split hero, arch tiles ---------- */
+
+.sd-s {
+  --sd-radius: 999px;
+}
+
+.sd-s-bar {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0.9rem var(--sd-pad) 0.7rem;
+}
+
+.sd-s-brand {
+  font-family: var(--sd-font-h2);
+  font-size: 1rem;
+}
+
+/* Two columns: the picture stands *beside* the copy. The single clearest
+   placement difference from Editorial, which has no picture at all. */
+.sd-s-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 2.5cqw, 1.75rem);
+  padding: var(--sd-pad);
+}
+
+@container (max-width: 30rem) {
+  .sd-s-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sd-s-media {
+  aspect-ratio: 4 / 5;
+  background: var(--sd-art);
+  border-radius: 48% 48% 14% 14% / 34% 34% 9% 9%;
+}
+
+.sd-s-hero h1 {
+  margin: 0.4rem 0 0;
+  font-weight: 700;
+}
+
+.sd-s-hero .sd-lede {
+  margin: 0.55rem 0 1rem;
+}
+
+.sd-s-band {
+  padding: var(--sd-pad);
+}
+
+.sd-s-band h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.sd-s-band h2::after {
+  content: ' \2726';
+  color: var(--sd-accent);
+}
+
+.sd-s-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.9rem;
+}
+
+.sd-s-tiles article {
+  padding: 0.75rem;
+  text-align: center;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--sd-ink) 5%, var(--sd-bg));
+  box-shadow: 0 16px 36px -26px color-mix(in srgb, var(--sd-ink) 75%, transparent);
+}
+
+.sd-s-thumb {
+  aspect-ratio: 1 / 1;
+  margin-bottom: 0.55rem;
+  background: var(--sd-art);
+  border-radius: 46% 46% 16% 16% / 32% 32% 10% 10%;
+}
+
+.sd-s-tiles h3 {
+  color: var(--sd-accent);
+}
+
+.sd-s-tiles p {
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--sd-muted);
+}
+
+/* ---------- Immersive: nav over the art, copy inside it, one strip ---------- */
+
+.sd-b {
+  --sd-radius: 0px;
+}
+
+.sd-b-hero {
+  position: relative;
+  display: grid;
+  /* The bar and the overlay stack *on* the scene rather than above it. */
+  grid-template-rows: auto 1fr;
+  min-height: 15rem;
+}
+
+.sd-b-scene {
+  position: absolute;
+  inset: 0;
+  background: var(--sd-art);
+}
+
+/* No background of its own — it floats over the picture. */
+.sd-b-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem var(--sd-pad);
+  border-bottom: 1px solid color-mix(in srgb, var(--sd-bg) 28%, transparent);
+}
+
+.sd-b-brand {
+  font-family: var(--sd-font-h2);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sd-bg);
+}
+
+.sd-b-bar nav {
+  color: color-mix(in srgb, var(--sd-bg) 82%, transparent);
+}
+
+/* The copy sits *in* the picture, bottom-left. */
+.sd-b-overlay {
+  position: relative;
+  align-self: end;
+  padding: var(--sd-pad);
+  max-width: 28rem;
+}
+
+.sd-b-overlay h1 {
+  margin: 0.35rem 0 0;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  color: var(--sd-bg);
+}
+
+.sd-b-overlay .sd-eyebrow {
+  color: var(--sd-bg);
+  opacity: 0.85;
+}
+
+.sd-b-overlay .sd-lede {
+  margin: 0.5rem 0 0.9rem;
+  color: color-mix(in srgb, var(--sd-bg) 86%, transparent);
+}
+
+/* Ghost, not filled — the picture behind it is doing the work. */
+.sd-b-overlay .sd-btn {
+  color: var(--sd-bg);
+  background: none;
+  border-color: color-mix(in srgb, var(--sd-bg) 65%, transparent);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.sd-b-band {
+  padding: var(--sd-pad) 0 0;
+}
+
+.sd-b-band h2 {
+  padding: 0 var(--sd-pad) 0.9rem;
+  font-weight: 500;
+  font-size: clamp(0.85rem, 1.9cqw, 1.05rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* One contiguous strip: no gutters, no card edges, no radius, running to both
+   frame edges — the exact opposite of Sanctuary's inset tiles. */
+.sd-b-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sd-b-strip article {
+  border-left: 1px solid color-mix(in srgb, var(--sd-ink) 12%, transparent);
+}
+
+.sd-b-strip article:first-child {
+  border-left: 0;
+}
+
+.sd-b-thumb {
+  aspect-ratio: 16 / 10;
+  background: var(--sd-art);
+}
+
+.sd-b-caption {
+  padding: 0.6rem 0.75rem 1rem;
+}
+
+.sd-b-caption p {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--sd-muted);
+}
+
