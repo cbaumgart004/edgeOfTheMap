@@ -369,10 +369,24 @@ that every stroke means something.
 **The stave is capped at both ends and nothing may extend past them.** Wunjo's
 first point must equal `STAVE`'s origin and Tiwaz's baseline must equal its foot.
 Wunjo's flag *caps* the stave — a stave continuing past it is a different rune.
-This regressed once: Wunjo started at `y=5` against a stave from `y=4`, a
-one-unit stub invisible in the vertical column and plainly a tail hanging off the
-left end once the mark was turned horizontal. Coordinates are absolute within the viewBox so
-tuning one segment cannot silently reflow the others.
+Specifically Thurisaz, whose triangle is mounted mid-stave: the overhang is not a
+blemish on Wunjo, it is a different letter. Coordinates are absolute within the
+viewBox so tuning one segment cannot silently reflow the others.
+
+This rule has now been broken twice, in both media, and neither break was visible
+where it was made:
+
+- **In the vector.** Wunjo started at `y=5` against a stave from `y=4` — a
+  one-unit stub, invisible in the 1:7 column and plainly a tail hanging off the
+  left end once the mark was turned horizontal.
+- **In the artwork.** The band painted across `public/banner.webp` overran the
+  flag by 96px on the left and the last Tiwaz chevron by 59px on the right. The
+  vertical carving in `logo.png` was correct throughout; the painted band is a
+  *separate* drawing of the same mark (§8) and did not inherit the constraint.
+
+So the invariant binds the mark wherever it appears, not just `Bindrune.jsx`, and
+the two forms have to be checked against each other rather than each against
+itself.
 
 **It is a 1:7 column, not the 1:1.33 icon box `Rune.jsx` uses.** Size it by height
 and let the width follow. At icon size it degrades to a hairline — it is unusable as
@@ -868,6 +882,31 @@ it cools to violet and offers the way back.
   a pink zigzag rather than pale sapwood, and high-frequency jitter on the outer
   boundary reads as a drawn zigzag rather than a ragged edge — raggedness is
   low-frequency wander plus texture, never a fast wobble.
+- **`public/banner.webp` carries its own painted bindrune, and it is not cut from the
+  master.** The carved binding in `logo.png` is vertical; the banner instead has the
+  mark laid out horizontally in neon across the bottom of the frame, at wider rune
+  spacing than either the carving or `Bindrune.jsx` uses. That makes it the one place
+  the mark exists as a third drawing rather than a derivative — and it is why it drifted
+  out of spec (§4) while every other derivative stayed correct. **Check it against the
+  vector whenever the vector changes.**
+- **Repairing the painted band is a subtraction, not a paint-over.** The neon composites
+  additively, confirmed by measuring the stroke's cross-section over a lit backdrop and
+  over pure black and finding them equal, so removing part of the stroke means removing
+  exactly that part's glow field: the measured cross-section times the fraction of the
+  field a segment cut short still contributes. Only the few saturated core rows are
+  unrecoverable, and those bridge vertically. Two things this cost a round of rework:
+  measure the cross-section somewhere the backdrop is *provably* black (the frame edge
+  gives never-painted columns as a reference) — a modelled backdrop inflated it by ~20%
+  and the over-subtraction crushed green to zero, leaving a magenta streak across the
+  rock — and composite a round cap at the cut, or the stroke ends square where every
+  other stroke in the mark ends round. Re-encoded at WebP q=94, which lands within
+  0.4 KB of the original file and 0.6 levels mean difference outside the repair.
+  `scripts/cap-banner-stave.py` is that repair, kept for the method — it is a one-shot,
+  already applied, and reproduces the shipped file bit-for-bit from the pre-repair
+  original. Verification was ground truth rather than eyeballing: the right-hand
+  removal sat over provably black artwork, so the result is compared against
+  never-painted columns in the same rows (mean 1.5/255 green against a 1.0 floor,
+  down from 23).
 - **Crops taken below y=792 pull in the artwork's baked wordmark.** `hero-wide` stops
   there for exactly this reason. A banner or og crop that runs past it gets a second,
   smaller "EDGE OF THE MAP" ghosted into the frame.
