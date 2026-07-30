@@ -2,7 +2,8 @@
 //
 // The shell: the banner plate that is the header, the footer, the burn, and
 // whichever route's page goes between them. The page bodies live in
-// HomePage.jsx and KeeperPage.jsx; everything all three need is in content.js.
+// HomePage.jsx, KeeperPage.jsx and StorytellerPage.jsx; everything all four
+// need is in content.js.
 import React, {
   useCallback,
   useEffect,
@@ -16,6 +17,7 @@ import Bindrune from './Bindrune.jsx'
 import SvgDefs from './SvgDefs.jsx'
 import HomePage from './HomePage.jsx'
 import KeeperPage from './KeeperPage.jsx'
+import StorytellerPage from './StorytellerPage.jsx'
 import { Link, useRoute } from './router.jsx'
 import { useSiteMode } from './useSiteMode.js'
 import {
@@ -33,6 +35,15 @@ import {
  *
  *  `light` is first, so it is the null case and gets no class at all. */
 const FACES = ['light', 'mystic-mode']
+
+/** Which component owns which route. Keyed by the same strings as `ROUTES` in
+ *  router.jsx — that list decides what is a route at all, this one decides what
+ *  renders. Anything absent falls back to HomePage, which is also what
+ *  `normalizePath` has already done to the URL. */
+const PAGES = {
+  '/keeper': KeeperPage,
+  '/storyteller': StorytellerPage,
+}
 
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -223,6 +234,7 @@ function App() {
   }, [burn, face])
 
   const toggleLabel = isMystic ? 'Return to the Known' : 'Reveal the Mystery'
+  const Page = PAGES[route] ?? HomePage
 
   return (
     <>
@@ -343,15 +355,18 @@ function App() {
         </div>
       </header>
 
-      {route === '/keeper' ? (
-        <KeeperPage isMystic={isMystic} />
-      ) : (
-        <HomePage
-          isMystic={isMystic}
-          toggleMystic={toggleMystic}
-          toggleLabel={toggleLabel}
-        />
-      )}
+      {/* A table rather than a ternary chain, for the reason PATHS is a table:
+          the second craft page turned the branch into a nest, and a third would
+          be unreadable. Every page takes the same props and the craft pages
+          ignore the two they do not use — one call site means a page cannot be
+          added and then handed a different set of props by accident. HomePage is
+          the fallback because `normalizePath` has already sent everything
+          unrecognised to '/'. */}
+      <Page
+        isMystic={isMystic}
+        toggleMystic={toggleMystic}
+        toggleLabel={toggleLabel}
+      />
 
       <footer className="site-footer">
         {/* The same plate that opens the page, closing it — full width, so the

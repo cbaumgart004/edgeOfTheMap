@@ -1,0 +1,508 @@
+/* Storyteller.css — /storyteller only.
+   ============================================================
+
+   Loaded by StorytellerPage.jsx. Same contract as Keeper.css: everything here
+   reads the tokens declared in App.css and reuses its classes where one already
+   fits — `.btn`, `.eyebrow`, `.section-head`, `.cta-band`, `.hero-actions` are
+   shared, not restated. What is below is the shapes this page needs and the
+   other two do not, which is almost entirely the sample transport.
+
+   **Face-scoped rules are `.face.mystic-mode .foo`, never `.mystic-mode .foo`.**
+   The looser form matches through the `body` class and drags the burn's detached
+   clone into the incoming face with it — DESIGN.md §3.
+
+   The page shell rules (`.story-section`, `.story-hero`) deliberately restate
+   Keeper.css's rather than sharing a `.keeper-` class across two pages: a page
+   borrowing another page's namespace is how one page's tuning silently becomes
+   the other's bug. The values are the same because the sections are the same
+   idiom, not because one is derived from the other.
+
+   This ships to every visitor: the import is static, so it lands in the one CSS
+   bundle. Same trade Keeper.css records — and the two of them together are now
+   the reason DESIGN.md's "revisit if this keeps growing" note is closer than it
+   was. */
+
+/* ============================================================
+   PAGE SHELL
+   ============================================================ */
+
+.story-section {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: var(--section-y) var(--gutter);
+  scroll-margin-top: var(--header-h);
+}
+
+/* Anything the nav or an in-page link can target has to clear the pinned
+   plate — the same reason --header-h exists at all. */
+.story [id] {
+  scroll-margin-top: var(--header-h);
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+
+.story-hero {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4.5rem) var(--gutter) var(--section-y);
+}
+
+.story-hero-inner {
+  max-width: 46rem;
+}
+
+.story-hero h1 {
+  margin: 0.2rem 0 0;
+  font-size: var(--step-3);
+  /* Measured for a full-width column. DESIGN.md §6 on what happens when a
+     column count changes and the `ch` caps inside it do not follow. */
+  max-width: 20ch;
+}
+
+.story-hero .hero-sub {
+  margin: 1.1rem 0 0;
+  max-width: 62ch;
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.story-hero .hero-actions {
+  margin-top: 1.75rem;
+}
+
+.story-hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 2rem 0 0;
+  padding: 1.1rem 0 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.story-hero-trust li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.story-hero-trust li::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.face.mystic-mode .story-hero-trust li::before {
+  border-radius: 0;
+  box-shadow: 0 0 8px rgb(var(--glow) / 0.7);
+}
+
+/* ============================================================
+   THE SAMPLES
+   ============================================================
+
+   A ruled list, not a rack of cards. The page's argument is that these are four
+   registers of one voice; four floating panels would read as four products. It
+   is also the printed-matter grammar the light face is built on (DESIGN.md §5)
+   — rows divided by hairlines, the way a track listing has always looked. */
+
+/* One group per source (ACX today, more later — SOURCES in narration.js). The
+   heading is suppressed while there is only one, so this collapses to a plain
+   list until a second listing makes the distinction mean something. */
+.sample-group + .sample-group {
+  margin-top: var(--section-y);
+}
+
+.sample-group-head {
+  margin-top: var(--head-gap);
+}
+
+.sample-group-head h3 {
+  margin: 0;
+  font-size: var(--step-1);
+  letter-spacing: var(--tracking-display);
+}
+
+.sample-group-head p {
+  margin: 0.3rem 0 0;
+  max-width: var(--measure);
+  color: var(--ink-muted);
+}
+
+.samples {
+  margin-top: var(--head-gap);
+}
+
+.sample-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.sample {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(0.9rem, 2.5vw, 1.4rem);
+  padding: clamp(1rem, 2.5vw, 1.4rem) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The playing row takes the accent as a left keyline rather than a fill: the
+   filing-card gesture, and it survives the mode toggle without a second rule. */
+.sample.is-current {
+  box-shadow: inset 2px 0 0 var(--accent);
+  padding-left: clamp(0.75rem, 2vw, 1.1rem);
+}
+
+.face.mystic-mode .sample.is-current {
+  box-shadow: inset 2px 0 0 var(--accent), -6px 0 18px -12px rgb(var(--glow) / 0.8);
+}
+
+/* ---- the transport button ---- */
+
+.sample-play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  transition: border-color var(--motion), color var(--motion),
+    background var(--motion);
+}
+
+.sample-play svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+}
+
+.sample-play:hover:not(:disabled),
+.sample-play:focus-visible:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Not `opacity` — DESIGN.md §4 on what transparency does to a stroke on this
+   palette. A pending sample is a *quieter colour*, still legible, and the
+   cursor says the rest. */
+.sample-play:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.face.mystic-mode .sample-play {
+  box-shadow: 0 0 12px -4px rgb(var(--glow) / 0.55);
+}
+
+/* ---- the row's copy ---- */
+
+.sample-body {
+  min-width: 0;
+}
+
+.sample-title {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: var(--step-1);
+  letter-spacing: var(--tracking-display);
+}
+
+/* The work a sample is drawn from, where the title is not itself the work. In
+   the body face so it does not compete with the title it sits beside. */
+.sample-work {
+  font-family: var(--body-font);
+  font-size: 0.85em;
+  color: var(--ink-muted);
+}
+
+/* Casting metadata as a dotted rule of small caps — a spec line, which is the
+   printed grammar this face is built on (DESIGN.md §5), not a row of pills.
+   Rounded chips would be the generic answer and would put eight radiused
+   rectangles on a page whose mystic face squares every corner it has. */
+.sample-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.76rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Separators drawn between items rather than after each, so the line never ends
+   on a dangling bullet when it wraps. */
+.sample-tags li + li::before {
+  content: '·';
+  margin-right: 0.7rem;
+  color: var(--border);
+}
+
+.sample-tag-genre {
+  color: var(--accent);
+}
+
+/* The owner's own performance notes. Set as a quotation — indented off an
+   accent rule — because they are the one thing on the page in a different
+   register from the page: a person talking about why he picked a poem, inside
+   a document otherwise selling a service. */
+.sample-notes {
+  margin: 0.75rem 0 0;
+  padding-left: 0.9rem;
+  max-width: var(--measure);
+  border-left: 2px solid var(--accent-soft);
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .sample-notes {
+  font-style: italic;
+}
+
+.sample-pending {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ---- scrubber and clock ---- */
+
+.sample-transport {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+
+/* `appearance: none` on the input and both vendor thumb pseudo-elements,
+   because a range input is the one control browsers still paint entirely
+   themselves — left alone it arrives as a blue system slider in both faces,
+   which is the same objection that ruled out `<audio controls>`. */
+.sample-scrub {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 1.25rem;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sample-scrub::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.sample-scrub::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.sample-scrub::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  /* Half the thumb, less half the track, pulls it back onto the line — a
+     webkit thumb is otherwise aligned to the track's top edge. */
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.sample-scrub::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.sample-scrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Tabular figures so the clock does not jitter as the digits change — a
+   proportional `1` is narrower than a `0`, and the readout shifts every second
+   without it. */
+.sample-time {
+  flex: none;
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.story-note {
+  max-width: var(--measure);
+  margin: var(--head-gap) 0 0;
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .story-note {
+  font-style: italic;
+}
+
+/* ============================================================
+   THE NARRATOR
+   ============================================================ */
+
+.story-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1.75rem, 5vw, 3.5rem);
+}
+
+@media (max-width: 880px) {
+  .story-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.story-split-copy {
+  max-width: 44rem;
+}
+
+/* Name over role, ruled off from the bio beneath it — a credit line, which is
+   what an author scanning for who to put in the front matter is looking for. */
+.story-credit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.9rem;
+  margin: 1.25rem 0 0;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--display-font);
+  font-size: var(--step-1);
+  letter-spacing: var(--tracking-display);
+}
+
+.story-credit-role {
+  /* Back to the body face — the name above it is set in --display-font, and a
+     role label inherited into a serif reads as part of the name. In mystic both
+     tokens are Cormorant anyway, which is the face being consistent, not a bug. */
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.story-bio {
+  margin: 1rem 0 0;
+  max-width: var(--measure);
+  color: var(--ink-muted);
+}
+
+.face.mystic-mode .story-bio {
+  font-style: italic;
+}
+
+/* A spec block: label over value, ruled. Same printed grammar as the Keeper's
+   comparison table, at a quarter the size. */
+.story-credentials {
+  margin: 0;
+  padding: clamp(1.1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  display: grid;
+  gap: 0.9rem;
+}
+
+.story-credential dt {
+  font-size: 0.78rem;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.story-credential dd {
+  margin: 0.2rem 0 0;
+}
+
+/* ============================================================
+   THE PROCESS
+   ============================================================
+
+   Numbered from the list's own counter rather than typed into the copy, so
+   inserting a step is one edit and cannot leave "3." twice on the page. */
+
+.story-process {
+  counter-reset: story-step;
+  margin: var(--head-gap) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+.story-step {
+  counter-increment: story-step;
+  padding-top: 1rem;
+  border-top: 2px solid var(--accent);
+}
+
+.story-step-name::before {
+  content: counter(story-step) '.';
+  margin-right: 0.5ch;
+  color: var(--accent);
+}
+
+.story-step-name {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: var(--step-1);
+  letter-spacing: var(--tracking-display);
+}
+
+.story-step-detail {
+  margin: 0.4rem 0 0;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   BACK
+   ============================================================ */
+
+.story-back {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--gutter) var(--section-y);
+  font-size: 0.9rem;
+}
+
+.story-back a {
+  text-decoration: none;
+}
+
+.story-back a:hover {
+  text-decoration: underline;
+}

@@ -1,9 +1,12 @@
 // router.jsx
 //
-// Two routes and no dependency. See docs/adr/0003 for why this is ~40 lines of
-// history API rather than react-router: the site has one nested layout, no
+// Three routes and no dependency. See docs/adr/0003 for why this is ~40 lines
+// of history API rather than react-router: the site has one nested layout, no
 // loaders, no params, and no guards, and the router that ships with those costs
-// more than the whole CSS bundle.
+// more than the whole CSS bundle. The Storyteller's route was added by naming it
+// in ROUTES and in the switch in App.jsx — which is the test ADR 0003 set for
+// itself, and the size at which this stops being the right answer is still
+// nowhere near.
 //
 // The trick that keeps it small: `history.pushState` deliberately does *not*
 // fire `popstate`, so navigating programmatically and navigating with the back
@@ -15,9 +18,9 @@ import { useEffect, useState } from 'react'
 
 // Every path that is not a real route renders the home page. There is no 404:
 // the host rewrites unknown URLs to index.html anyway (`serve -s`), so the only
-// honest options are "home" or a not-found page, and a one-page site with a
-// single sub-route does not have enough surface to get lost on.
-export const ROUTES = ['/', '/keeper']
+// honest options are "home" or a not-found page, and a site of one page and two
+// sub-routes does not have enough surface to get lost on.
+export const ROUTES = ['/', '/keeper', '/storyteller']
 
 // Trailing slashes and the empty string all mean the root. Normalising here
 // rather than at each comparison is what keeps `/keeper/` from silently
