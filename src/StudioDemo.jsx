@@ -47,7 +47,7 @@ import './Studio.css'
 
    **`id` and `name` are deliberately different words.** The id is a mechanical
    description of what the layout *does* — `ruled`, `split`, `bleed` — and is
-   what the CSS and the layout map key off. The name is what a visitor reads.
+   what the CSS class prefixes key off. The name is what a visitor reads.
    They were the same string at first, borrowed straight from Live Spirit Seeds'
    internal vocabulary, which quietly coupled this repo to that one: rename a
    style over there, or diverge from it here, and the two drift with nothing to
@@ -56,16 +56,19 @@ import './Studio.css'
 const STRUCTURES = [
   {
     id: 'ruled',
+    Layout: RuledLayout,
     name: 'Editorial',
     note: 'Type-led and image-light. Masthead with the nav on the rule, a headline that carries the page on its own, and services as a ruled list rather than tiles. The choice when the words are the product and you have no photography yet.',
   },
   {
     id: 'split',
+    Layout: SplitLayout,
     name: 'Sanctuary',
     note: 'Centred masthead, and the hero splits — arch-topped image beside the copy rather than above it. Services become soft tiles in a grid. Warm and unhurried; it needs three good photographs.',
   },
   {
     id: 'bleed',
+    Layout: BleedLayout,
     name: 'Immersive',
     note: 'The nav floats over the picture and the hero copy sits *inside* it, bottom-left. Services run edge to edge as one contiguous strip with no gutters. The most demanding — with weak photography it has nothing left.',
   },
@@ -287,11 +290,22 @@ function BleedLayout() {
   )
 }
 
-const LAYOUT_FOR = {
-  editorial: RuledLayout,
-  sanctuary: SplitLayout,
-  immersive: BleedLayout,
-}
+/* Each structure carries its own component, so there is no second table to keep
+   in step with `STRUCTURES`.
+
+   There *was* one — a `LAYOUT_FOR` map keyed by id — and it shipped broken. A
+   rename changed the ids from `editorial`/`sanctuary`/`immersive` to
+   `ruled`/`split`/`bleed` by replacing the quoted strings, which did not touch
+   that map's **unquoted object keys**. The lookup silently returned `undefined`,
+   React got `undefined` as an element type, and the whole route rendered blank.
+   The build passed — an undefined component is a runtime failure, not a compile
+   one — so nothing caught it before deploy.
+
+   Attaching the component to the entry makes the class of bug impossible rather
+   than merely fixed: there is now one list, and a structure without a layout is
+   visible at the point you add it. See `STRUCTURES` above — function
+   declarations hoist, so those references resolve even though the components are
+   defined below it. */
 
 function Ratio({ label, a, b }) {
   const value = contrast(a, b)
@@ -317,8 +331,11 @@ export default function StudioDemo() {
   const [fonts, setFonts] = useState(DEFAULTS.fonts)
   const [colors, setColors] = useState(DEFAULTS.colors)
 
-  const active = STRUCTURES.find((s) => s.id === structure)
-  const Layout = LAYOUT_FOR[structure]
+  // Falls back rather than resolving to undefined: a bad id should render the
+  // first structure, never blank the route. Same fail-visible rule the
+  // .reveal-ready gate follows.
+  const active = STRUCTURES.find((s) => s.id === structure) ?? STRUCTURES[0]
+  const Layout = active.Layout
 
   /* Everything the preview needs, as scoped custom properties. `--sd-`-prefixed
      and set inline on the preview root, so nothing here can reach the rest of
