@@ -43,7 +43,7 @@ async function poolFor(param) {
 const authUrl = process.env.NEON_AUTH_URL
 const jwks = authUrl ? createRemoteJWKSet(new URL(`${authUrl.replace(/\/$/, '')}/.well-known/jwks.json`)) : null
 
-export const handler = createHandler({
+const http = createHandler({
   control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
   siteDb: (site) => poolFor(site.connection_param),
   async verifyToken(token) {
@@ -57,10 +57,17 @@ export const handler = createHandler({
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
 })
 
-// Second entry point, same package: runs the recorded migrations inside AWS, so
-// connection strings never leave SSM. Invoke it from the Lambda console's Test
-// tab with {"siteParams": ["/eotm/sites/<site>/database", ...]}; it migrates the
-// control project, then each listed site project plus every registered site.
+// Function URL requests carry requestContext.http. A direct invoke (the Lambda
+// console's Test tab, IAM-authorized only) with {"eotmMigrate": true} runs the
+// migrations instead, so connection strings never leave SSM. A URL request
+// cannot reach this: its body is not the event.
+export async function handler(event, context) {
+  if (event?.eotmMigrate === true && !event.requestContext) return migrate(event)
+  return http(event, context)
+}
+
+// Runs the recorded migrations: the control project, then each project in
+// {"siteParams": ["/eotm/sites/<site>/database", ...]} plus every registered site.
 export async function migrate(event = {}) {
   const out = {}
   const run = async (param, target) => {
