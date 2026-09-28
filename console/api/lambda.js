@@ -16,6 +16,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
+import { migrate as runMigrations } from './migrate.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
 const ssm = new SSMClient({})
@@ -55,3 +56,21 @@ export const handler = createHandler({
       CacheControl: 'public, max-age=31536000, immutable' }), { expiresIn: 300 }),
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
 })
+
+// Second entry point, same package: runs the recorded migrations inside AWS, so
+// connection strings never leave SSM. Invoke it from the Lambda console's Test
+// tab with {"siteParams": ["/eotm/sites/<site>/database", ...]}; it migrates the
+// control project, then each listed site project plus every registered site.
+export async function migrate(event = {}) {
+  const out = {}
+  const run = async (param, target) => {
+    const client = new pg.Client({ connectionString: await secret(param) })
+    await client.connect()
+    try { out[param] = await runMigrations(client, target) } finally { await client.end() }
+  }
+  await run(process.env.CONTROL_DATABASE_PARAM, 'control')
+  const control = await poolFor(process.env.CONTROL_DATABASE_PARAM)
+  const registered = (await control.query('SELECT connection_param FROM sites')).rows.map((r) => r.connection_param)
+  for (const param of new Set([...(event.siteParams ?? []), ...registered])) await run(param, 'site')
+  return out
+}

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "migrate": "node api/migrate.js",
     "release": "node scripts/release.js",
-    "build:site": "node scripts/site.js"
+    "build:site": "node scripts/site.js",
+    "package:api": "node scripts/package-api.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
