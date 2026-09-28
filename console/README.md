@@ -89,6 +89,13 @@ no login.
 - **Console files:** an Amplify app on this repo's `console` branch, app root `console`, custom
   domain `admin.theedgeofthemap.com`. Build: `npm ci && npm run build:site`; output directory
   `site`. It serves `/loader.js` and every version under `/console/<version>/console.js`.
+- **Headers** are set on the Amplify app (Hosting, Custom headers), because Amplify reads
+  `customHttp.yml` only from the repository root, not from the `console` app root:
+  `Access-Control-Allow-Origin: *` on everything (the loader's integrity check needs CORS),
+  `Cache-Control: public, max-age=31536000, immutable` on `console/**/*`, and
+  `Cache-Control: public, max-age=300` on `loader.js`. A header change needs a redeploy.
+- **Deployed:** Amplify app `dr2qcyxmox1km`, branch `console`, at
+  `https://console.dr2qcyxmox1km.amplifyapp.com` until `admin.theedgeofthemap.com` is attached.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a
   customer to it is an update of their `sites` row; no customer site rebuilds.
 - **API:** one Lambda from `api/lambda.js` with a function URL, reached as
