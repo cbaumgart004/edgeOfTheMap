@@ -91,7 +91,8 @@ no login.
   `site`. It serves `/loader.js` and every version under `/console/<version>/console.js`.
 - **Headers** are set on the Amplify app (Hosting, Custom headers), because Amplify reads
   `customHttp.yml` only from the repository root, not from the `console` app root:
-  `Access-Control-Allow-Origin: *` on everything (the loader's integrity check needs CORS),
+  `Access-Control-Allow-Origin: *` on `loader.js` and `console/**/*` only (the loader's integrity check
+  needs CORS). Never on `**/*`: that overrode the API's per-site CORS, which the rewrite passes through,
   `Cache-Control: public, max-age=31536000, immutable` on `console/**/*`, and
   `Cache-Control: public, max-age=300` on `loader.js`. A header change needs a redeploy.
 - **Control project:** Neon `edge-of-the-map-console` (`red-waterfall-41496692`, AWS us-east-1) with
@@ -106,6 +107,7 @@ no login.
   role `eotm-console-api-role-3asduby6` with inline policy `eotm-console-ssm` (read `/eotm/*`, decrypt
   through SSM only). Function URL with auth NONE; the Amplify rewrite `/api/<*>` (200) forwards to it.
   Upload `dist/api.zip` from `npm run package:api` through the Lambda console to update it.
+- **Registering a site** is also a Test-tab invoke: `{"eotmRegister": {"site": "<slug>", "allowedOrigins": ["https://…"], "connectionParam": "/eotm/sites/<slug>/database", "owners": ["<Neon Auth user id>"]}}`. The schema and pinned version come from the package. StoryShaped is registered with the preview origin; no photo bucket yet, so uploads answer 503.
 - **Migrations** run inside AWS: a Test-tab invoke of the Lambda with
   `{"eotmMigrate": true, "siteParams": ["/eotm/sites/<site>/database"]}`. Applied: control `001_sites.sql`,
   StoryShaped `001_documents.sql`.
