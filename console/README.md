@@ -94,6 +94,12 @@ no login.
   `Access-Control-Allow-Origin: *` on everything (the loader's integrity check needs CORS),
   `Cache-Control: public, max-age=31536000, immutable` on `console/**/*`, and
   `Cache-Control: public, max-age=300` on `loader.js`. A header change needs a redeploy.
+- **Control project:** Neon `edge-of-the-map-console` (`red-waterfall-41496692`, AWS us-east-1) with
+  Neon Auth on. `NEON_AUTH_URL` is its Auth URL,
+  `https://ep-calm-heart-b7brfs6g.neonauth.c-13.us-east-1.aws.neon.tech/neondb/auth`; the JWKS is that
+  URL plus `/.well-known/jwks.json` (read from the Neon console). A site's proxy rewrite maps
+  `/_edit/auth/<*>` to `<Auth URL>/<*>`. Neon Auth lets anyone sign up; a login edits nothing until
+  `site_members` names it.
 - **Deployed:** Amplify app `dr2qcyxmox1km`, branch `console`, at
   `https://console.dr2qcyxmox1km.amplifyapp.com` until `admin.theedgeofthemap.com` is attached.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a

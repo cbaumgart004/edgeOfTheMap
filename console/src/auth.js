@@ -6,7 +6,7 @@
 // Auth's defaults, and where Neon Auth exposes the JWT (ADR-0007 reads
 // `session.access_token`). Everything that depends on them is in this file.
 
-export function neonAuth({ base = '/_edit/auth/api/auth' } = {}) {
+export function neonAuth({ base = '/_edit/auth' } = {}) {
   let cached = null // { token, exp }
 
   async function call(path, init) {

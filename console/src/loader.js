@@ -16,7 +16,7 @@ const script = document.currentScript
 const cfg = {
   site: script?.dataset.site,
   apiBase: script?.dataset.api ?? (script ? new URL(script.src).origin : location.origin),
-  authBase: script?.dataset.auth ?? '/_edit/auth/api/auth',
+  authBase: script?.dataset.auth ?? '/_edit/auth',
   local: script?.dataset.local != null,
   schemaUrl: script?.dataset.schema,
   consoleUrl: script?.dataset.console,
