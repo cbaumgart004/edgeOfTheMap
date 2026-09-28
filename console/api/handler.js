@@ -117,6 +117,9 @@ export function createHandler(deps) {
       }
 
       // Everything else edits, so it needs a member's login.
+      // Never cacheable: CloudFront sits in front of this API and keys on the path,
+      // so a cached draft list would be served to the next caller.
+      headers = { ...headers, 'cache-control': 'private, no-store' }
       const user = await authorize(event, site)
       const svc = await serviceFor(site)
       const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
