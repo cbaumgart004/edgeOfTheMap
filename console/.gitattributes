@@ -1,0 +1,2 @@
+# Released console versions are pinned by integrity hash: never convert line endings.
+releases/** -text
