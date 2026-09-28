@@ -1,0 +1,20 @@
+# Headers for admin.theedgeofthemap.com (Amplify reads this from the app root).
+# The loader fetches the console with an integrity hash, and a browser only
+# checks integrity on a cross-origin script served with CORS. Released
+# versions never change, so they cache for a year; the loader can change, so
+# it caches for five minutes.
+customHeaders:
+  - pattern: '**/*'
+    headers:
+      - key: Access-Control-Allow-Origin
+        value: '*'
+      - key: X-Content-Type-Options
+        value: nosniff
+  - pattern: 'console/**/*'
+    headers:
+      - key: Cache-Control
+        value: 'public, max-age=31536000, immutable'
+  - pattern: 'loader.js'
+    headers:
+      - key: Cache-Control
+        value: 'public, max-age=300'
