@@ -13,6 +13,8 @@ rmSync(stage, { recursive: true, force: true })
 mkdirSync(stage, { recursive: true })
 for (const dir of ['api', 'core', 'schema']) cpSync(new URL(dir, root), new URL(dir, stage), { recursive: true })
 mkdirSync(new URL('src', stage))
+mkdirSync(new URL('releases', stage))
+cpSync(new URL('releases/index.json', root), new URL('releases/index.json', stage))
 cpSync(new URL('src/richtext.js', root), new URL('src/richtext.js', stage))
 writeFileSync(new URL('package.json', stage), JSON.stringify({
   name: 'eotm-console-api', version: pkg.version, private: true, type: 'module',

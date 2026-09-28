@@ -125,6 +125,7 @@ export function createHandler(deps) {
       if (method === 'POST' && rest === '/documents') return json(201, await svc.create(body, user), headers)
 
       if (method === 'POST' && rest === '/uploads') {
+        if (!site.media_bucket) return json(503, { error: 'Photo storage is not set up for this site yet.' }, headers)
         const ext = IMAGE_TYPES[body.contentType]
         if (!ext) return json(415, { error: 'Photos must be WebP, JPEG, PNG or AVIF.' }, headers)
         if (!(body.bytes > 0 && body.bytes <= MAX_UPLOAD_BYTES)) return json(413, { error: 'Photo is too large.' }, headers)

@@ -17,6 +17,7 @@ import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
 import { migrate as runMigrations } from './migrate.js'
+import { register } from './register.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
 const ssm = new SSMClient({})
@@ -63,6 +64,9 @@ const http = createHandler({
 // cannot reach this: its body is not the event.
 export async function handler(event, context) {
   if (event?.eotmMigrate === true && !event.requestContext) return migrate(event)
+  if (event?.eotmRegister && !event.requestContext) {
+    return register(await poolFor(process.env.CONTROL_DATABASE_PARAM), event.eotmRegister)
+  }
   return http(event, context)
 }
 
