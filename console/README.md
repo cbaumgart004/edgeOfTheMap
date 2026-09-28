@@ -89,6 +89,13 @@ no login.
 - **Console files:** an Amplify app on this repo's `console` branch, app root `console`, custom
   domain `admin.theedgeofthemap.com`. Build: `npm ci && npm run build:site`; output directory
   `site`. It serves `/loader.js` and every version under `/console/<version>/console.js`.
+- **Header format:** both Amplify apps are monorepos, so their custom headers must be wrapped as
+  `applications: [{appRoot: <root>, customHeaders: [...]}]`. The plain `customHeaders:` form saves in the
+  console but fails every later build ("Monorepo spec provided without applications key"), leaving the
+  last good build live; that hid builds 3 to 13 of this app.
+- **Sign-in on a site:** the site's Amplify rewrite `/_edit/auth/<*>` goes to the Lambda's `/auth/<*>`
+  (`api/auth-proxy.js`), not to Neon Auth: Amplify adds `X-Forwarded-Host` and Neon Auth rejects any
+  request carrying one. Both apps keep cookies in the cache key, and `_edit/**/*` is `private, no-store`.
 - **Headers** are set on the Amplify app (Hosting, Custom headers), because Amplify reads
   `customHttp.yml` only from the repository root, not from the `console` app root:
   `Access-Control-Allow-Origin: *` on `loader.js` and `console/**/*` only (the loader's integrity check
