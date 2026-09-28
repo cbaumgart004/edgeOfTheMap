@@ -3,5 +3,10 @@
     "version": "0.1.0",
     "integrity": "sha384-HfUJdBTulbAjDfhDbNVR8J7Rr1ipy2CaQ0s5Hsi5GKc3I3fCH53uTBMFGmFJxkpM",
     "releasedAt": "2026-09-28"
+  },
+  {
+    "version": "0.1.1",
+    "integrity": "sha384-3d8IQCQAq4Q9Ll4onp8jMuQZXZKJ5wWLn8EFhatagL74Iqi73HXnw/oXY0EMgNw3",
+    "releasedAt": "2026-09-28"
   }
 ]

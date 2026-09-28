@@ -16,9 +16,18 @@ export function neonAuth({ base = '/_edit/auth' } = {}) {
     return data
   }
 
+  // Where the JWT appears is UNVERIFIED for Neon Auth, so try each place Better
+  // Auth can put it: the set-auth-jwt header on get-session (jwt plugin), the
+  // session body (ADR-0007's reading of Neon's docs), then the /token endpoint.
   async function fetchToken() {
-    const data = await call('/get-session', { method: 'GET' })
-    const token = data?.session?.access_token ?? data?.session?.accessToken ?? null
+    const res = await fetch(`${base}/get-session`, { credentials: 'include' })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data) return null
+    let token = res.headers.get('set-auth-jwt') ?? data?.session?.access_token ?? data?.session?.accessToken ?? null
+    if (!token) {
+      const t = await fetch(`${base}/token`, { credentials: 'include' }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      token = t?.token ?? null
+    }
     if (!token) return null
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
     cached = { token, exp: payload.exp * 1000, email: data?.user?.email }
@@ -32,6 +41,19 @@ export function neonAuth({ base = '/_edit/auth' } = {}) {
     async signIn(email, password) {
       await call('/sign-in/email', { method: 'POST', body: JSON.stringify({ email, password }) })
       return fetchToken()
+    },
+    // Emails a reset link that returns to `redirectTo` with ?token=. Better
+    // Auth renamed this endpoint; try the current name, then the older one.
+    async requestPasswordReset(email, redirectTo) {
+      const body = JSON.stringify({ email, redirectTo })
+      try {
+        return await call('/request-password-reset', { method: 'POST', body })
+      } catch {
+        return call('/forget-password', { method: 'POST', body })
+      }
+    },
+    async resetPassword(token, newPassword) {
+      return call('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) })
     },
     async signOut() {
       cached = null

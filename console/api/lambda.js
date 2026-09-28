@@ -18,6 +18,7 @@ import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
 import { migrate as runMigrations } from './migrate.js'
 import { register } from './register.js'
+import { createAuthProxy } from './auth-proxy.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
 const ssm = new SSMClient({})
@@ -62,7 +63,10 @@ const http = createHandler({
 // console's Test tab, IAM-authorized only) with {"eotmMigrate": true} runs the
 // migrations instead, so connection strings never leave SSM. A URL request
 // cannot reach this: its body is not the event.
+const authProxy = authUrl ? createAuthProxy({ authUrl }) : null
+
 export async function handler(event, context) {
+  if (authProxy && event?.rawPath?.startsWith('/auth/')) return authProxy(event)
   if (event?.eotmMigrate === true && !event.requestContext) return migrate(event)
   if (event?.eotmRegister && !event.requestContext) {
     return register(await poolFor(process.env.CONTROL_DATABASE_PARAM), event.eotmRegister)

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Edge of the Map Console</title>
+  <style>
+    :root { --bg: #f4f1ea; --surface: #fffdf8; --ink: #1f1c17; --muted: #6b6457; --line: #ddd5c4; --accent: #3d5a47; --accent-ink: #fff; --danger: #a33b2b; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #14130f; --surface: #1e1c17; --ink: #ede7da; --muted: #a79f8f; --line: #3a362d; --accent: #8fb39a; --accent-ink: #14130f; --danger: #e27d6c; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+    main { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 24px; }
+    h1 { font: 400 28px/1.2 'Cormorant Garamond', Georgia, serif; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+    input { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    button { min-height: 46px; padding: 0 18px; font: 600 15px system-ui, sans-serif; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+    button.link { background: none; border: 0; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; font-weight: 500; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .msg { min-height: 1.5em; margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+    .msg.is-error { color: var(--danger); }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .site { display: flex; flex-direction: column; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; background: var(--bg); }
+    .site:hover { border-color: var(--accent); }
+    .site span { color: var(--muted); font-size: 13px; }
+    .empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Edge of the Map</h1>
+    <p class="sub">Site editor</p>
+
+    <section data-view="signin" hidden>
+      <form id="signin-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+        <div class="row">
+          <button type="submit">Sign in</button>
+          <button type="button" id="forgot" class="link">Set or reset password</button>
+        </div>
+      </form>
+    </section>
+
+    <section data-view="reset" hidden>
+      <form id="reset-form">
+        <label for="new-password">New password</label>
+        <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="row"><button type="submit">Set password</button></div>
+      </form>
+    </section>
+
+    <section data-view="sites" hidden>
+      <p class="sub">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
+      <ul id="sites"></ul>
+      <div class="row"><button type="button" id="signout" class="link">Sign out</button></div>
+    </section>
+
+    <p id="msg" class="msg" role="status"></p>
+  </main>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

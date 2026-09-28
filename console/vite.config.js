@@ -16,9 +16,11 @@ export default defineConfig({
     emptyOutDir: false,
     outDir: 'dist',
     sourcemap: true,
-    lib: target === 'loader'
-      ? { entry: 'src/loader.js', formats: ['iife'], name: 'EOTMLoader', fileName: () => 'loader.js' }
-      : { entry: 'src/console.jsx', formats: ['iife'], name: 'EOTMConsole', fileName: () => `console/${pkg.version}/console.js` },
+    lib: {
+      loader: { entry: 'src/loader.js', formats: ['iife'], name: 'EOTMLoader', fileName: () => 'loader.js' },
+      dashboard: { entry: 'src/dashboard.js', formats: ['iife'], name: 'EOTMDashboard', fileName: () => 'dashboard.js' },
+      console: { entry: 'src/console.jsx', formats: ['iife'], name: 'EOTMConsole', fileName: () => `console/${pkg.version}/console.js` },
+    }[target],
   },
   test: { environment: 'node' },
 })

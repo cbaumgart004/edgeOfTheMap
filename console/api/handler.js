@@ -62,16 +62,19 @@ export function createHandler(deps) {
     return site
   }
 
-  async function authorize(event, site) {
+  async function verified(event) {
     const header = event.headers?.authorization ?? event.headers?.Authorization ?? ''
     const token = header.startsWith('Bearer ') ? header.slice(7) : null
     if (!token) throw new ServiceError(401, 'Sign in to edit.')
-    let user
     try {
-      user = await deps.verifyToken(token)
+      return await deps.verifyToken(token)
     } catch {
       throw new ServiceError(401, 'Your sign-in has expired.')
     }
+  }
+
+  async function authorize(event, site) {
+    const user = await verified(event)
     const { rows } = await deps.control.query(
       'SELECT role FROM site_members WHERE site_id = $1 AND user_id = $2', [site.id, user.id])
     if (!rows.length) throw new ServiceError(403, 'This login cannot edit this site.')
@@ -91,6 +94,16 @@ export function createHandler(deps) {
     let headers = {}
 
     try {
+      // The admin home page (same origin, so no CORS): the sites this login edits.
+      if (method === 'GET' && path === '/api/me/sites') {
+        const user = await verified(event)
+        const { rows } = await deps.control.query(
+          `SELECT s.slug, s.name, s.allowed_origins, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
+           WHERE m.user_id = $1 ORDER BY s.name`, [user.id])
+        return json(200, { email: user.email, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0] })) },
+          { 'cache-control': 'private, no-store' })
+      }
+
       const m = path.match(/^\/api\/sites\/([a-z0-9-]+)(\/.*)?$/)
       if (!m) return json(404, { error: 'Not found.' })
       const site = await loadSite(m[1])
