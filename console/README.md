@@ -100,8 +100,15 @@ no login.
   URL plus `/.well-known/jwks.json` (read from the Neon console). A site's proxy rewrite maps
   `/_edit/auth/<*>` to `<Auth URL>/<*>`. Neon Auth lets anyone sign up; a login edits nothing until
   `site_members` names it.
-- **Deployed:** Amplify app `dr2qcyxmox1km`, branch `console`, at
-  `https://console.dr2qcyxmox1km.amplifyapp.com` until `admin.theedgeofthemap.com` is attached.
+- **Deployed:** Amplify app `dr2qcyxmox1km`, branch `console`, at `https://admin.theedgeofthemap.com`
+  (Porkbun CNAME `admin` to Amplify's CloudFront host, plus the ACM validation CNAME).
+- **API deployed:** Lambda `eotm-console-api` (Node.js 24, handler `api/lambda.handler`, 512 MB, 20 s),
+  role `eotm-console-api-role-3asduby6` with inline policy `eotm-console-ssm` (read `/eotm/*`, decrypt
+  through SSM only). Function URL with auth NONE; the Amplify rewrite `/api/<*>` (200) forwards to it.
+  Upload `dist/api.zip` from `npm run package:api` through the Lambda console to update it.
+- **Migrations** run inside AWS: a Test-tab invoke of the Lambda with
+  `{"eotmMigrate": true, "siteParams": ["/eotm/sites/<site>/database"]}`. Applied: control `001_sites.sql`,
+  StoryShaped `001_documents.sql`.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a
   customer to it is an update of their `sites` row; no customer site rebuilds.
 - **API:** one Lambda from `api/lambda.js` with a function URL, reached as
