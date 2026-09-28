@@ -57,6 +57,15 @@ const http = createHandler({
     getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes,
       CacheControl: 'public, max-age=31536000, immutable' }), { expiresIn: 300 }),
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
+  // Neon Auth checks Origin against its trusted domains, so send the admin host's.
+  async requestPasswordReset(email) {
+    const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://admin.theedgeofthemap.com' },
+      body: JSON.stringify({ email, redirectTo: 'https://admin.theedgeofthemap.com/reset' }),
+    })
+    if (!res.ok) throw new Error(`password reset request failed (${res.status})`)
+  },
 })
 
 // Function URL requests carry requestContext.http. A direct invoke (the Lambda

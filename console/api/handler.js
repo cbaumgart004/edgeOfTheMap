@@ -48,6 +48,15 @@ function parseBody(event) {
 // }
 export function createHandler(deps) {
   const siteCache = new Map()
+  const resetTries = new Map() // ip -> timestamps, per warm container
+
+  function allowReset(ip, now = Date.now()) {
+    const recent = (resetTries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
+    if (recent.length >= 5) return false
+    recent.push(now)
+    resetTries.set(ip, recent)
+    return true
+  }
 
   async function loadSite(slug) {
     const hit = siteCache.get(slug)
@@ -94,6 +103,20 @@ export function createHandler(deps) {
     let headers = {}
 
     try {
+      // The admin home page asks for a password link. Neon Auth answers the same
+      // whether or not the email has a login (to stop address probing); the owner
+      // asked to be told which, so look it up first, throttled per caller.
+      if (method === 'POST' && path === '/api/password-reset') {
+        const ip = event.requestContext?.http?.sourceIp ?? 'unknown'
+        if (!allowReset(ip)) return json(429, { error: 'Too many tries. Wait ten minutes and try again.' }, { 'cache-control': 'no-store' })
+        const email = String(parseBody(event).email ?? '').trim().toLowerCase()
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(400, { error: 'Enter an email address.' }, { 'cache-control': 'no-store' })
+        const { rows } = await deps.control.query('SELECT 1 FROM neon_auth."user" WHERE lower(email) = $1 LIMIT 1', [email])
+        if (!rows.length) return json(404, { exists: false, email }, { 'cache-control': 'no-store' })
+        await deps.requestPasswordReset(email)
+        return json(200, { exists: true, sent: true, email }, { 'cache-control': 'no-store' })
+      }
+
       // The admin home page (same origin, so no CORS): the sites this login edits.
       if (method === 'GET' && path === '/api/me/sites') {
         const user = await verified(event)

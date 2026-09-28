@@ -53,13 +53,19 @@ $('#signin-form').addEventListener('submit', async (e) => {
 })
 
 $('#forgot').addEventListener('click', async () => {
-  const email = $('#email').value
+  const email = $('#email').value.trim()
   if (!email) return say('Enter your email first, then choose “Set or reset password”.', true)
+  say('Checking…')
   try {
-    await auth.requestPasswordReset(email, `${location.origin}/reset`)
-    say('If that email has a login, a link to set your password is on its way.')
-  } catch (err) {
-    say(err.message, true)
+    const res = await fetch('/api/password-reset', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) say(`Sent. A link to set your password is on its way to ${data.email}. It comes from auth@mail.myneon.app; check spam if it is not there in a few minutes.`)
+    else if (res.status === 404) say(`No login uses ${data.email ?? email}. Check the spelling, or ask Edge of the Map to add you.`, true)
+    else say(data.error ?? 'Could not send the link. Try again shortly.', true)
+  } catch {
+    say('Could not reach the server. Try again shortly.', true)
   }
 })
 

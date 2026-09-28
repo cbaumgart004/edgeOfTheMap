@@ -127,3 +127,31 @@ describe('rich text', () => {
       '<p><a href="https://x.example" target="_blank" rel="noopener noreferrer">x</a><img src="/uploads/a.webp" alt="a"><span class="text-outline">y</span></p>')
   })
 })
+
+describe('password reset lookup', () => {
+  const make = (users) => {
+    const sent = []
+    const handle = createHandler({
+      control: { async query(sql, p) { if (sql.includes('neon_auth')) return { rows: users.includes(p[0]) ? [{}] : [] }; throw new Error(sql) } },
+      siteDb: async () => null, verifyToken: async () => ({}), presign: async () => '', sanitize: () => (t, d) => d,
+      requestPasswordReset: async (email) => sent.push(email),
+    })
+    const call = (email, ip = '1.1.1.1') => handle({ requestContext: { http: { method: 'POST', sourceIp: ip } }, rawPath: '/api/password-reset', headers: {}, body: JSON.stringify({ email }) })
+      .then((r) => ({ status: r.statusCode, json: JSON.parse(r.body) }))
+    return { call, sent }
+  }
+
+  it('sends only for an existing login and says which', async () => {
+    const { call, sent } = make(['keeper@example.com'])
+    expect(await call('Keeper@Example.com')).toMatchObject({ status: 200, json: { sent: true, email: 'keeper@example.com' } })
+    expect(await call('nobody@example.com')).toMatchObject({ status: 404, json: { exists: false } })
+    expect(sent).toEqual(['keeper@example.com'])
+  })
+
+  it('throttles one caller to five tries in ten minutes', async () => {
+    const { call } = make([])
+    for (let i = 0; i < 5; i++) expect((await call(`a${i}@example.com`, '9.9.9.9')).status).toBe(404)
+    expect((await call('a6@example.com', '9.9.9.9')).status).toBe(429)
+    expect((await call('a6@example.com', '8.8.8.8')).status).toBe(404)
+  })
+})
