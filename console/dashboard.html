@@ -101,30 +101,68 @@
     .rune-entry { display: flex; gap: 14px; align-items: flex-start; margin: 14px 0 8px; padding: 12px 14px; min-height: 76px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
     .rune-entry p { margin: 4px 0 0; font-size: 14px; }
     .rune-big { font: 44px/1 var(--runes); color: var(--neon); text-shadow: var(--glow); }
-    /* Sigil panes: fill the empty sides of a wide screen. Brand black plate, teal
-       and violet smoke, a fire at the foot scorching the pane's lower edge. */
+    /* Side panes on a wide screen: a night scene (src/campfire.js) with the runes
+       rising out of a campfire as its smoke. Drawn in the brand's navy and teal. */
     .sigils { display: none; }
     @media (min-width: 900px) { body:not(:has(main.is-wide)) .sigils { display: block; --main-w: 420px; } }
     @media (min-width: 1340px) { body:has(main.is-wide) .sigils { display: block; --main-w: 980px; } }
     .sigils { position: fixed; top: 20px; bottom: 20px; width: calc((100vw - var(--main-w, 420px)) / 2 - 54px);
-      container: pane / inline-size; --fires: 13;
-      overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px;
-      background: linear-gradient(to top, #0b0604 0%, #04060a 22%, #070a12 100%); isolation: isolate; }
+      container: pane / inline-size; overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px; isolation: isolate;
+      background: linear-gradient(to bottom, #03060f 0%, #071329 38%, #0c2340 62%, #123a4f 74%, #0b1622 100%); }
     .sigils.is-left { left: 22px; }
     .sigils.is-right { right: 22px; }
-    .smoke i { position: absolute; bottom: -120px; left: calc(10% + var(--i) * 11%); width: 180px; height: 180px; margin-left: -90px; border-radius: 50%;
-      background: radial-gradient(circle, rgb(94 234 212 / .22), rgb(122 77 231 / .12) 45%, transparent 70%); filter: blur(18px);
-      animation: smoke 16s linear infinite; animation-delay: calc(var(--i) * -2.3s); }
-    .smoke i:nth-child(even) { background: radial-gradient(circle, rgb(122 77 231 / .22), rgb(94 234 212 / .1) 45%, transparent 70%); animation-duration: 19s; }
-    @keyframes smoke {
-      0% { transform: translate(0, 0) scale(.5); opacity: 0; }
-      15% { opacity: .9; }
-      60% { transform: translate(-24px, -55dvh) scale(1.4); opacity: .7; }
-      100% { transform: translate(30px, -110dvh) scale(2.2); opacity: 0; }
+    .sigils > * { position: absolute; }
+    /* Sky */
+    .sky { inset: 0 0 30% 0; }
+    .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }
+    .sky i.tw { animation: twinkle var(--d) ease-in-out infinite alternate; }
+    @keyframes twinkle { from { opacity: .25; } to { opacity: 1; } }
+    .milky { position: absolute; left: -30%; top: 8%; width: 160%; height: 26%; transform: rotate(-32deg);
+      background: radial-gradient(ellipse at 50% 50%, rgb(186 230 253 / .16), rgb(94 234 212 / .06) 45%, transparent 70%); filter: blur(10px); }
+    /* Land: ridges, ground, pines */
+    .land { left: 0; right: 0; bottom: 0; width: 100%; height: 46%; }
+    .ridge-far { fill: #1a3354; }
+    .ridge-near { fill: #0f2138; }
+    .ground { fill: #07090d; }
+    .pines { bottom: 0; height: 60%; width: min(48%, 230px); fill: #02050a; }
+    .pines.is-left { left: -6px; }
+    .pines.is-right { right: -6px; }
+    /* The fire's light on everything near it, flickering with the flames. */
+    .firelight { left: 0; right: 0; bottom: 0; height: 60%; pointer-events: none; mix-blend-mode: screen;
+      background: radial-gradient(ellipse 70% 55% at 50% 100%, rgb(249 115 22 / .34), rgb(234 88 12 / .12) 45%, transparent 75%);
+      animation: firelight 1.8s ease-in-out infinite; }
+    @keyframes firelight { 0%, 100% { opacity: .85; } 30% { opacity: 1; } 55% { opacity: .7; } 80% { opacity: .95; } }
+    /* The pit: stones lit by the fire (one gradient centred on it), logs, flames. */
+    .pit { left: 50%; bottom: 0; width: min(100%, 300px); transform: translateX(-50%); overflow: visible; z-index: 3; }
+    .pool { animation: firelight 1.8s ease-in-out infinite; }
+    .log { stroke: #24150c; stroke-width: 16; stroke-linecap: round; }
+    .log-lit { stroke: #fb923c; stroke-width: 3; stroke-linecap: round; opacity: .5; animation: firelight 1.8s ease-in-out infinite; }
+    .crack { stroke: #fdba74; stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 2px #f97316); animation: crack 1.4s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.3s); }
+    @keyframes crack { from { opacity: .35; } to { opacity: 1; } }
+    .tongue { transform-box: fill-box; transform-origin: 50% 100%; mix-blend-mode: screen; animation: lick var(--d) ease-in-out infinite; animation-delay: calc(var(--i) * -.41s); }
+    @keyframes lick {
+      0%, 100% { transform: scale(1, 1) skewX(0deg); }
+      25% { transform: scale(.94, 1.1) skewX(-5deg); }
+      50% { transform: scale(1.04, .9) skewX(3deg); }
+      75% { transform: scale(.97, 1.05) skewX(6deg); }
     }
-    .rise { position: absolute; inset: 0; }
-    button.sigil { position: absolute; left: 50%; bottom: 70px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
-      font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0; z-index: 4;
+    .wisp { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: wisp var(--d) ease-out infinite; animation-delay: var(--delay); }
+    @keyframes wisp { 0% { transform: translateY(0) scale(1); opacity: .9; } 100% { transform: translateY(-46px) scale(.3, .5); opacity: 0; } }
+    /* Runes rise out of the fire as its smoke. */
+    .smoke i { position: absolute; bottom: 60px; left: calc(50% - 90px + (var(--i) - 3) * 14px); width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgb(148 163 184 / .16), rgb(94 234 212 / .08) 45%, transparent 70%); filter: blur(18px);
+      animation: smoke 16s linear infinite; animation-delay: calc(var(--i) * -2.3s); }
+    .smoke i:nth-child(even) { background: radial-gradient(circle, rgb(122 77 231 / .16), rgb(148 163 184 / .08) 45%, transparent 70%); animation-duration: 19s; }
+    @keyframes smoke {
+      0% { transform: translate(0, 0) scale(.3); opacity: 0; }
+      12% { opacity: .9; }
+      60% { transform: translate(-30px, -55dvh) scale(1.6); opacity: .6; }
+      100% { transform: translate(34px, -110dvh) scale(2.4); opacity: 0; }
+    }
+    .smoke, .rise, .embers { inset: 0; }
+    .rise { z-index: 4; }
+    button.sigil { position: absolute; left: 50%; bottom: 150px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
+      font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0;
       animation: rise 42s linear infinite; animation-delay: calc(var(--i) * -42s / var(--n)); }
     button.sigil.is-echo { display: none; }
     /* A wide pane: three lanes, and the echo rising between, so it is never one lonely column. */
@@ -132,61 +170,32 @@
       button.sigil { left: calc(20% + var(--lane) * 30%); }
       button.sigil.is-echo { display: block; }
     }
-    @container pane (min-width: 380px) { .fire { --fires: 21; } }
     button.sigil span { display: grid; justify-items: center; gap: 2px; animation: sway 7s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -1.3s); }
     button.sigil b { font: 400 44px/1 var(--runes); text-shadow: 0 0 8px rgb(94 234 212 / .9), 0 0 22px rgb(94 234 212 / .45); }
     button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }
     button.sigil:hover b, button.sigil:focus-visible b { color: #fff; text-shadow: 0 0 10px #5eead4, 0 0 30px #5eead4; }
     @keyframes rise {
-      0% { transform: translate(-50%, 0); opacity: 0; filter: blur(8px); }
-      4% { opacity: 1; filter: blur(0); }
+      0% { transform: translate(-50%, 0) scale(.6); opacity: 0; filter: blur(8px); }
+      4% { opacity: 1; filter: blur(0); transform: translate(-50%, -40px) scale(1); }
       25% { opacity: .95; filter: blur(0); }
-      33% { transform: translate(-50%, calc(-100dvh + 60px)); opacity: 0; filter: blur(10px); }
-      100% { transform: translate(-50%, calc(-100dvh + 60px)); opacity: 0; }
+      33% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; filter: blur(10px); }
+      100% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; }
     }
     @keyframes sway { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
     /* Hovering a pane holds its sigils still, so one can be chosen. */
     .sigils:hover .sigil, .sigils:hover .sigil span, .sigils:focus-within .sigil, .sigils:focus-within .sigil span { animation-play-state: paused; }
-    /* Fire: a dozen thin tongues of uneven height and pace, each streaked with
-       licks that climb it, in dim amber; a heat shimmer above; a faint teal glow. */
-    .fire { position: absolute; left: -8%; right: -8%; bottom: -12px; height: 175px; filter: url(#burn); z-index: 2; pointer-events: none; }
-    .fire::before { content: ''; position: absolute; left: 0; right: 0; bottom: 70px; height: 90px;
-      background: radial-gradient(ellipse at 50% 100%, rgb(94 234 212 / .14), transparent 65%); filter: blur(12px); }
-    .fire::after { content: ''; position: absolute; left: 5%; right: 5%; bottom: 80px; height: 70px;
-      background: linear-gradient(to top, rgb(251 191 36 / .10), transparent); filter: blur(8px); animation: haze 2.3s ease-in-out infinite alternate; }
-    @keyframes haze { from { opacity: .4; transform: scaleY(.9); } to { opacity: .9; transform: scaleY(1.15); } }
-    .fire i { position: absolute; bottom: 0; left: calc(-4% + var(--i) * 116% / var(--fires)); width: calc(var(--wf, 1) * 170% / var(--fires)); height: 78%; overflow: hidden;
-      border-radius: 50% 50% 40% 40% / 85% 85% 15% 15%;
-      background: radial-gradient(ellipse 40% 75% at 50% 95%, rgb(255 244 214 / 1) 0%, rgb(251 191 36 / .92) 22%, rgb(234 88 12 / .8) 48%, rgb(154 52 18 / .5) 72%, transparent 100%);
-      mix-blend-mode: screen; filter: blur(4px); transform-origin: 50% 100%;
-      animation: flicker 1.7s ease-in-out infinite; animation-delay: calc(var(--i) * -.53s); }
-    /* Licks: darker bands scrolling up through each tongue, so it reads as moving flame, not a lit shape. */
-    .fire i::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(to top, transparent 0 14px, rgb(4 6 10 / .32) 20px, transparent 30px);
-      background-size: 100% 60px; mix-blend-mode: multiply; animation: licks .9s linear infinite; animation-delay: calc(var(--i) * -.21s); }
-    @keyframes licks { from { background-position: 0 0; } to { background-position: 0 -60px; } }
-    .fire i:nth-child(3n) { height: 100%; --wf: .85; animation-duration: 2.3s; }
-    .fire i:nth-child(3n + 1) { height: 58%; --wf: 1.15; animation-duration: 1.3s; }
-    .fire i:nth-child(n + 14) { display: none; }
-    @container pane (min-width: 380px) { .fire i:nth-child(n + 14) { display: block; } }
-    .fire i:nth-child(4n) { height: 88%; animation-duration: 1.9s; }
-    .fire i:nth-child(5n) { height: 46%; }
-    @keyframes flicker {
-      0% { transform: scale(1, 1) skewX(0deg); opacity: .85; }
-      23% { transform: scale(.92, 1.12) skewX(-6deg); opacity: 1; }
-      47% { transform: scale(1.05, .86) skewX(3deg); opacity: .75; }
-      71% { transform: scale(.96, 1.05) skewX(7deg); opacity: .95; }
-      100% { transform: scale(1, 1) skewX(0deg); opacity: .85; }
-    }
-    .embers i { position: absolute; bottom: 70px; left: calc(8% + var(--i) * 10%); width: 3px; height: 3px; border-radius: 50%; background: #fdba74;
-      box-shadow: 0 0 6px 2px rgb(245 158 11 / .8); z-index: 3; animation: ember 5s ease-out infinite; animation-delay: calc(var(--i) * -.61s); }
-    @keyframes ember { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(18px, -240px); opacity: 0; } }
-    /* The scorch: a charred band with a ragged top edge, glowing where it meets the fire. */
-    .singe { position: absolute; left: -24px; right: -24px; bottom: -24px; height: 130px; z-index: 1; pointer-events: none; filter: url(#char);
-      background: linear-gradient(to top, #000 0%, #120703 38%, #2a1206 58%, rgb(234 88 12 / .38) 63%, rgb(251 146 60 / .16) 66%, transparent 71%); }
+    /* Sparks from the fire. */
+    .embers { z-index: 5; pointer-events: none; }
+    .embers i { position: absolute; bottom: 90px; left: calc(50% + (var(--i) - 4) * 7px); width: 2.5px; height: 2.5px; border-radius: 50%; background: #fed7aa;
+      box-shadow: 0 0 6px 2px rgb(249 115 22 / .8); animation: ember 4.5s ease-out infinite; animation-delay: calc(var(--i) * -.53s); }
+    .embers i:nth-child(even) { animation-name: ember-left; animation-duration: 5.5s; }
+    @keyframes ember { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(34px, -300px); opacity: 0; } }
+    @keyframes ember-left { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(-40px, -260px); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
-      .smoke i, .embers i, .fire i, .fire i::after, .fire::after, button.sigil span { animation: none !important; }
-      .rise { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 140px; overflow-y: auto; }
-      button.sigil { position: static; opacity: 1; transform: none; animation: none; }
+      .sigils *, .sigils *::before, .sigils *::after { animation: none !important; }
+      .wisp, .embers { display: none; }
+      .rise { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 240px; overflow-y: auto; }
+      button.sigil { position: static; opacity: 1; transform: none; }
       button.sigil.is-echo { display: none !important; }
     }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
@@ -329,18 +338,9 @@
 
     <p id="msg" class="msg" role="status"></p>
   </main>
-  <!-- Side panes on a wide screen: sigils rising through smoke from a fire. Choosing one opens it in the glossary. -->
+  <!-- Side panes on a wide screen: a night campfire with the runes rising out of it. Choosing one opens it in the glossary. -->
   <nav id="sigils-left" class="sigils is-left" aria-label="Runes 1 to 12"></nav>
   <nav id="sigils-right" class="sigils is-right" aria-label="Runes 13 to 24"></nav>
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-    <!-- Wavers the flames. -->
-    <filter id="burn" x="-20%" y="-30%" width="140%" height="160%"><feTurbulence type="fractalNoise" baseFrequency="0.05 0.025" numOctaves="3" seed="4">
-      <animate attributeName="baseFrequency" values="0.05 0.025;0.055 0.035;0.05 0.025" dur="4.5s" repeatCount="indefinite" /></feTurbulence>
-      <feDisplacementMap in="SourceGraphic" scale="12" /></filter>
-    <!-- A ragged, charred edge. -->
-    <filter id="char"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="9" />
-      <feDisplacementMap in="SourceGraphic" scale="28" /></filter>
-  </svg>
   <script src="/dashboard.js"></script>
 </body>
 </html>
