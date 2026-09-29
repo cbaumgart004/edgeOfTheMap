@@ -5,6 +5,7 @@
 // host's /_edit/auth rewrite.
 
 import { neonAuth } from './auth.js'
+import { mountRunes } from './runes.js'
 
 const auth = neonAuth({ base: '/_edit/auth' })
 const $ = (sel) => document.querySelector(sel)
@@ -487,4 +488,5 @@ for (const b of document.querySelectorAll('#signout, [data-signout]')) {
   })
 }
 
+mountRunes($('#runes-body'))
 start().catch((err) => say(err.message, true))

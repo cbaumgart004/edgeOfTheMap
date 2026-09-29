@@ -10,6 +10,10 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- Cormorant Garamond for headings (Edge of the Map's display face); Noto Sans Runic so the futhark draws everywhere. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Sans+Runic&display=swap" />
   <style>
     /* Edge of the Map's two faces (edgeOfTheMap/src/App.css): warm paper and teal by day, violet at night. */
     :root { --bg: #faf8f5; --surface: #ffffff; --ink: #191510; --muted: #5f584e; --line: #e3ddd3; --accent: #0f766e; --accent-ink: #fff; --danger: #b42318; --plate: #0b0912; }
@@ -75,6 +79,28 @@
     }
     /* A site pinned to an older editor than the newest release. */
     .behind { margin: 0; padding: 8px 12px; border: 1px solid var(--danger); border-radius: 8px; color: var(--danger); font-size: 14px; }
+    /* Brand: the logo card on its own black plate, a glowing rune rule, Cormorant headings. */
+    :root { --neon: #0f766e; --glow: none; --runes: 'Noto Sans Runic', 'Segoe UI Historic', sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      :root { --neon: #5eead4; --glow: 0 0 6px rgb(94 234 212 / .7), 0 0 18px rgb(94 234 212 / .35); }
+      body { background: radial-gradient(ellipse at 50% 0%, rgb(20 90 80 / .35), transparent 60%), var(--bg); }
+    }
+    .brand { margin: -28px -24px 18px; padding: 18px 16px 10px; background: var(--plate); border-radius: 14px 14px 0 0; text-align: center; }
+    .brand img { display: block; width: min(100%, 340px); height: auto; margin: 0 auto; }
+    .rune-rule { margin: 6px 0 0; font: 18px/1.2 var(--runes); letter-spacing: .35em; color: #5eead4; text-shadow: 0 0 6px rgb(94 234 212 / .8), 0 0 16px rgb(94 234 212 / .4); overflow: hidden; white-space: nowrap; }
+    h1 { font: 600 30px/1.15 'Cormorant Garamond', Georgia, serif; letter-spacing: .01em; color: var(--neon); text-shadow: var(--glow); }
+    h2 { color: var(--neon); }
+    /* The Elder Futhark glossary. */
+    .runes { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .runes summary { font: 600 18px 'Cormorant Garamond', Georgia, serif; color: var(--neon); }
+    .aett { margin-top: 14px; }
+    .aett h3 { font: 600 17px 'Cormorant Garamond', Georgia, serif; margin: 0 0 6px; }
+    .rune-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+    button.rune { min-height: 44px; padding: 0; font: 24px/1 var(--runes); color: var(--neon); background: var(--bg); border: 1px solid var(--line); text-shadow: var(--glow); }
+    button.rune:hover, button.rune[aria-pressed="true"] { border-color: var(--neon); background: color-mix(in srgb, var(--neon) 12%, transparent); }
+    .rune-entry { display: flex; gap: 14px; align-items: flex-start; margin: 14px 0 8px; padding: 12px 14px; min-height: 76px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+    .rune-entry p { margin: 4px 0 0; font-size: 14px; }
+    .rune-big { font: 44px/1 var(--runes); color: var(--neon); text-shadow: var(--glow); }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
@@ -83,6 +109,10 @@
 </head>
 <body>
   <main>
+    <header class="brand">
+      <img src="/logo-card.webp" alt="Edge of the Map" width="800" height="533" />
+      <p class="rune-rule" aria-hidden="true">ᚠᚢᚦᚨᚱᚲᚷᚹ ᚺᚾᛁᛃᛈᛇᛉᛊ ᛏᛒᛖᛗᛚᛜᛞᛟ</p>
+    </header>
     <h1>Admin Console</h1>
     <p class="sub"><a class="powered" href="https://theedgeofthemap.com" target="_blank" rel="noopener"><img src="/icon-192.png" alt="" width="24" height="24" />Powered by Edge of the Map</a></p>
 
@@ -203,6 +233,11 @@
       <h2>Logins</h2>
       <ul id="m-logins" class="people"></ul>
     </section>
+
+    <details id="runes" class="runes">
+      <summary>The Elder Futhark</summary>
+      <div id="runes-body"></div>
+    </details>
 
     <p id="msg" class="msg" role="status"></p>
   </main>
