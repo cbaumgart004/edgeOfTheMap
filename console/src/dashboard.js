@@ -125,10 +125,11 @@ $('#forgot').addEventListener('click', async () => {
 
 // Management page (operators): every site, its editor version, photo storage and members.
 let state = null
-async function loadManage() {
-  say('Loading…')
+// quiet: a refresh after a save, which must not clear the save's message.
+async function loadManage({ quiet = false } = {}) {
+  if (!quiet) say('Loading…')
   state = await api('GET', '/api/manage')
-  say('')
+  if (!quiet) say('')
   const versions = state.releases.map((r) => r.version).reverse()
   $('#m-sites').innerHTML = state.sites.map((s) => `
     <li class="card" data-slug="${esc(s.slug)}">
@@ -160,13 +161,22 @@ async function loadManage() {
 }
 
 // Runs a form's action with its submit button showing the outcome in place:
-// "Saving…", then "Saved" or "Not saved", as well as the toast.
+// "Saving…", then "Saved" or "Not saved", as well as the toast. A save that
+// re-renders the site cards replaces its button, so the outcome goes on the
+// button now standing in the same card and form.
 const run = (fn) => async (e) => {
   e.preventDefault()
   const form = e.target.closest?.('form')
-  const btn = form?.querySelector('button[type=submit], button:not([type])')
+  const pick = 'button[type=submit], button:not([type])'
+  let btn = form?.querySelector(pick)
   const label = btn?.textContent
-  const mark = (text, cls) => { if (!btn || !btn.isConnected) return; btn.textContent = text; btn.className = cls; btn.disabled = text === 'Saving…' }
+  const slug = form?.closest('[data-slug]')?.dataset.slug
+  const find = () => {
+    if (btn?.isConnected || !slug) return btn
+    btn = document.querySelector(`[data-slug="${CSS.escape(slug)}"] form[data-form="${form.dataset.form}"]`)?.querySelector(pick)
+    return btn
+  }
+  const mark = (text, cls) => { const b = find(); if (!b?.isConnected) return; b.textContent = text; b.className = cls; b.disabled = text === 'Saving…' }
   mark('Saving…', '')
   try {
     await fn(e)
@@ -192,13 +202,13 @@ $('#m-sites').addEventListener('submit', run(async (e) => {
     await api('POST', `/api/manage/sites/${slug}/members`, f)
     say('Added.')
   }
-  await loadManage()
+  await loadManage({ quiet: true })
 }))
 $('#m-sites').addEventListener('click', (e) => {
   const id = e.target.dataset?.remove
   if (!id) return
   const slug = e.target.closest('[data-slug]').dataset.slug
-  run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage() })(e)
+  run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage({ quiet: true }) })(e)
 })
 
 $('#mu-gen').addEventListener('click', () => {
@@ -215,13 +225,13 @@ $('#m-user').addEventListener('submit', run(async () => {
     ? `Created ${r.email}. Give them the temporary password privately and send them to admin.theedgeofthemap.com; they can change it under “Change password”.`
     : `${r.email} already had a login; ${body.site ? 'it now has the site. Its password is unchanged.' : 'nothing changed.'}`
   $('#mu-pass').value = ''
-  await loadManage()
+  await loadManage({ quiet: true })
 }))
 $('#m-op').addEventListener('submit', run(async () => {
   await api('POST', '/api/manage/operators', { email: $('#mo-email').value })
   $('#mo-email').value = ''
   say('Operator added.')
-  await loadManage()
+  await loadManage({ quiet: true })
 }))
 
 $('#change-form').addEventListener('submit', run(async () => {
