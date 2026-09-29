@@ -42,7 +42,9 @@ function parseBody(event) {
 // deps: {
 //   control: { query(sql, params) }                   Edge of the Map's project
 //   siteDb(site): Promise<{ query }>                  that customer's project
-//   verifyToken(jwt): Promise<{ id, email }>          throws when invalid
+//   verifyToken(jwt): Promise<{ id, email, site? }>   throws when invalid; `site`
+//                                                     is set on an editor token
+//   signEditorToken({ id, email, site }): Promise<string>
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
 //   sanitize(schema): (type, data) => data
 // }
@@ -87,6 +89,8 @@ export function createHandler(deps) {
     const { rows } = await deps.control.query(
       'SELECT role FROM site_members WHERE site_id = $1 AND user_id = $2', [site.id, user.id])
     if (!rows.length) throw new ServiceError(403, 'This login cannot edit this site.')
+    // An editor token opens one site only.
+    if (user.site && user.site !== site.slug) throw new ServiceError(403, 'This sign-in is for another site.')
     return { ...user, role: rows[0].role }
   }
 
@@ -115,6 +119,22 @@ export function createHandler(deps) {
         if (!rows.length) return json(404, { exists: false, email }, { 'cache-control': 'no-store' })
         await deps.requestPasswordReset(email)
         return json(200, { exists: true, sent: true, email }, { 'cache-control': 'no-store' })
+      }
+
+      // Single sign-on to a site's editor. The admin page holds the Neon Auth
+      // session (first-party there), and a site's own domain cannot read it, so
+      // the admin page trades its Neon JWT for an editor token bound to one site
+      // and hands it to that site in the URL fragment. Only a Neon JWT may ask:
+      // an editor token cannot mint another.
+      if (method === 'POST' && path === '/api/handoff') {
+        const user = await verified(event)
+        if (user.site) throw new ServiceError(403, 'Sign in on the admin page.')
+        const slug = String(parseBody(event).site ?? '')
+        const site = /^[a-z0-9-]+$/.test(slug) ? await loadSite(slug) : null
+        if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
+        const member = await authorize(event, site)
+        const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
+        return json(200, { token, url: site.allowed_origins[0] }, { 'cache-control': 'private, no-store' })
       }
 
       // The admin home page (same origin, so no CORS): the sites this login edits.

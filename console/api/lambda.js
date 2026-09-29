@@ -12,7 +12,8 @@ import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { createRemoteJWKSet, jwtVerify, SignJWT, decodeProtectedHeader } from 'jose'
+import { createHash } from 'node:crypto'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
@@ -45,13 +46,33 @@ async function poolFor(param) {
 const authUrl = process.env.NEON_AUTH_URL
 const jwks = authUrl ? createRemoteJWKSet(new URL(`${authUrl.replace(/\/$/, '')}/.well-known/jwks.json`)) : null
 
+// Editor tokens (handler.js /api/handoff) are HS256, keyed from the control
+// project's connection string: already secret, already in SSM, so no new
+// credential to provision. Rotating that password signs every editor out.
+const EDITOR_ISSUER = 'eotm-console'
+const EDITOR_HOURS = 8
+let editorKey = null
+async function editorSecret() {
+  editorKey ??= createHash('sha256').update(`eotm-editor-token:${await secret(process.env.CONTROL_DATABASE_PARAM)}`).digest()
+  return editorKey
+}
+
 const http = createHandler({
   control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
   siteDb: (site) => poolFor(site.connection_param),
   async verifyToken(token) {
+    if (decodeProtectedHeader(token).alg === 'HS256') {
+      const { payload } = await jwtVerify(token, await editorSecret(), { issuer: EDITOR_ISSUER, algorithms: ['HS256'] })
+      if (!payload.site) throw new Error('editor token without a site')
+      return { id: payload.sub, email: payload.email ?? null, site: payload.site }
+    }
     if (!jwks) throw new Error('NEON_AUTH_URL is not set')
     const { payload } = await jwtVerify(token, jwks, { issuer: new URL(authUrl).origin })
     return { id: payload.sub, email: payload.email ?? null }
+  },
+  async signEditorToken({ id, email, site }) {
+    return new SignJWT({ email, site }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
+      .setIssuer(EDITOR_ISSUER).setIssuedAt().setExpirationTime(`${EDITOR_HOURS}h`).sign(await editorSecret())
   },
   presign: ({ bucket, key, contentType, bytes }) =>
     getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes,

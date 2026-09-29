@@ -78,3 +78,42 @@ export function localAuth() {
   const who = { token: 'local', email: 'owner@example.test' }
   return { current: async () => who, signIn: async () => who, signOut: async () => {}, getToken: async () => 'local' }
 }
+
+// Single sign-on from the admin page (handler.js /api/handoff). The loader
+// stores the editor token it was handed; when there is none, or it has run out,
+// sign-in is a trip to the admin page and back rather than a second password.
+// A session on the site's own domain (neonAuth) still works as before.
+export const editorTokenKey = (site) => `eotm:token:${site}`
+
+export function editorAuth({ apiBase, site, fallback }) {
+  function stored() {
+    let token = null
+    try { token = sessionStorage.getItem(editorTokenKey(site)) } catch { /* private mode */ }
+    if (!token) return null
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      if (payload.site !== site || payload.exp * 1000 - Date.now() < 60_000) return null
+      return { token, email: payload.email ?? null }
+    } catch {
+      return null
+    }
+  }
+  return {
+    async current() {
+      return stored() ?? (await fallback.current())
+    },
+    async getToken() {
+      return stored()?.token ?? fallback.getToken()
+    },
+    signIn: (email, password) => fallback.signIn(email, password),
+    // Leaves the page for the admin sign-in, which sends the owner back here.
+    redirect() {
+      const back = location.pathname + location.search
+      location.assign(`${apiBase.replace(/\/$/, '')}/?handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}`)
+    },
+    async signOut() {
+      try { sessionStorage.removeItem(editorTokenKey(site)) } catch { /* private mode */ }
+      await fallback.signOut()
+    },
+  }
+}

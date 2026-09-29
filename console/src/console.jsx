@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import css from './console.css?inline'
 import { httpStore, localStore } from './store.js'
-import { neonAuth, localAuth } from './auth.js'
+import { neonAuth, localAuth, editorAuth } from './auth.js'
 
 export const VERSION = __CONSOLE_VERSION__
 
@@ -21,7 +21,7 @@ export function mount({ schema, bridge, apiBase, authBase, local = false }) {
   host.dataset.eotmHost = ''
   document.body.append(host)
 
-  const auth = local ? localAuth() : neonAuth({ base: authBase })
+  const auth = local ? localAuth() : editorAuth({ apiBase, site: schema.site, fallback: neonAuth({ base: authBase }) })
   const store = local ? localStore({ schema }) : httpStore({ apiBase, site: schema.site, getToken: () => auth.getToken() })
   const root = createRoot(host)
   bridge.editing = true

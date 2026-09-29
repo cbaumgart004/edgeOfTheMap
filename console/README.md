@@ -96,6 +96,12 @@ no login.
 - **Sign-in on a site:** the site's Amplify rewrite `/_edit/auth/<*>` goes to the Lambda's `/auth/<*>`
   (`api/auth-proxy.js`), not to Neon Auth: Amplify adds `X-Forwarded-Host` and Neon Auth rejects any
   request carrying one. Both apps keep cookies in the cache key, and `_edit/**/*` is `private, no-store`.
+- **Single sign-on (console 0.1.2+):** a site link on the admin page trades the admin session's Neon
+  JWT for an editor token (`POST /api/handoff`, HS256, 8 hours, bound to one site) and opens the site
+  with `#eotm-token=`; the loader keeps it in `sessionStorage` and strips it from the URL. The editor's
+  sign-in button returns to `admin.theedgeofthemap.com/?handoff=<site>&return=<path>`. The signing key
+  is derived from the control connection string in `api/lambda.js`, so rotating that password signs
+  every editor out. An editor token cannot mint another. The site-domain sign-in above still works.
 - **Headers** are set on the Amplify app (Hosting, Custom headers), because Amplify reads
   `customHttp.yml` only from the repository root, not from the `console` app root:
   `Access-Control-Allow-Origin: *` on `loader.js` and `console/**/*` only (the loader's integrity check

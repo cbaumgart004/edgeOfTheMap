@@ -68,10 +68,26 @@ async function open() {
 
 bridge.open = open
 
+// Single sign-on: the admin page sends the owner here with #eotm-token=<editor
+// token>. Keep it for this tab only, take it out of the address bar (and so out
+// of history and anything copied from it), and open the editor.
+function takeHandoff() {
+  const m = location.hash.match(/(?:^#|&)eotm-token=([\w.-]+)/)
+  if (!m || !cfg.site) return false
+  try {
+    sessionStorage.setItem(`eotm:token:${cfg.site}`, m[1])
+    sessionStorage.setItem('eotm:edit', '1')
+  } catch { /* private mode: the owner signs in on the page instead */ }
+  const rest = location.hash.replace(m[0], '').replace(/^#&?/, '')
+  history.replaceState(history.state, '', location.pathname + location.search + (rest ? `#${rest}` : ''))
+  return true
+}
+const handedOff = takeHandoff()
+
 const wantsEdit = () => {
   try { return new URLSearchParams(location.search).has('edit') || sessionStorage.getItem('eotm:edit') === '1' } catch { return false }
 }
-if (wantsEdit()) open()
+if (handedOff || wantsEdit()) open()
 
 addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {

@@ -145,6 +145,12 @@ function SignIn({ auth, onSignedIn }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  if (auth.redirect) return (
+    <div className="eotm-signin">
+      <p>Sign in to edit this site.</p>
+      <button type="button" className="eotm-btn is-primary" onClick={() => auth.redirect()}>Sign in with Edge of the Map</button>
+    </div>
+  )
   return (
     <form className="eotm-signin" onSubmit={async (e) => {
       e.preventDefault()

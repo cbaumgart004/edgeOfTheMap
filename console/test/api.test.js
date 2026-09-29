@@ -155,3 +155,45 @@ describe('password reset lookup', () => {
     expect((await call('a6@example.com', '8.8.8.8')).status).toBe(404)
   })
 })
+
+describe('editor handoff', () => {
+  const make = ({ member = true } = {}) => {
+    const handle = createHandler({
+      control: {
+        async query(sql) {
+          if (sql.includes('FROM sites')) return { rows: [SITE] }
+          if (sql.includes('FROM site_members')) return { rows: member ? [{ role: 'owner' }] : [] }
+          throw new Error(sql)
+        },
+      },
+      siteDb: async () => fakeSiteDb(),
+      // "neon" is an admin-page JWT; "editor:<site>" an editor token for that site.
+      verifyToken: async (t) => t === 'neon' ? { id: 'user-1', email: 'o@x.example' }
+        : t.startsWith('editor:') ? { id: 'user-1', email: 'o@x.example', site: t.slice(7) } : Promise.reject(new Error('bad')),
+      signEditorToken: async ({ site }) => `editor:${site}`,
+      presign: async () => '', sanitize: () => (t, d) => d,
+    })
+    return (method, path, { token, body, origin } = {}) => handle({ requestContext: { http: { method } }, rawPath: path, queryStringParameters: { type: 'event' },
+      headers: { ...(origin ? { origin } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body && JSON.stringify(body) })
+      .then((r) => ({ status: r.statusCode, json: JSON.parse(r.body || 'null') }))
+  }
+
+  it('trades an admin sign-in for a token bound to one site the login edits', async () => {
+    const call = make()
+    expect(await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds' } }))
+      .toMatchObject({ status: 200, json: { token: 'editor:spiritseeds', url: ORIGIN } })
+    expect((await make({ member: false })('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds' } })).status).toBe(403)
+    expect((await call('POST', '/api/handoff', { body: { site: 'spiritseeds' } })).status).toBe(401)
+  })
+
+  it('will not let an editor token mint another', async () => {
+    expect((await make()('POST', '/api/handoff', { token: 'editor:spiritseeds', body: { site: 'spiritseeds' } })).status).toBe(403)
+  })
+
+  it('an editor token edits its own site and no other', async () => {
+    const call = make()
+    const q = '/documents'
+    expect((await call('GET', `/api/sites/spiritseeds${q}`, { token: 'editor:spiritseeds', origin: ORIGIN })).status).toBe(200)
+    expect((await call('GET', `/api/sites/spiritseeds${q}`, { token: 'editor:storyshaped', origin: ORIGIN })).status).toBe(403)
+  })
+})
