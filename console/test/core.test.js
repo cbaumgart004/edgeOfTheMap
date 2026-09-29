@@ -28,6 +28,14 @@ describe('documents', () => {
     etsy: { enabled: false, tags: [], whoMade: 'i_did', whenMade: 'made_to_order' }, ebay: { enabled: false, aspects: [], condition: 'NEW' },
   }
 
+  it('checks a page layout: plain keys, each once, 1 to 12 columns', () => {
+    const layout = (blocks) => checkDocument(storyshaped, 'pageLayout', { title: 'Home', path: '/', blocks })
+    expect(layout([{ key: 'hero', span: 12 }, { key: 'our-story', span: 6 }])).toEqual([])
+    expect(layout([{ key: 'a b', span: 12 }])).toEqual([expect.stringMatching(/plain name/)])
+    expect(layout([{ key: 'hero', span: 6 }, { key: 'hero', span: 6 }])).toEqual([expect.stringMatching(/twice/)])
+    expect(layout([{ key: 'hero', span: 13 }])).toEqual([expect.stringMatching(/1 to 12/)])
+  })
+
   it('accepts a complete inventory item', () => {
     expect(checkDocument(storyshaped, 'stockItem', item)).toEqual([])
   })

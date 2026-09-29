@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from 'react'
 import { newBlock, newListItem, duplicateData, titleOf } from '../schema/schema.js'
 import RichText from './RichText.jsx'
+import Layout from './Layout.jsx'
 import { prepareImage } from './images.js'
 
 // One editor per field kind (schema/SCHEMA.md). `ctx` carries the schema, the
@@ -35,6 +36,8 @@ function Field({ field, value, onChange, ctx, path }) {
       return wrap(<textarea id={id} className="eotm-input" rows={4} value={value ?? ''} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />)
     case 'placement':
       return wrap(<Placement id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
+    case 'layout':
+      return wrap(<Layout id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'richtext':
       return wrap(<RichText value={value} onChange={onChange} schema={ctx.schema} upload={ctx.upload} label={label} />, { block: true })
     case 'number':

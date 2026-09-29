@@ -195,4 +195,37 @@ select.eotm-input[multiple] { min-height: 120px; }
   max-width: calc(100vw - 32px); z-index: 1;
 }
 
+/* ------------------------------------------------------------ layout */
+
+.eotm-layout { display: grid; gap: 10px; }
+.eotm-layout ol { display: grid; gap: 6px; }
+.eotm-layout-row { display: flex; align-items: center; gap: 4px; }
+.eotm-layout-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-layout-row .eotm-input { width: auto; flex: none; }
+
+/* Arrange: boxes drawn over the page's own blocks. Only the handles take
+   pointers, so the page still scrolls under a finger everywhere else. */
+.eotm-arrange { position: fixed; inset: 0; pointer-events: none; }
+.eotm-box { position: fixed; border: 2px dashed var(--eotm-accent); border-radius: 6px;
+  background: color-mix(in srgb, var(--eotm-accent) 7%, transparent); }
+.eotm-box.is-dragging { opacity: 0.7; z-index: 1; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
+.eotm-box-move, .eotm-box-size, .eotm-box-span {
+  position: absolute; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--eotm-accent); color: var(--eotm-accent-ink); font-size: 14px; font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); user-select: none; -webkit-user-select: none;
+}
+.eotm-box-move { top: 8px; left: 8px; max-width: calc(100% - 16px); min-height: 40px; padding: 0 14px; border-radius: 999px;
+  pointer-events: auto; touch-action: none; cursor: grab; white-space: nowrap; overflow: hidden; }
+.eotm-box.is-dragging .eotm-box-move { cursor: grabbing; }
+.eotm-box-span { top: 8px; right: 8px; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+.eotm-box-size { top: 50%; right: 4px; width: 32px; height: 64px; margin-top: -32px; border-radius: 16px;
+  pointer-events: auto; touch-action: none; cursor: ew-resize; }
+.eotm-drop { position: fixed; border-radius: 3px; background: var(--eotm-accent); }
+.eotm-arrange-bar {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px);
+  display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto;
+  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); font-size: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) { .eotm-sheet { transition: none; } }

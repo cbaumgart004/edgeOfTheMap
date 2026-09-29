@@ -133,6 +133,9 @@ no login.
   StoryShaped `001_documents.sql`.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a
   customer to it is an update of their `sites` row; no customer site rebuilds.
+  A release that adds a field kind needs the API redeployed **before** a schema using it is reloaded
+  (Manage, save with the schema reloaded): the Lambda checks every site schema against its own
+  `schema/schema.js` and answers 500 for a kind it does not know.
 - **API:** one Lambda from `api/lambda.js` with a function URL, reached as
   `admin.theedgeofthemap.com/api/<*>` through an Amplify rewrite (status 200). Its settings, by name:
   `CONTROL_DATABASE_PARAM` (SSM name of the control project's connection string), `NEON_AUTH_URL`,

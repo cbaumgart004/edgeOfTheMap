@@ -4,7 +4,7 @@
 
 export const FIELD_KINDS = [
   'text', 'textarea', 'richtext', 'url', 'number', 'money', 'boolean', 'date',
-  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement',
+  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout',
 ]
 
 const NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/
@@ -80,7 +80,7 @@ function defaultFor(field, schema) {
     case 'boolean': return false
     case 'number': return null
     case 'money': return { amount: null, currency: field.currency ?? 'USD' }
-    case 'photos': case 'list': case 'blocks': return []
+    case 'photos': case 'list': case 'blocks': case 'layout': return []
     case 'relation': return field.many ? [] : null
     case 'group': return defaultData(field.fields, schema)
     case 'image': return null
@@ -183,6 +183,19 @@ function checkValue(field, value, at, schema, errors, opts) {
       // '^' = first; otherwise the site's key of the entry this one follows.
       if (typeof value !== 'string' || value.length > 200) errors.push(`${at}: must name an entry to follow`)
       break
+    case 'layout': {
+      // [{ key, span }] in page order: the page's block names, each with its
+      // width in columns of 12.
+      if (!Array.isArray(value)) { errors.push(`${at}: must be a list`); break }
+      const keys = new Set()
+      value.forEach((b, i) => {
+        if (typeof b?.key !== 'string' || !/^[\w-]{1,100}$/.test(b.key)) errors.push(`${at}[${i}]: key must be a plain name`)
+        else if (keys.has(b.key)) errors.push(`${at}[${i}]: "${b.key}" is listed twice`)
+        else keys.add(b.key)
+        if (!Number.isInteger(b?.span) || b.span < 1 || b.span > 12) errors.push(`${at}[${i}]: width must be 1 to 12 columns`)
+      })
+      break
+    }
     case 'select':
       if (!field.options.some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
       break

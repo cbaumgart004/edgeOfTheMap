@@ -72,4 +72,35 @@ describe('console in a page', () => {
     expect(preview.textContent).toBe('Edit')
     expect(host.querySelector('.eotm-sheet').classList.contains('is-peek')).toBe(true)
   })
+
+  it('orders and sizes the blocks the page marks, and writes the whole arrangement', async () => {
+    localStorage.clear()
+    const story = JSON.parse(readFileSync('schema/sites/storyshaped.json', 'utf8'))
+    const page = document.createElement('main')
+    page.dataset.eotmLayout = ''
+    page.innerHTML = ['hero', 'story', 'makers'].map((k) => `<section data-eotm-block="${k}" data-eotm-label="${k}" data-eotm-span="12"></section>`).join('')
+    document.body.append(page)
+    const host = document.createElement('div')
+    document.body.append(host)
+    const store = localStore({ schema: story })
+    const doc = await store.create({ type: 'pageLayout', data: { title: 'Home', path: '/' } })
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={story} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+    await act(async () => byText(host, 'button.eotm-card', 'Page layouts').click())
+    await tick()
+    await act(async () => byText(host, 'button.eotm-doc-open', 'Home').click())
+    await tick(10)
+
+    await act(async () => host.querySelector('button[aria-label="Move makers up"]').click())
+    const width = host.querySelector('select[aria-label="Width of story"]')
+    await act(async () => {
+      width.value = '6'
+      width.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await tick(900)
+    expect((await store.get(doc.id)).data.blocks).toEqual([{ key: 'hero', span: 12 }, { key: 'makers', span: 12 }, { key: 'story', span: 6 }])
+    await act(async () => root.unmount())
+    page.remove()
+  })
 })

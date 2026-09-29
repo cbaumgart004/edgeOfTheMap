@@ -47,6 +47,7 @@ says what each key means.
 | `url` | string | Must be `https:`, `http:`, `mailto:`, `tel:` or a site path starting `/` |
 | `number` | number | `min`, `max`, `step`, `integer` |
 | `placement` | string: `""` last, `"^"` first, else the key of the entry it follows | Options come from the site (`EOTM.setOrder(type, [{ key, title, docId }])`), else the type's other documents by slug |
+| `layout` | `[{ "key", "span" }]` in page order; `span` is columns of 12 | Keys come from the page: a `data-eotm-layout` container whose direct children carry `data-eotm-block="<key>"`, `data-eotm-label` and the `data-eotm-span` they render at. The console draws move and resize handles over them |
 | `money` | `{ "amount": integer minor units, "currency": "USD" }` | `currency` default |
 | `boolean` | boolean | |
 | `date` | `YYYY-MM-DD` | |

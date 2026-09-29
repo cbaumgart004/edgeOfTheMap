@@ -88,6 +88,7 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
   const wide = useWide()
   const [size, setSize] = useState(wide ? 'full' : 'half')
   const [peek, setPeek] = useState(false)
+  const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
   const [view, setView] = useState({ name: 'home' })
   const [toast, setToast] = useState(null)
@@ -124,7 +125,7 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
     </header>
   )
 
-  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob) }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek }
 
   let body
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
@@ -145,6 +146,7 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
         {body}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
+      <div ref={setOverlay} />
     </div>
   )
 }

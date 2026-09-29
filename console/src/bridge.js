@@ -86,5 +86,6 @@ export function createBridge() {
 export function previewPathFor(type, doc) {
   const template = type?.previewPath
   if (!template) return null
-  return template.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(key === 'slug' ? doc.slug ?? '' : doc.data?.[key] ?? ''))
+  // Slashes survive, so a template of "{path}" can name any page, "/" included.
+  return template.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(key === 'slug' ? doc.slug ?? '' : doc.data?.[key] ?? '').replace(/%2F/gi, '/'))
 }
