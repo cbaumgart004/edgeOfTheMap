@@ -96,6 +96,7 @@
 
 .eotm-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .eotm-row > .eotm-input { flex: 1; min-width: 0; }
+.eotm-swatch { width: 44px; height: 42px; padding: 2px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-bg); cursor: pointer; flex: none; }
 
 .eotm-field { display: block; margin: 0 0 16px; }
 .eotm-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--eotm-ink); }
@@ -131,6 +132,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 }
 .eotm-card strong { font-family: var(--eotm-heading); font-size: 18px; }
 .eotm-card span { color: var(--eotm-muted); font-size: 13px; }
+.eotm-card.is-request { border-style: dashed; }
 
 .eotm-list > .eotm-row { margin-bottom: 12px; }
 .eotm-doc { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--eotm-line); }

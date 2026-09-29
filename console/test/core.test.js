@@ -32,6 +32,13 @@ describe('documents', () => {
     etsy: { enabled: false, tags: [], whoMade: 'i_did', whenMade: 'made_to_order' }, ebay: { enabled: false, aspects: [], condition: 'NEW' },
   }
 
+  it('checks a theme: colours as #rrggbb or blank, glow strength 0 to 200', () => {
+    const theme = (blacklight) => checkDocument(storyshaped, 'theme', { headingFont: 'Cinzel', bodyFont: '', blacklight, daylight: {} })
+    expect(theme({ accent: '#00fb00', glow: '', glowStrength: 150 })).toEqual([])
+    expect(theme({ accent: 'green' })).toEqual([expect.stringMatching(/#1a2b3c/)])
+    expect(theme({ glowStrength: 250 })).toEqual([expect.stringMatching(/at most 200/)])
+  })
+
   it('checks a page layout: plain keys, each once, 1 to 12 columns', () => {
     const layout = (blocks) => checkDocument(storyshaped, 'pageLayout', { title: 'Home', path: '/', blocks })
     expect(layout([{ key: 'hero', span: 12 }, { key: 'our-story', span: 6 }])).toEqual([])

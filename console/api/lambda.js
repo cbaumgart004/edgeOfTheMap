@@ -4,6 +4,8 @@
 //   CONTROL_DATABASE_PARAM  SSM SecureString holding Edge of the Map's connection string
 //   NEON_AUTH_URL           Neon Auth base URL; JWTs are checked against its JWKS
 //   MEDIA_REGION            region of the customers' photo buckets (default us-east-1)
+//   NOTIFY_FROM             verified SES sender for change-request email, e.g.
+//                           notifications@theedgeofthemap.com; unset = no email (push still goes)
 //
 // Each site's connection string is the SSM parameter named in sites.connection_param
 // (ADR-0007), so adding a customer needs no redeploy.
@@ -11,6 +13,8 @@
 import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
+import webpush from 'web-push'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createRemoteJWKSet, jwtVerify, SignJWT, decodeProtectedHeader } from 'jose'
 import { createHash } from 'node:crypto'
@@ -26,6 +30,8 @@ import { sanitizeDocumentData } from '../src/richtext.js'
 const ssm = new SSMClient({})
 const s3 = new S3Client({ region: process.env.MEDIA_REGION ?? 'us-east-1' })
 const purify = createDOMPurify(new JSDOM('').window)
+const ses = new SESv2Client({})
+const notifyFrom = process.env.NOTIFY_FROM
 
 const secrets = new Map()
 async function secret(name) {
@@ -96,6 +102,20 @@ const http = createHandler({
     getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes }),
     { expiresIn: 300 }),
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
+  // Change requests (requests.js). SES in the sandbox can still send to the
+  // operators' own verified addresses, which is everyone this goes to.
+  sendEmail: notifyFrom
+    ? ({ to, subject, text }) => ses.send(new SendEmailCommand({
+      FromEmailAddress: notifyFrom,
+      Destination: { ToAddresses: [to] },
+      Content: { Simple: { Subject: { Data: subject }, Body: { Text: { Data: text } } } },
+    }))
+    : undefined,
+  sendPush: (subscription, payload, vapid) => webpush.sendNotification(subscription, payload, {
+    vapidDetails: { subject: 'mailto:keeper@theedgeofthemap.com', publicKey: vapid.publicKey, privateKey: vapid.privateKey },
+    TTL: 24 * 60 * 60,
+  }),
+  generateVapid: () => webpush.generateVAPIDKeys(),
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {
     const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {

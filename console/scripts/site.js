@@ -13,5 +13,7 @@ for (const target of ['loader', 'dashboard']) {
   cpSync(new URL(`../dist/${target}.js`, import.meta.url), new URL(`${target}.js`, out))
 }
 cpSync(new URL('../dashboard.html', import.meta.url), new URL('index.html', out))
+// The admin page as an installable app with push: service worker, manifest, icon.
+cpSync(new URL('../public-admin/', import.meta.url), out, { recursive: true })
 cpSync(new URL('../releases/console/', import.meta.url), new URL('console/', out), { recursive: true })
 console.log('site/ ready')

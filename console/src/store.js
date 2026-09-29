@@ -35,6 +35,8 @@ export function httpStore({ apiBase, site, getToken }) {
     publish: (id, baseVersion) => call('POST', `/documents/${id}/publish`, { baseVersion }),
     unpublish: (id, baseVersion) => call('POST', `/documents/${id}/unpublish`, { baseVersion }),
     remove: (id, baseVersion) => call('DELETE', `/documents/${id}?baseVersion=${baseVersion}`),
+    // "Request a change": emailed and pushed to Edge of the Map (api/requests.js).
+    request: (input) => call('POST', '/requests', input),
     async upload(blob) {
       const { uploadUrl, src } = await call('POST', '/uploads', { contentType: blob.type, bytes: blob.size })
       const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'content-type': blob.type }, body: blob })
@@ -70,6 +72,8 @@ export function localStore({ schema, key = `eotm:local:${schema.site}` }) {
     unpublish: wrap((id, baseVersion) => svc.unpublish(id, { baseVersion })),
     remove: wrap((id, baseVersion) => svc.remove(id, { baseVersion })),
     listPublished: wrap((type) => svc.listPublished(type)),
+    // Local mode has no one to send to.
+    request: async () => { throw new StoreError(400, 'Requests are sent from the real editor, not the demo.') },
     // Local mode keeps photos as data URLs; fine for a demo, never for a site.
     upload: (blob) => new Promise((resolve, reject) => {
       const r = new FileReader()

@@ -75,6 +75,8 @@ async function loadSites() {
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit"><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></a></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
+  $('#request').hidden = !data.sites.length
+  $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   show('sites')
 }
 
@@ -156,8 +158,22 @@ async function loadManage({ quiet = false } = {}) {
   $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
   $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
+  renderRequests(await api('GET', '/api/manage/requests'))
   show('manage')
+  pushStatus()
   if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
+}
+
+// Change requests, open first (api/requests.js). Done ones fade and can reopen.
+function renderRequests(list) {
+  const open = list.filter((r) => r.status === 'open').length
+  $('#m-req-count').textContent = open ? `${open} open` : 'none open'
+  $('#m-requests').innerHTML = list.map((r) => `
+    <li class="card${r.status === 'done' ? ' is-done' : ''}">
+      <p class="meta">${esc(r.site_name)} · ${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(new Date(r.created_at).toLocaleString())}</p>
+      <p class="request">${esc(r.body)}</p>
+      <div><button type="button" class="link" data-req="${esc(r.id)}" data-status="${r.status === 'open' ? 'done' : 'open'}">${r.status === 'open' ? 'Mark done' : 'Reopen'}</button></div>
+    </li>`).join('') || '<li class="empty">No requests yet.</li>'
 }
 
 // Runs a form's action with its submit button showing the outcome in place:
@@ -210,6 +226,65 @@ $('#m-sites').addEventListener('click', (e) => {
   const slug = e.target.closest('[data-slug]').dataset.slug
   run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage({ quiet: true }) })(e)
 })
+
+$('#m-requests').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-req]')
+  if (!b) return
+  try {
+    await api('PUT', `/api/manage/requests/${b.dataset.req}`, { status: b.dataset.status })
+    renderRequests(await api('GET', '/api/manage/requests'))
+  } catch (err) {
+    say(err.message, true)
+  }
+})
+
+$('#request-form').addEventListener('submit', run(async () => {
+  await api('POST', '/api/requests', { site: $('#rq-site').value, body: $('#rq-body').value })
+  $('#rq-body').value = ''
+  say('Sent to Edge of the Map. You will hear back by email.')
+}))
+
+// ---------------------------------------------------------------- push
+// Notifications on this device for operators: the service worker (sw.js)
+// shows what the API pushes. iPhone and iPad allow it only once the page is
+// added to the Home Screen and opened from there (iOS 16.4+).
+const pushable = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+const toKey = (b64) => Uint8Array.from(atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+
+async function pushStatus() {
+  if (!pushable) {
+    $('#push-on').hidden = true
+    $('#push-note').textContent = /iPhone|iPad/.test(navigator.userAgent)
+      ? 'To get notifications on this iPhone or iPad: Share → Add to Home Screen, then open Edge of the Map from the Home Screen and come back here.'
+      : 'This browser cannot show notifications.'
+    return
+  }
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  const sub = await reg.pushManager.getSubscription()
+  $('#push-on').textContent = sub ? 'Turn off notifications on this device' : 'Turn on notifications on this device'
+  $('#push-test').hidden = !sub
+  $('#push-note').textContent = sub ? 'This device is told about every change request.' : ''
+}
+
+$('#push-on').addEventListener('click', run(async () => {
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  const current = await reg.pushManager.getSubscription()
+  if (current) {
+    await api('DELETE', '/api/manage/push', { endpoint: current.endpoint })
+    await current.unsubscribe()
+  } else {
+    if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications are blocked for this site in the browser settings.')
+    const { key } = await (await fetch('/api/push/key')).json()
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) })
+    await api('POST', '/api/manage/push', { subscription: sub.toJSON() })
+  }
+  await pushStatus()
+}))
+
+$('#push-test').addEventListener('click', run(async () => {
+  const r = await api('POST', '/api/manage/push/test')
+  say(`Test sent to ${r.sent} of ${r.of} of your devices.`)
+}))
 
 $('#mu-gen').addEventListener('click', () => {
   const words = new Uint32Array(3)

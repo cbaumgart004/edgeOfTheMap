@@ -11,6 +11,7 @@ import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
 import { checkSchema } from '../schema/schema.js'
 import { createManage } from './manage.js'
+import { createRequests } from './requests.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/avif': 'avif' }
@@ -50,11 +51,13 @@ function parseBody(event) {
 //   createLogin({ email, password, name }): Promise<{ id }>   a new Neon Auth login
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
 //   sanitize(schema): (type, data) => data
+//   sendEmail({ to, subject, text }), sendPush(sub, payload, vapid), generateVapid()   see requests.js
 // }
 export function createHandler(deps) {
   const siteCache = new Map()
   const resetTries = new Map() // ip -> timestamps, per warm container
-  const manage = createManage(deps, { onSiteChange: (slug) => siteCache.delete(slug) })
+  const requests = createRequests(deps)
+  const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => siteCache.delete(slug) })
 
   function allowReset(ip, now = Date.now()) {
     const recent = (resetTries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
@@ -141,11 +144,24 @@ export function createHandler(deps) {
         return json(200, { token, url: site.allowed_origins[0] }, { 'cache-control': 'private, no-store' })
       }
 
+      // "Request a change" from the admin page (same origin, so no CORS): a
+      // member of the named site, signed in there.
+      if (method === 'POST' && path === '/api/requests') {
+        const body = parseBody(event)
+        const site = /^[a-z0-9-]+$/.test(String(body.site ?? '')) ? await loadSite(body.site) : null
+        if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
+        const member = await authorize(event, site)
+        return json(201, await requests.submit(site, member, body), { 'cache-control': 'no-store' })
+      }
+
+      // Web Push for operators on the admin page. The public key is public.
+      if (method === 'GET' && path === '/api/push/key') return json(200, { key: await requests.publicKey() })
+
       // The management page (same origin): operators only, see manage.js.
       const mg = path.match(/^\/api\/manage(\/.*)?$/)
       if (mg) {
         const user = await verified(event)
-        const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
+        const body = ['POST', 'PUT', 'DELETE'].includes(method) ? parseBody(event) : {}
         return json(200, await manage(method, mg[1] ?? '', body, user), { 'cache-control': 'private, no-store' })
       }
 
@@ -193,6 +209,8 @@ export function createHandler(deps) {
       // Who this sign-in is, for a site's own backend guarding its admin routes
       // (StoryShaped's inventory): a 200 means a member of this site.
       if (method === 'GET' && rest === '/me') return json(200, { id: user.id, email: user.email ?? null, role: user.role }, headers)
+      // "Request a change" from the editor on the site itself.
+      if (method === 'POST' && rest === '/requests') return json(201, await requests.submit(site, user, parseBody(event)), headers)
       const svc = await serviceFor(site)
       const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
 

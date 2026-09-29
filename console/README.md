@@ -127,6 +127,17 @@ no login.
   through SSM only). Function URL with auth NONE; the Amplify rewrite `/api/<*>` (200) forwards to it.
   Upload `dist/api.zip` from `npm run package:api` through the Lambda console to update it.
 - **Registering a site** is also a Test-tab invoke: `{"eotmRegister": {"site": "<slug>", "allowedOrigins": ["https://…"], "connectionParam": "/eotm/sites/<slug>/database", "owners": ["<Neon Auth user id>"]}}`. The schema and pinned version come from the package. StoryShaped is registered with the preview origin; no photo bucket yet, so uploads answer 503.
+- **Change requests and notifications** (`api/requests.js`, migration `004`): "Request a change"
+  in the editor or on the admin page saves the request in the control project, lists it for operators
+  on the management page, emails every operator login through SES, and pushes to every browser an
+  operator turned notifications on in. Email needs `NOTIFY_FROM` (a verified SES sender, e.g.
+  `notifications@theedgeofthemap.com`) and `ses:SendEmail` on the Lambda role; without them push
+  still goes. The Web Push key pair is generated on first use and kept in `console_settings`, so
+  there is nothing to provision; deleting that row signs every device out of notifications. On
+  iPhone, push works only once the admin page is added to the Home Screen (iOS 16.4+).
+- **Uptime:** watched from outside AWS (UptimeRobot), so an AWS outage cannot silence its own alarm.
+  Monitored: each site's production and preview address, `admin.theedgeofthemap.com/loader.js`, and
+  `admin.theedgeofthemap.com/api/sites/storyshaped/boot` (the API and control database together).
 - **Migrations** run inside AWS: a Test-tab invoke of the Lambda with
   `{"eotmMigrate": true, "siteParams": ["/eotm/sites/<site>/database"]}`. Applied: control `001_sites.sql`,
   StoryShaped `001_documents.sql`.

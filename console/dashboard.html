@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Edge of the Map Console</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#3d5a47" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
     :root { --bg: #f4f1ea; --surface: #fffdf8; --ink: #1f1c17; --muted: #6b6457; --line: #ddd5c4; --accent: #3d5a47; --accent-ink: #fff; --danger: #a33b2b; }
     @media (prefers-color-scheme: dark) { :root { --bg: #14130f; --surface: #1e1c17; --ink: #ede7da; --muted: #a79f8f; --line: #3a362d; --accent: #8fb39a; --accent-ink: #14130f; --danger: #e27d6c; } }
@@ -42,6 +46,8 @@
     .people li { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; overflow-wrap: anywhere; }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
+    .card.is-done { opacity: .6; }
   </style>
 </head>
 <body>
@@ -73,6 +79,17 @@
     <section data-view="sites" hidden>
       <p class="sub">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
       <ul id="sites"></ul>
+      <details id="request">
+        <summary>Request a change</summary>
+        <form id="request-form">
+          <p class="meta">Anything the editor cannot do, or anything that looks wrong. It goes to Edge of the Map by email and notification.</p>
+          <label for="rq-site">Site</label>
+          <select id="rq-site"></select>
+          <label for="rq-body">What would you like changed?</label>
+          <textarea id="rq-body" rows="5" maxlength="4000" required></textarea>
+          <div class="row"><button type="submit">Send request</button></div>
+        </form>
+      </details>
       <details id="change">
         <summary>Change password</summary>
         <form id="change-form">
@@ -91,6 +108,13 @@
 
     <section data-view="manage" hidden>
       <div class="row" style="margin-top:0"><button type="button" id="manage-back" class="link">← Your sites</button></div>
+      <h2>Requests <span id="m-req-count" class="meta"></span></h2>
+      <ul id="m-requests"></ul>
+      <div class="row">
+        <button type="button" id="push-on">Turn on notifications on this device</button>
+        <button type="button" id="push-test" class="link" hidden>Send a test</button>
+      </div>
+      <p id="push-note" class="meta"></p>
       <h2>Sites</h2>
       <ul id="m-sites"></ul>
 

@@ -7,7 +7,7 @@ import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
 const root = new URL('../', import.meta.url)
 const stage = new URL('../dist/api/', import.meta.url)
 const pkg = JSON.parse(readFileSync(new URL('package.json', root)))
-const deps = ['pg', 'jose', 'jsdom', 'dompurify', '@aws-sdk/client-ssm', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner']
+const deps = ['pg', 'jose', 'jsdom', 'dompurify', '@aws-sdk/client-ssm', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner', '@aws-sdk/client-sesv2', 'web-push']
 
 rmSync(stage, { recursive: true, force: true })
 mkdirSync(stage, { recursive: true })

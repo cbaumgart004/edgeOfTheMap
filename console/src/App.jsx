@@ -98,7 +98,8 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
   useEffect(() => () => bridge.clear(), [bridge])
 
   const style = brandStyle(schema.brand, mode)
-  const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label : schema.brand.name
+  const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
+    : view.name === 'request' ? 'Request a change' : schema.brand.name
 
   const header = (
     <header className="eotm-head">
@@ -130,7 +131,8 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
   let body
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
-  else if (view.name === 'home') body = <Home schema={schema} store={store} open={(type) => setView({ name: 'list', type })} />
+  else if (view.name === 'home') body = <Home schema={schema} store={store} open={(type) => setView({ name: 'list', type })} onRequest={() => setView({ name: 'request' })} />
+  else if (view.name === 'request') body = <RequestChange store={store} notify={notify} onSent={() => setView({ name: 'home' })} />
   else if (view.name === 'list') body = (
     <DocList schema={schema} store={store} type={view.type} notify={notify}
       open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })} />)
@@ -180,7 +182,34 @@ function SignIn({ auth, onSignedIn }) {
   )
 }
 
-function Home({ schema, store, open }) {
+// For anything the editor cannot do: it reaches Edge of the Map by email and
+// push, and waits on the management page until it is done.
+function RequestChange({ store, notify, onSent }) {
+  const [body, setBody] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <form className="eotm-signin" onSubmit={async (e) => {
+      e.preventDefault()
+      setBusy(true)
+      try {
+        await store.request({ body, page: location.pathname })
+        notify('Sent to Edge of the Map. You will hear back by email.')
+        onSent()
+      } catch (err) {
+        notify(err.message)
+      } finally {
+        setBusy(false)
+      }
+    }}>
+      <p>Something the editor cannot do, or something that looks wrong? Describe it here. It goes to Edge of the Map with this page’s address ({location.pathname}).</p>
+      <label className="eotm-label" htmlFor="eotm-request">What would you like changed?</label>
+      <textarea id="eotm-request" className="eotm-input" rows={6} maxLength={4000} required value={body} onChange={(e) => setBody(e.target.value)} />
+      <button className="eotm-btn is-primary" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send request'}</button>
+    </form>
+  )
+}
+
+function Home({ schema, store, open, onRequest }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -195,6 +224,12 @@ function Home({ schema, store, open }) {
           </button>
         </li>
       ))}
+      <li>
+        <button type="button" className="eotm-card is-request" onClick={onRequest}>
+          <strong>Request a change</strong>
+          <span>Anything the editor can’t do</span>
+        </button>
+      </li>
     </ul>
   )
 }

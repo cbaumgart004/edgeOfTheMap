@@ -1,0 +1,10 @@
+{
+  "name": "Edge of the Map Console",
+  "short_name": "Edge of the Map",
+  "start_url": "/?manage",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#3d5a47",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

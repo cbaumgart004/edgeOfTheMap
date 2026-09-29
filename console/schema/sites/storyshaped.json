@@ -130,6 +130,174 @@
         }
       ],
       "previewPath": "{path}"
+    },
+    "theme": {
+      "label": "Theme",
+      "plural": "Theme",
+      "singleton": true,
+      "previewPath": "/",
+      "fields": [
+        {
+          "name": "headingFont",
+          "kind": "select",
+          "label": "Heading font",
+          "options": [
+            {
+              "value": "",
+              "label": "Poiret One (current)"
+            },
+            {
+              "value": "Josefin Sans",
+              "label": "Josefin Sans"
+            },
+            {
+              "value": "Limelight",
+              "label": "Limelight"
+            },
+            {
+              "value": "Cinzel",
+              "label": "Cinzel"
+            },
+            {
+              "value": "Marcellus",
+              "label": "Marcellus"
+            },
+            {
+              "value": "Italiana",
+              "label": "Italiana"
+            },
+            {
+              "value": "Federo",
+              "label": "Federo"
+            },
+            {
+              "value": "Playfair Display",
+              "label": "Playfair Display"
+            }
+          ]
+        },
+        {
+          "name": "bodyFont",
+          "kind": "select",
+          "label": "Body font",
+          "options": [
+            {
+              "value": "",
+              "label": "Futura / Century Gothic (current)"
+            },
+            {
+              "value": "Josefin Sans",
+              "label": "Josefin Sans"
+            },
+            {
+              "value": "Montserrat",
+              "label": "Montserrat"
+            },
+            {
+              "value": "Raleway",
+              "label": "Raleway"
+            },
+            {
+              "value": "Lato",
+              "label": "Lato"
+            },
+            {
+              "value": "Nunito Sans",
+              "label": "Nunito Sans"
+            },
+            {
+              "value": "Cormorant Garamond",
+              "label": "Cormorant Garamond"
+            },
+            {
+              "value": "EB Garamond",
+              "label": "EB Garamond"
+            }
+          ]
+        },
+        {
+          "name": "blacklight",
+          "kind": "group",
+          "label": "Blacklight (night)",
+          "fields": [
+            {
+              "name": "background",
+              "kind": "color",
+              "label": "Background"
+            },
+            {
+              "name": "accent",
+              "kind": "color",
+              "label": "Accent (headings, links, buttons)"
+            },
+            {
+              "name": "text",
+              "kind": "color",
+              "label": "Text"
+            },
+            {
+              "name": "muted",
+              "kind": "color",
+              "label": "Quiet text"
+            },
+            {
+              "name": "glow",
+              "kind": "color",
+              "label": "Glow colour"
+            },
+            {
+              "name": "glowStrength",
+              "kind": "number",
+              "label": "Glow strength (%)",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "help": "100 is the site's glow today; 0 turns it off. Blank keeps the site's own."
+            }
+          ]
+        },
+        {
+          "name": "daylight",
+          "kind": "group",
+          "label": "Daylight",
+          "fields": [
+            {
+              "name": "background",
+              "kind": "color",
+              "label": "Background"
+            },
+            {
+              "name": "accent",
+              "kind": "color",
+              "label": "Accent (headings, links, buttons)"
+            },
+            {
+              "name": "text",
+              "kind": "color",
+              "label": "Text"
+            },
+            {
+              "name": "muted",
+              "kind": "color",
+              "label": "Quiet text"
+            },
+            {
+              "name": "glow",
+              "kind": "color",
+              "label": "Glow colour"
+            },
+            {
+              "name": "glowStrength",
+              "kind": "number",
+              "label": "Glow strength (%)",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "help": "Daylight barely glows today; 100 gives it blacklight's glow. Blank keeps the site's own."
+            }
+          ]
+        }
+      ]
     }
   },
   "blocks": {

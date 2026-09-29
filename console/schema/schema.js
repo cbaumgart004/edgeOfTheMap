@@ -4,7 +4,7 @@
 
 export const FIELD_KINDS = [
   'text', 'textarea', 'richtext', 'url', 'number', 'money', 'boolean', 'date',
-  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout',
+  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout', 'color',
 ]
 
 const NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/
@@ -196,6 +196,9 @@ function checkValue(field, value, at, schema, errors, opts) {
       })
       break
     }
+    case 'color':
+      if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) errors.push(`${at}: must be a colour like #1a2b3c`)
+      break
     case 'select':
       if (!field.options.some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
       break

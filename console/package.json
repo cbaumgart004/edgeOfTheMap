@@ -1,6 +1,6 @@
 {
   "name": "@edgeofthemap/console",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "description": "The owner console, served from admin.theedgeofthemap.com and mounted on each customer's own page (StoryShaped ADR-0007).",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/client-sesv2": "^3.1142.0",
     "@aws-sdk/client-ssm": "^3.1141.0",
     "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@tiptap/extension-image": "^3.31.3",
@@ -27,7 +28,8 @@
     "jsdom": "^26.1.0",
     "pg": "^8.23.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",

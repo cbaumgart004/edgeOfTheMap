@@ -36,6 +36,8 @@ function Field({ field, value, onChange, ctx, path }) {
       return wrap(<textarea id={id} className="eotm-input" rows={4} value={value ?? ''} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />)
     case 'placement':
       return wrap(<Placement id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
+    case 'color':
+      return wrap(<Color id={id} value={value} onChange={onChange} />)
     case 'layout':
       return wrap(<Layout id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'richtext':
@@ -307,5 +309,24 @@ function Placement({ id, field, value, onChange, ctx }) {
       {!known && <option value={value}>After “{value}” (no longer listed)</option>}
       {others.map((e) => <option key={e.key} value={e.key}>After “{e.title}”</option>)}
     </select>
+  )
+}
+
+// A colour as #rrggbb, or blank for "keep the site's own". A native picker has
+// no blank state, so the text box and Clear carry it.
+function Color({ id, value, onChange }) {
+  const [text, setText] = useState(value ?? '')
+  useEffect(() => setText(value ?? ''), [value])
+  return (
+    <div className="eotm-row">
+      <input type="color" className="eotm-swatch" aria-label="Pick a colour" value={value || '#000000'} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} className="eotm-input" value={text} placeholder="Site default" spellCheck={false}
+        onChange={(e) => {
+          setText(e.target.value)
+          if (/^#[0-9a-f]{6}$/i.test(e.target.value)) onChange(e.target.value.toLowerCase())
+          else if (!e.target.value) onChange('')
+        }} />
+      {value && <button type="button" className="eotm-btn is-quiet" onClick={() => onChange('')}>Clear</button>}
+    </div>
   )
 }
