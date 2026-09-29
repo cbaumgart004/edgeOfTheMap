@@ -10,16 +10,18 @@
 export function createBridge() {
   const drafts = new Map() // `${type}:${id}` -> document
   const listeners = new Set()
+  const orders = new Map() // type -> [{ key, title, docId? }]
   const emit = (change) => listeners.forEach((fn) => { try { fn(change) } catch (e) { console.error('[EOTM]', e) } })
 
   return {
-    version: 1,
+    version: 2,
     editing: false,
 
     // Site side ------------------------------------------------------------
 
     // fn({ type, id, doc }) runs on every draft change; doc is null when a draft
-    // is dropped. Returns an unsubscribe function.
+    // is dropped. An order report from setOrder arrives as { type, order: true };
+    // a listener that re-renders on drafts must ignore it, or it loops. Returns an unsubscribe function.
     subscribe(fn) {
       listeners.add(fn)
       return () => listeners.delete(fn)
@@ -41,6 +43,16 @@ export function createBridge() {
       const out = published.map((p) => this.draft(type, p.id) ?? p).filter((d) => !d.deleted)
       for (const d of this.drafts(type)) if (!published.some((p) => p.id === d.id) && !d.deleted) out.push(d)
       return out
+    },
+
+    // The order the site shows a type in, for placement fields: [{ key, title,
+    // docId? }]. A site calls it whenever its list changes; the console reads it.
+    setOrder(type, entries) {
+      orders.set(type, entries)
+      emit({ type, order: true })
+    },
+    order(type) {
+      return orders.get(type) ?? null
     },
 
     // Console side ---------------------------------------------------------

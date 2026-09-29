@@ -3,9 +3,11 @@
 // an operator (control table `operators`) signed in on the admin page gets here;
 // an editor token, which is bound to one site, never does.
 //
-// deps (from handler.js): control, releases(), createLogin({ email, password, name })
+// deps (from handler.js): control, releases(), createLogin({ email, password, name }),
+//   siteSchema(slug): the schema shipped in this package (schema/sites/<slug>.json)
 
 import { ServiceError } from '../core/service.js'
+import { checkSchema } from '../schema/schema.js'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const ROLES = ['owner', 'editor']
@@ -99,6 +101,15 @@ export function createManage(deps, { onSiteChange }) {
       if (base && !/^https:\/\/[^/\s]+(\/[^\s]*)?$/.test(base)) throw new ServiceError(400, 'Photo address must start with https://.')
       set('media_bucket', bucket)
       set('media_base_url', base)
+    }
+    // Saving a site also takes the schema shipped with this deploy, so a
+    // schema change reaches the editor without hand-run SQL.
+    if (body.reloadSchema) {
+      const schema = await deps.siteSchema(slug)
+      if (!schema) throw new ServiceError(400, `No schema ships for ${slug}.`)
+      const problems = checkSchema(schema)
+      if (problems.length) throw new ServiceError(400, `The shipped schema is invalid: ${problems[0]}`)
+      set('schema', schema)
     }
     if (!sets.length) throw new ServiceError(400, 'Nothing to change.')
     params.push(slug)

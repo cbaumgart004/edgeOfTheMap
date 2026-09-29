@@ -33,6 +33,8 @@ function Field({ field, value, onChange, ctx, path }) {
       return wrap(<input id={id} className="eotm-input" type="url" inputMode="url" value={value ?? ''} placeholder="https://… or /page" onChange={(e) => onChange(e.target.value)} />)
     case 'textarea':
       return wrap(<textarea id={id} className="eotm-input" rows={4} value={value ?? ''} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />)
+    case 'placement':
+      return wrap(<Placement id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
     case 'richtext':
       return wrap(<RichText value={value} onChange={onChange} schema={ctx.schema} upload={ctx.upload} label={label} />, { block: true })
     case 'number':
@@ -276,5 +278,31 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
         {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}
       </div>
     </fieldset>
+  )
+}
+
+// "Place after" another entry, by title. The site reports its order (with
+// entries the console does not hold, such as built-in ones) through
+// EOTM.setOrder; without it, the type's other documents are offered.
+function Placement({ id, field, value, onChange, ctx }) {
+  const { bridge, store, docId, docType } = ctx
+  const [entries, setEntries] = useState(() => bridge?.order(docType))
+  useEffect(() => {
+    if (!bridge) return undefined
+    return bridge.subscribe((c) => { if (c.type === docType && c.order) setEntries(bridge.order(docType)) })
+  }, [bridge, docType])
+  useEffect(() => {
+    if (entries) return
+    store.list(docType).then((docs) => setEntries(docs.map((d) => ({ key: d.slug, title: titleOf(ctx.schema, d), docId: d.id })))).catch(() => {})
+  }, [entries, store, docType, ctx.schema])
+  const others = (entries ?? []).filter((e) => e.docId !== docId)
+  const known = !value || value === '^' || others.some((e) => e.key === value)
+  return (
+    <select id={id} className="eotm-input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">At the end</option>
+      <option value="^">At the start</option>
+      {!known && <option value={value}>After “{value}” (no longer listed)</option>}
+      {others.map((e) => <option key={e.key} value={e.key}>After “{e.title}”</option>)}
+    </select>
   )
 }

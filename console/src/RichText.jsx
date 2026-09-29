@@ -85,17 +85,18 @@ export default function RichText({ value, onChange, schema, upload, label }) {
           {busy ? '…' : '🖼'}
           <input type="file" accept="image/*" hidden onChange={(e) => { addImage(e.target.files[0]); e.target.value = '' }} />
         </label>
-        {styles.length > 0 && (
-          <select className="eotm-rt-style" aria-label="Brand style" value={activeStyle?.className ?? ''}
-            onChange={(e) => {
-              const c = e.target.value
-              if (!c) chain().unsetMark('brandStyle').run()
-              else chain().setMark('brandStyle', { className: c }).run()
-            }}>
-            <option value="">Plain</option>
-            {styles.map((s) => <option key={s.name} value={s.className}>{s.label}</option>)}
-          </select>
-        )}
+        {styles.map((s) => {
+          const on = activeStyle?.className === s.className
+          // Drawn in the style itself (the site's CSS is on the page), so the
+          // owner sees what it does. Pressing the active one returns to plain.
+          return (
+            <button key={s.name} type="button" className={`eotm-rt-btn eotm-rt-style${on ? ' is-on' : ''}`} aria-pressed={on} title={s.label}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => (on ? chain().unsetMark('brandStyle').run() : chain().setMark('brandStyle', { className: s.className }).run())}>
+              <span className={s.className}>{s.label}</span>
+            </button>
+          )
+        })}
       </div>
       {linkOpen && (
         <div className="eotm-rt-link">

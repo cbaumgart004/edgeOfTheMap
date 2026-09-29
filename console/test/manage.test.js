@@ -66,3 +66,13 @@ describe('management page API', () => {
     expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { consoleVersion: '9.9.9' } })).status).toBe(400)
   })
 })
+
+describe('placement field', async () => {
+  const { checkDocument, checkSchema } = await import('../schema/schema.js')
+  const schema = { version: 1, site: 's', brand: { name: 'S' }, types: { a: { label: 'A', titleField: 't', fields: [{ name: 't', kind: 'text' }, { name: 'after', kind: 'placement' }] } } }
+  it('accepts first, last or a key, and nothing else', () => {
+    expect(checkSchema(schema)).toEqual([])
+    for (const after of ['', '^', 'what-is-uranium-glass']) expect(checkDocument(schema, 'a', { t: 'x', after })).toEqual([])
+    expect(checkDocument(schema, 'a', { t: 'x', after: 3 }).length).toBe(1)
+  })
+})

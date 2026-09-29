@@ -115,7 +115,7 @@ export default function App({ schema, store, bridge, auth, onClose }) {
     </header>
   )
 
-  const ctxBase = { schema, store, notify, upload: (blob) => store.upload(blob) }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob) }
 
   let body
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
@@ -291,7 +291,7 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
   if (!doc) return <p className="eotm-empty">Loading…</p>
   const type = schema.types[doc.type]
   const draftErrors = checkDocument(schema, doc.type, doc.data, { draft: true })
-  const ctx = { ...ctxBase, errors: [...draftErrors, ...serverErrors] }
+  const ctx = { ...ctxBase, docId: doc.id, docType: doc.type, errors: [...draftErrors, ...serverErrors] }
 
   return (
     <div className="eotm-editor">

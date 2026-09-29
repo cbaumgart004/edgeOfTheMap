@@ -75,6 +75,9 @@ const http = createHandler({
     return new SignJWT({ email, site }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
       .setIssuer(EDITOR_ISSUER).setIssuedAt().setExpirationTime(`${EDITOR_HOURS}h`).sign(await editorSecret())
   },
+  siteSchema: async (slug) => {
+    try { return JSON.parse(await readFile(new URL(`../schema/sites/${slug}.json`, import.meta.url), 'utf8')) } catch { return null }
+  },
   releases: async () => JSON.parse(await readFile(new URL('../releases/index.json', import.meta.url), 'utf8')),
   // Better Auth's own sign-up, sent from the admin host (a trusted domain). The
   // session it opens for the new login is discarded: the operator stays signed

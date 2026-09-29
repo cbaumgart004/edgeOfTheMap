@@ -181,8 +181,8 @@ $('#m-sites').addEventListener('submit', run(async (e) => {
   const slug = form.closest('[data-slug]').dataset.slug
   const f = Object.fromEntries(new FormData(form))
   if (form.dataset.form === 'site') {
-    await api('PUT', `/api/manage/sites/${slug}`, f)
-    say('Saved. Sites pick up a new editor version within a minute.')
+    await api('PUT', `/api/manage/sites/${slug}`, { ...f, reloadSchema: true })
+    say('Saved. The editor picks up the version and fields within a minute.')
   } else {
     await api('POST', `/api/manage/sites/${slug}/members`, f)
     say('Added.')

@@ -46,6 +46,7 @@ says what each key means.
 | `richtext` | sanitized HTML string | Links, inline images, headings, lists, and the site's `textStyles` as `<span class>` |
 | `url` | string | Must be `https:`, `http:`, `mailto:`, `tel:` or a site path starting `/` |
 | `number` | number | `min`, `max`, `step`, `integer` |
+| `placement` | string: `""` last, `"^"` first, else the key of the entry it follows | Options come from the site (`EOTM.setOrder(type, [{ key, title, docId }])`), else the type's other documents by slug |
 | `money` | `{ "amount": integer minor units, "currency": "USD" }` | `currency` default |
 | `boolean` | boolean | |
 | `date` | `YYYY-MM-DD` | |

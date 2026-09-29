@@ -395,10 +395,10 @@
           "required": true
         },
         {
-          "name": "order",
-          "kind": "number",
-          "label": "Position in contents",
-          "integer": true
+          "name": "after",
+          "kind": "placement",
+          "label": "Place in contents",
+          "help": "Where this entry appears in the Library's contents."
         }
       ],
       "previewPath": "/library/{slug}"

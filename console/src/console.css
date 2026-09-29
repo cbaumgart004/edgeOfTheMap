@@ -160,7 +160,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-rt-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-bottom: 1px solid var(--eotm-line); position: sticky; top: -14px; background: var(--eotm-bg); z-index: 1; }
 .eotm-rt-btn { min-width: 38px; min-height: 38px; border-radius: 6px; font-size: 15px; }
 .eotm-rt-btn.is-on, .eotm-rt-btn:hover { background: color-mix(in srgb, var(--eotm-accent) 22%, transparent); }
-.eotm-rt-style { appearance: auto; min-height: 38px; padding: 0 8px; border-radius: 6px; font-size: 14px; }
+.eotm-rt-style { padding: 0 10px; font-size: 13px; white-space: nowrap; }
 .eotm-rt-link { display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--eotm-line); }
 .eotm-rt-link input { all: unset; flex: 1; min-height: 40px; padding: 0 10px; border: 1px solid var(--eotm-line); border-radius: 6px; font-size: 16px; }
 .eotm-rt-body { min-height: 140px; padding: 12px; outline: none; font-size: 16px; line-height: 1.55; }

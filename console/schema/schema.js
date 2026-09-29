@@ -4,7 +4,7 @@
 
 export const FIELD_KINDS = [
   'text', 'textarea', 'richtext', 'url', 'number', 'money', 'boolean', 'date',
-  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks',
+  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement',
 ]
 
 const NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/
@@ -178,6 +178,10 @@ function checkValue(field, value, at, schema, errors, opts) {
       break
     case 'datetime':
       if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) errors.push(`${at}: must be a date and time`)
+      break
+    case 'placement':
+      // '^' = first; otherwise the site's key of the entry this one follows.
+      if (typeof value !== 'string' || value.length > 200) errors.push(`${at}: must name an entry to follow`)
       break
     case 'select':
       if (!field.options.some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
