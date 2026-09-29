@@ -4,7 +4,7 @@
 // follows the Kylver stone (c. 400 AD), the oldest complete row. Meanings come
 // mostly from the later rune poems; where scholars disagree the entry says so.
 
-import { campfire } from './campfire.js'
+import { campfire, startFire } from './campfire.js'
 
 export const AETTIR = [
   {
@@ -97,6 +97,7 @@ export function mountSigils(pane, from, to, pick) {
       // starting half-way through the row so neighbours are never the same rune.
       runes.map((_, i) => { const k = (i + runes.length / 2) % runes.length; return sigil(runes[k], from + k, i + 0.5, LANES[(i + 3) % 6], true) }).join('')}</div>
     <div class="embers" aria-hidden="true">${bits(9)}</div>`
+  startFire(pane.querySelector('.flame-canvas'))
   pane.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-rune]')
     if (b) pick(Number(b.dataset.rune))

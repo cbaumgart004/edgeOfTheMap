@@ -1,10 +1,14 @@
 // The night scene behind the rising runes in the admin page's side panes:
-// stars and a faint Milky Way, blue ridges, pines up both edges, and at the
-// foot a campfire in a ring of stones, lit by it. Drawn once as SVG; all
-// motion is CSS (dashboard.html, .sigils). `key` makes each pane's stars and
-// ids its own, so the two panes differ and their gradients never collide.
+// stars and a faint Milky Way, blue ridges with a far treeline, pines up both
+// edges, and at the foot a campfire in a ring of stones.
+//
+// Realism comes from texture rather than shapes: the fire is hundreds of
+// glowing particles on a canvas, added together the way light adds (startFire);
+// the stones are noise lit by a point light at the fire, so each face is lit by
+// its angle and distance to it; bark and needles are noise too. `key` makes each
+// pane's sky, trees and ids its own, so the two panes differ and never collide.
 
-// A small seeded generator, so a pane's sky is the same on every load.
+// A small seeded generator, so a pane looks the same on every load.
 function seeded(seed) {
   let a = seed >>> 0
   return () => {
@@ -18,100 +22,219 @@ function seeded(seed) {
 const f = (n) => Math.round(n * 10) / 10
 
 function stars(rand) {
-  return Array.from({ length: 70 }, (_, i) => {
-    const size = rand() < 0.1 ? 2.4 : 0.8 + rand() * 1.1
+  return Array.from({ length: 90 }, (_, i) => {
+    const size = rand() < 0.08 ? 2.2 : 0.6 + rand() * 1.1
     const twinkle = i % 6 === 0 ? ' class="tw"' : ''
-    return `<i${twinkle} style="left:${f(rand() * 100)}%;top:${f(rand() * 62)}%;width:${f(size)}px;height:${f(size)}px;--d:${f(2 + rand() * 4)}s"></i>`
+    return `<i${twinkle} style="left:${f(rand() * 100)}%;top:${f(rand() * 62)}%;width:${f(size)}px;height:${f(size)}px;opacity:${f(0.35 + rand() * 0.6)};--d:${f(2 + rand() * 4)}s"></i>`
   }).join('')
 }
 
-// One pine: a trunk and five tiers, narrowing to the tip. (x, y) is the foot.
-function pine(x, y, h) {
-  const w = h * 0.36
-  const tiers = Array.from({ length: 5 }, (_, t) => {
-    const top = y - h + t * h * 0.16
-    const base = top + h * 0.3
-    const half = (w / 2) * (0.35 + t * 0.17)
-    return `M${f(x)} ${f(top)}L${f(x + half)} ${f(base)}L${f(x + half * 0.35)} ${f(base - h * 0.02)}L${f(x)} ${f(base + h * 0.02)}L${f(x - half * 0.35)} ${f(base - h * 0.02)}L${f(x - half)} ${f(base)}Z`
-  }).join('')
-  return `${tiers}M${f(x - w * 0.05)} ${f(y - h * 0.1)}h${f(w * 0.1)}V${f(y)}h${f(-w * 0.1)}Z`
+// A pine's outline, (x, y) its foot: a tip, then tier after tier of drooping
+// branches, each ragged at its end, widening toward the ground.
+function pine(rand, x, y, h) {
+  const levels = 16
+  const top = y - h
+  const right = [[x, top]]
+  const left = []
+  for (let k = 1; k <= levels; k++) {
+    const t = k / levels
+    const at = top + h * 0.9 * t
+    const reach = h * 0.2 * Math.pow(t, 0.85) * (0.8 + rand() * 0.4)
+    const droop = reach * (0.28 + rand() * 0.12)
+    const inR = reach * (0.18 + rand() * 0.14)
+    const inL = reach * (0.18 + rand() * 0.14)
+    right.push([x + reach, at + droop], [x + reach * 0.82, at + droop - 2 - rand() * 3], [x + inR, at + reach * 0.28])
+    left.push([x - inL, at + reach * 0.28], [x - reach * 0.82, at + droop - 2 - rand() * 3], [x - reach * (0.9 + rand() * 0.2), at + droop])
+  }
+  const trunk = h * 0.018
+  const pts = [...right, [x + trunk, y], [x - trunk, y], ...left.reverse()]
+  return `M${pts.map(([px, py]) => `${f(px)} ${f(py)}`).join('L')}Z`
 }
 
-// A flame tongue: a teardrop from a base of width w, leaning `lean` at its tip.
-function tongue(cx, base, w, h, lean) {
-  return `M${f(cx - w / 2)} ${base}C${f(cx - w / 2)} ${f(base - h * 0.45)} ${f(cx + lean - w * 0.12)} ${f(base - h * 0.75)} ${f(cx + lean)} ${f(base - h)}`
-    + `C${f(cx + lean + w * 0.1)} ${f(base - h * 0.72)} ${f(cx + w / 2)} ${f(base - h * 0.45)} ${f(cx + w / 2)} ${base}Z`
+// An irregular stone: a lumpy loop of points around (x, y).
+function stone(rand, x, y, rx, ry) {
+  const n = 9
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2
+    const r = 0.82 + rand() * 0.3
+    // Flatter underneath, where it sits on the ground.
+    const sy = Math.sin(a) > 0 ? 0.75 : 1
+    return [x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r * sy]
+  })
+  // Smooth the loop: curve through midpoints, using each point as the control.
+  const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+  const start = mid(pts[n - 1], pts[0])
+  return `M${f(start[0])} ${f(start[1])}${pts.map((p, i) => {
+    const m = mid(p, pts[(i + 1) % n])
+    return `Q${f(p[0])} ${f(p[1])} ${f(m[0])} ${f(m[1])}`
+  }).join('')}Z`
 }
 
-// A stone centred on (x, y). Drawn without a transform on purpose: the light is
-// a gradient in the pit's own coordinates, centred on the fire, and a transform
-// would move the fire as each stone sees it.
-function stone(x, y, rx, ry, lit, shade) {
-  const e = (fill) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}" />`
-  return e('#35312d') + e(`url(#${lit})`) + e(`url(#${shade})`)
-}
+// Fire centre and the foot of the flames, in the pit's 320 x 230 drawing.
+const CX = 160
+const BASE = 176
 
 export function campfire(key) {
   const rand = seeded(key * 7919)
   const id = (name) => `${name}-${key}`
-  // Fire centre and the foot of the flames, in the pit's 320 x 230 drawing.
-  const cx = 160
-  const base = 176
-  const back = [[62, 172, 20, 12, -8], [100, 160, 18, 11, 6], [140, 154, 16, 10, -4], [182, 154, 17, 10, 5], [222, 160, 19, 12, -6], [258, 172, 21, 12, 8]]
-  const front = [[48, 196, 24, 15, 5], [96, 208, 26, 16, -4], [150, 213, 25, 15, 3], [204, 210, 27, 16, -5], [256, 198, 24, 15, 6]]
+  const back = [[58, 170, 21, 13], [96, 159, 19, 12], [136, 153, 17, 10], [180, 153, 18, 11], [221, 159, 20, 12], [260, 170, 22, 13]]
+  const front = [[44, 194, 25, 16], [93, 207, 28, 17], [150, 213, 26, 16], [206, 209, 28, 17], [260, 196, 25, 16]]
   // [foot x offset, top x offset, top height] for each log of the teepee.
   const logs = [[-60, -12, 50], [58, 11, 54], [-26, 6, 62], [30, -5, 58]]
-  const tongues = [
-    [cx, 118, 74, 150, 3, 1.9], [cx - 26, 116, 44, 108, -14, 1.3], [cx + 26, 116, 46, 114, 12, 1.6],
-    [cx - 46, 112, 30, 72, -18, 1.1], [cx + 48, 112, 30, 78, 16, 1.4], [cx - 8, 118, 34, 128, -6, 1.05],
-  ]
-  const wisps = Array.from({ length: 6 }, (_, i) => ({ x: cx - 24 + rand() * 48, delay: f(-i * 0.37), d: f(1 + rand() * 0.8) }))
+  const farTrees = Array.from({ length: 34 }, (_, i) => pine(rand, i * 12 + rand() * 8, 250 + rand() * 10, 26 + rand() * 20)).join('')
+  const light = `<fePointLight x="${CX}" y="${BASE - 34}" z="46" />`
   return `
     <div class="sky" aria-hidden="true">${stars(rand)}<div class="milky"></div></div>
     <svg class="land" viewBox="0 0 400 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
-      <path class="ridge-far" d="M0 196L38 150L70 176L112 118L150 160L188 128L232 176L268 112L310 162L350 134L400 170V360H0Z" />
-      <path class="ridge-near" d="M0 236L46 206L92 232L140 196L196 230L244 204L290 234L338 208L400 236V360H0Z" />
-      <path class="ground" d="M0 300Q200 282 400 300V360H0Z" />
+      <defs>
+        <filter id="${id('rockface')}" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018 0.05" numOctaves="4" seed="${key}" result="n" />
+          <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.18" result="speck" />
+          <feComposite in="speck" in2="SourceAlpha" operator="in" result="grain" />
+          <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="grain" /></feMerge></filter>
+        <filter id="${id('needles')}" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="2" seed="${key + 3}" />
+          <feDisplacementMap in="SourceGraphic" scale="4" /></filter>
+        <linearGradient id="${id('haze')}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1d3a5c" /><stop offset="1" stop-color="#0d1d31" /></linearGradient>
+      </defs>
+      <path class="ridge-far" filter="url(#${id('rockface')})" d="M0 196L22 170L38 150L52 161L70 176L90 146L112 118L128 136L150 160L170 139L188 128L208 150L232 176L250 139L268 112L288 138L310 162L330 146L350 134L376 156L400 170V360H0Z" />
+      <path fill="url(#${id('haze')})" filter="url(#${id('rockface')})" d="M0 236L24 219L46 206L70 222L92 232L118 210L140 196L166 216L196 230L220 214L244 204L268 222L290 234L316 218L338 208L370 224L400 236V360H0Z" />
+      <path class="far-trees" filter="url(#${id('needles')})" d="${farTrees}" />
+      <path class="ground" d="M0 262Q200 248 400 262V360H0Z" />
     </svg>
     <svg class="pines is-left" viewBox="0 0 200 520" preserveAspectRatio="xMinYMax meet" aria-hidden="true" focusable="false">
-      <path d="${pine(28, 520, 470)}${pine(96, 520, 340)}${pine(150, 520, 250)}" /></svg>
+      <path filter="url(#${id('needles')})" d="${pine(rand, 30, 530, 480)}${pine(rand, 98, 530, 350)}${pine(rand, 150, 530, 250)}" /></svg>
     <svg class="pines is-right" viewBox="0 0 200 520" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">
-      <path d="${pine(172, 520, 450)}${pine(104, 520, 330)}${pine(52, 520, 240)}" /></svg>
+      <path filter="url(#${id('needles')})" d="${pine(rand, 170, 530, 460)}${pine(rand, 104, 530, 340)}${pine(rand, 52, 530, 240)}" /></svg>
     <div class="firelight" aria-hidden="true"></div>
-    <svg class="pit" viewBox="0 0 320 230" aria-hidden="true" focusable="false">
-      <defs>
-        <radialGradient id="${id('lit')}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${base - 14}" r="210">
-          <stop offset="0" stop-color="#fdba74" stop-opacity=".9" /><stop offset=".22" stop-color="#f97316" stop-opacity=".6" />
-          <stop offset=".45" stop-color="#c2410c" stop-opacity=".28" /><stop offset=".8" stop-color="#7c2d12" stop-opacity="0" /></radialGradient>
-        <linearGradient id="${id('shade')}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset=".35" stop-color="#000" stop-opacity="0" /><stop offset="1" stop-color="#000" stop-opacity=".7" /></linearGradient>
-        <linearGradient id="${id('flame')}" gradientUnits="userSpaceOnUse" x1="0" y1="${base}" x2="0" y2="${base - 150}">
-          <stop offset="0" stop-color="#fffbeb" /><stop offset=".16" stop-color="#fde68a" /><stop offset=".4" stop-color="#fb923c" />
-          <stop offset=".7" stop-color="#dc2626" stop-opacity=".75" /><stop offset="1" stop-color="#7f1d1d" stop-opacity="0" /></linearGradient>
-        <linearGradient id="${id('core')}" gradientUnits="userSpaceOnUse" x1="0" y1="${base}" x2="0" y2="${base - 90}">
-          <stop offset="0" stop-color="#ffffff" /><stop offset=".45" stop-color="#fef3c7" /><stop offset="1" stop-color="#fbbf24" stop-opacity="0" /></linearGradient>
-        <radialGradient id="${id('pool')}"><stop offset="0" stop-color="#f59e0b" stop-opacity=".55" /><stop offset="1" stop-color="#f59e0b" stop-opacity="0" /></radialGradient>
-        <filter id="${id('burn')}" x="-30%" y="-30%" width="160%" height="160%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.04 0.09" numOctaves="2" seed="${key}">
-            <animate attributeName="baseFrequency" values="0.04 0.09;0.05 0.12;0.04 0.09" dur="2.6s" repeatCount="indefinite" /></feTurbulence>
-          <feDisplacementMap in="SourceGraphic" scale="9" result="shaped" />
-          <feGaussianBlur in="shaped" stdDeviation="1.2" /></filter>
-        <filter id="${id('glow')}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" /></filter>
-      </defs>
-      <ellipse class="pool" cx="${cx}" cy="${base + 4}" rx="160" ry="42" fill="url(#${id('pool')})" />
-      <g fill="url(#${id('lit')})" class="stones">${back.map(([x, y, rx, ry]) => stone(x, y, rx, ry, id('lit'), id('shade'))).join('')}</g>
-      <g class="flames" filter="url(#${id('burn')})">
-        <g filter="url(#${id('glow')})" opacity=".6">${tongues.map(([x, , w, h, lean]) => `<path d="${tongue(x, base, w * 1.3, h * 1.05, lean)}" fill="#f97316" />`).join('')}</g>
-        ${tongues.map(([x, , w, h, lean, d], i) => `<path class="tongue" style="--d:${d}s;--i:${i}" d="${tongue(x, base, w, h, lean)}" fill="url(#${id('flame')})" />`).join('')}
-        <path class="tongue" style="--d:1.2s;--i:9" d="${tongue(cx, base, 40, 80, 2)}" fill="url(#${id('core')})" />
-        ${wisps.map((w) => `<path class="wisp" style="--delay:${w.delay}s;--d:${w.d}s" d="${tongue(w.x, 70, 9, 24, 1)}" fill="url(#${id('flame')})" />`).join('')}
-      </g>
-      <g class="logs">${logs.map(([foot, top, h], i) => {
-        const [x1, y1, x2, y2] = [cx + foot, base + 8, cx + top, base - h]
-        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="log" />
-          <line x1="${x1 + (foot < 0 ? 3 : -3)}" y1="${y1 - 2}" x2="${x2}" y2="${y2 + 4}" class="log-lit" />
-          <line x1="${f(x1 + (x2 - x1) * 0.3)}" y1="${f(y1 + (y2 - y1) * 0.3)}" x2="${f(x1 + (x2 - x1) * 0.45)}" y2="${f(y1 + (y2 - y1) * 0.45)}" class="crack" style="--i:${i}" />`
-      }).join('')}</g>
-      <g fill="url(#${id('lit')})" class="stones">${front.map(([x, y, rx, ry]) => stone(x, y, rx, ry, id('lit'), id('shade'))).join('')}</g>
-    </svg>`
+    <div class="pit" aria-hidden="true">
+      <svg viewBox="0 0 320 230" focusable="false">
+        <defs>
+          <filter id="${id('rock')}" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="4" seed="${key + 7}" result="n" />
+            <feDiffuseLighting in="n" surfaceScale="1.8" diffuseConstant="1.1" lighting-color="#ff9442" result="lit">${light}</feDiffuseLighting>
+            <feComposite in="lit" in2="SourceAlpha" operator="in" result="face" />
+            <feBlend in="face" in2="SourceGraphic" mode="multiply" /></filter>
+          <filter id="${id('bark')}" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9 0.08" numOctaves="3" seed="${key + 11}" result="n" />
+            <feDiffuseLighting in="n" surfaceScale="3" lighting-color="#ff9d57" result="lit">${light}</feDiffuseLighting>
+            <feComposite in="lit" in2="SourceAlpha" operator="in" result="bark" />
+            <feBlend in="bark" in2="SourceGraphic" mode="multiply" /></filter>
+          <radialGradient id="${id('pool')}"><stop offset="0" stop-color="#f59e0b" stop-opacity=".5" /><stop offset=".6" stop-color="#c2410c" stop-opacity=".15" /><stop offset="1" stop-color="#c2410c" stop-opacity="0" /></radialGradient>
+          <radialGradient id="${id('ash')}"><stop offset="0" stop-color="#1c1410" /><stop offset=".7" stop-color="#120d0a" /><stop offset="1" stop-color="#120d0a" stop-opacity="0" /></radialGradient>
+        </defs>
+        <ellipse class="pool" cx="${CX}" cy="${BASE + 6}" rx="165" ry="46" fill="url(#${id('pool')})" />
+        <ellipse cx="${CX}" cy="${BASE + 4}" rx="70" ry="16" fill="url(#${id('ash')})" />
+        <g class="stones" filter="url(#${id('rock')})">${back.map(([x, y, rx, ry]) => `<path d="${stone(rand, x, y, rx, ry)}" />`).join('')}</g>
+      </svg>
+      <canvas class="flame-canvas"></canvas>
+      <svg viewBox="0 0 320 230" focusable="false">
+        <g class="logs" filter="url(#${id('bark')})">${logs.map(([foot, top, h]) => `<line x1="${CX + foot}" y1="${BASE + 8}" x2="${CX + top}" y2="${BASE - h}" />`).join('')}</g>
+        <g class="embers-bed">${logs.map(([foot, top, h], i) => {
+          const at = (k) => [f(CX + foot + (top - foot) * k), f(BASE + 8 - (h + 8) * k)]
+          const [a, b] = [at(0.12 + (i % 2) * 0.08), at(0.3 + (i % 2) * 0.06)]
+          return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" style="--i:${i}" />`
+        }).join('')}</g>
+        <g class="stones" filter="url(#${id('rock')})">${front.map(([x, y, rx, ry]) => `<path d="${stone(rand, x, y, rx, ry)}" />`).join('')}</g>
+      </svg>
+    </div>`
+}
+
+// ---------------------------------------------------------------- fire
+// Particles rise from the logs, cooling from white through amber and red to
+// nothing; drawn with additive blending, so where they overlap the fire is
+// hottest. Colours are pre-drawn sprites, one per stage of a particle's life.
+function sprites() {
+  const stops = [[255, 250, 225], [255, 223, 140], [255, 170, 60], [245, 110, 25], [200, 60, 20], [120, 30, 12]]
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
+  return Array.from({ length: 24 }, (_, i) => {
+    const t = (i / 23) * (stops.length - 1)
+    const c = mix(stops[Math.floor(t)], stops[Math.min(stops.length - 1, Math.floor(t) + 1)], t % 1)
+    const s = document.createElement('canvas')
+    s.width = s.height = 64
+    const g = s.getContext('2d')
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+    grad.addColorStop(0, `rgba(${c},0.36)`)
+    grad.addColorStop(0.35, `rgba(${c},0.16)`)
+    grad.addColorStop(1, `rgba(${c},0)`)
+    g.fillStyle = grad
+    g.fillRect(0, 0, 64, 64)
+    return s
+  })
+}
+
+let SPRITES = null
+const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5
+
+// Runs the fire in `canvas`, which spans x 70-250 and y -70 to 190 of the pit's
+// drawing (dashboard.html, .flame-canvas). Stops drawing while its pane is
+// hidden; with reduced motion, draws one settled frame and stops.
+export function startFire(canvas) {
+  if (!canvas.getContext) return
+  SPRITES ??= sprites()
+  const ctx = canvas.getContext('2d')
+  const W = 180
+  const H = 260
+  const fx = CX - 70 // the fire's centre and base, in the canvas's own units
+  const fy = BASE - 4 + 70
+  const parts = []
+  let scale = 1
+  const size = () => {
+    const r = canvas.getBoundingClientRect()
+    if (!r.width) return false
+    scale = (r.width / W) * Math.min(2, window.devicePixelRatio || 1)
+    canvas.width = Math.round(W * scale)
+    canvas.height = Math.round(H * scale)
+    return true
+  }
+  const spawn = () => {
+    const spread = 32
+    const x = fx + gauss() * spread
+    const edge = Math.abs(x - fx) / spread
+    parts.push({ x, y: fy - 6 + gauss() * 4, vx: gauss() * 0.2, vy: -(1.3 + Math.random() * 1.5) * (1.2 - edge * 0.55),
+      life: 0, decay: 0.009 + Math.random() * 0.013 + edge * 0.012, r: 16 + Math.random() * 14, seed: Math.random() * 100 })
+  }
+  let t = 0
+  const step = () => {
+    t += 1
+    for (let i = 0; i < 11; i++) spawn()
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]
+      p.life += p.decay
+      if (p.life >= 1) { parts.splice(i, 1); continue }
+      // Draw toward the centre as it rises, with a wavering sideways pull: tongues.
+      p.vx += (fx - p.x) * 0.003 + Math.sin(t * 0.07 + p.seed * 0.3 + p.y * 0.035) * 0.06
+      p.x += p.vx
+      p.y += p.vy
+      p.vy *= 0.997
+    }
+  }
+  const draw = () => {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0)
+    ctx.clearRect(0, 0, W, H)
+    ctx.globalCompositeOperation = 'lighter'
+    for (const p of parts) {
+      const sprite = SPRITES[Math.min(23, Math.floor(p.life * 24))]
+      const r = p.r * (1 - p.life * 0.7)
+      ctx.globalAlpha = p.life < 0.08 ? p.life / 0.08 : 1
+      ctx.drawImage(sprite, p.x - r, p.y - r, r * 2, r * 2)
+    }
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+  }
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const frame = () => {
+    if (canvas.offsetParent !== null && (canvas.width || size())) {
+      step()
+      draw()
+    }
+    if (!still) requestAnimationFrame(frame)
+  }
+  if (still) {
+    if (size()) { for (let i = 0; i < 90; i++) step(); draw() }
+    return
+  }
+  new ResizeObserver(() => size()).observe(canvas)
+  requestAnimationFrame(frame)
 }

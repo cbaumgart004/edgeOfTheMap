@@ -123,8 +123,8 @@
     .land { left: 0; right: 0; bottom: 0; width: 100%; height: 46%; }
     .ridge-far { fill: #1a3354; }
     .ridge-near { fill: #0f2138; }
-    .ground { fill: #07090d; }
-    .pines { bottom: 0; height: 60%; width: min(48%, 230px); fill: #02050a; }
+    .ground { fill: #06080c; }
+    .pines { bottom: 0; height: 64%; width: min(50%, 240px); fill: #020409; }
     .pines.is-left { left: -6px; }
     .pines.is-right { right: -6px; }
     /* The fire's light on everything near it, flickering with the flames. */
@@ -132,22 +132,17 @@
       background: radial-gradient(ellipse 70% 55% at 50% 100%, rgb(249 115 22 / .34), rgb(234 88 12 / .12) 45%, transparent 75%);
       animation: firelight 1.8s ease-in-out infinite; }
     @keyframes firelight { 0%, 100% { opacity: .85; } 30% { opacity: 1; } 55% { opacity: .7; } 80% { opacity: .95; } }
-    /* The pit: stones lit by the fire (one gradient centred on it), logs, flames. */
-    .pit { left: 50%; bottom: 0; width: min(100%, 300px); transform: translateX(-50%); overflow: visible; z-index: 3; }
+    /* The pit: back stones, the fire's canvas, then logs and front stones, stacked in one box. */
+    .pit { left: 50%; bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
+    .pit > * { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .pit > canvas.flame-canvas { left: 21.875%; top: -30.43%; width: 56.25%; height: 113.04%; }
     .pool { animation: firelight 1.8s ease-in-out infinite; }
-    .log { stroke: #24150c; stroke-width: 16; stroke-linecap: round; }
-    .log-lit { stroke: #fb923c; stroke-width: 3; stroke-linecap: round; opacity: .5; animation: firelight 1.8s ease-in-out infinite; }
-    .crack { stroke: #fdba74; stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 2px #f97316); animation: crack 1.4s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.3s); }
-    @keyframes crack { from { opacity: .35; } to { opacity: 1; } }
-    .tongue { transform-box: fill-box; transform-origin: 50% 100%; mix-blend-mode: screen; animation: lick var(--d) ease-in-out infinite; animation-delay: calc(var(--i) * -.41s); }
-    @keyframes lick {
-      0%, 100% { transform: scale(1, 1) skewX(0deg); }
-      25% { transform: scale(.94, 1.1) skewX(-5deg); }
-      50% { transform: scale(1.04, .9) skewX(3deg); }
-      75% { transform: scale(.97, 1.05) skewX(6deg); }
-    }
-    .wisp { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: wisp var(--d) ease-out infinite; animation-delay: var(--delay); }
-    @keyframes wisp { 0% { transform: translateY(0) scale(1); opacity: .9; } 100% { transform: translateY(-46px) scale(.3, .5); opacity: 0; } }
+    .stones path { fill: #45403b; }
+    .logs line { stroke: #3a281c; stroke-width: 14; stroke-linecap: round; }
+    .embers-bed line { stroke: #f97316; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 2px #ea580c); opacity: .6;
+      animation: crack 1.6s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.4s); }
+    @keyframes crack { from { opacity: .35; } to { opacity: .95; } }
+    .far-trees { fill: #0b1a2b; }
     /* Runes rise out of the fire as its smoke. */
     .smoke i { position: absolute; bottom: 60px; left: calc(50% - 90px + (var(--i) - 3) * 14px); width: 180px; height: 180px; border-radius: 50%;
       background: radial-gradient(circle, rgb(148 163 184 / .16), rgb(94 234 212 / .08) 45%, transparent 70%); filter: blur(18px);
@@ -170,7 +165,9 @@
       button.sigil { left: calc(20% + var(--lane) * 30%); }
       button.sigil.is-echo { display: block; }
     }
-    button.sigil span { display: grid; justify-items: center; gap: 2px; animation: sway 7s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -1.3s); }
+    /* Runes meander across the pane as they rise: a wide, uneven path, not a small sway. */
+    button.sigil span { display: grid; justify-items: center; gap: 2px; --drift: 24cqw; animation: sway 13s ease-in-out infinite; animation-delay: calc(var(--i) * -3.1s); }
+    @container pane (min-width: 380px) { button.sigil span { --drift: 11cqw; } }
     button.sigil b { font: 400 44px/1 var(--runes); text-shadow: 0 0 8px rgb(94 234 212 / .9), 0 0 22px rgb(94 234 212 / .45); }
     button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }
     button.sigil:hover b, button.sigil:focus-visible b { color: #fff; text-shadow: 0 0 10px #5eead4, 0 0 30px #5eead4; }
@@ -181,7 +178,13 @@
       33% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; filter: blur(10px); }
       100% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; }
     }
-    @keyframes sway { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+    @keyframes sway {
+      0%, 100% { transform: translateX(0); }
+      22% { transform: translateX(calc(var(--drift) * -1)); }
+      47% { transform: translateX(calc(var(--drift) * .7)); }
+      71% { transform: translateX(calc(var(--drift) * -.45)); }
+      88% { transform: translateX(var(--drift)); }
+    }
     /* Hovering a pane holds its sigils still, so one can be chosen. */
     .sigils:hover .sigil, .sigils:hover .sigil span, .sigils:focus-within .sigil, .sigils:focus-within .sigil span { animation-play-state: paused; }
     /* Sparks from the fire. */
@@ -193,7 +196,7 @@
     @keyframes ember-left { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(-40px, -260px); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
       .sigils *, .sigils *::before, .sigils *::after { animation: none !important; }
-      .wisp, .embers { display: none; }
+      .embers { display: none; }
       .rise { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 240px; overflow-y: auto; }
       button.sigil { position: static; opacity: 1; transform: none; }
       button.sigil.is-echo { display: none !important; }
