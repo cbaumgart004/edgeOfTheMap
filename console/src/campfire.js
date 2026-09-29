@@ -119,7 +119,7 @@ function sprites() {
 let SPRITES = null
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5
 
-// Runs the fire in `canvas`, which spans x 70-250 and y -70 to 190 of the pit's
+// Runs the fire in `canvas`, which spans x 70-250 and y -190 to 190 of the pit's
 // drawing (dashboard.html, .flame-canvas). Stops drawing while its pane is
 // hidden; with reduced motion, draws one settled frame and stops.
 export function startFire(canvas) {
@@ -127,9 +127,9 @@ export function startFire(canvas) {
   SPRITES ??= sprites()
   const ctx = canvas.getContext('2d')
   const W = 180
-  const H = 260
+  const H = 380
   const fx = CX - 70 // the fire's centre and base, in the canvas's own units
-  const fy = BASE - 4 + 70
+  const fy = BASE - 4 + 190
   const parts = []
   let scale = 1
   const size = () => {
@@ -184,7 +184,8 @@ export function startFire(canvas) {
       const r = p.r * (p.life < 0.3 ? 0.45 + p.life * 1.9 : 1.02 - (p.life - 0.3) * 1.3)
       const stretch = 1.2 + p.life * 1.4 + Math.min(1.2, -p.vy * 0.3)
       // Faint while young: the bed is where most particles overlap, and would white out.
-      ctx.globalAlpha = Math.min(1, p.life / 0.2) * (0.15 + 0.85 * Math.min(1, p.life / 0.5))
+      // Fades out before the canvas's top edge, so no flame is ever cut off by it.
+      ctx.globalAlpha = Math.min(1, p.life / 0.2) * (0.15 + 0.85 * Math.min(1, p.life / 0.5)) * Math.min(1, Math.max(0, (p.y - 20) / 60))
       ctx.drawImage(sprite, p.x - r, p.y - r * stretch * 0.6, r * 2, r * 2 * stretch)
     }
     ctx.globalAlpha = 1
