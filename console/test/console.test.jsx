@@ -8,7 +8,7 @@ import { createBridge } from '../src/bridge.js'
 import { localStore } from '../src/store.js'
 import { localAuth } from '../src/auth.js'
 
-const schema = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+const schema = JSON.parse(readFileSync('test/fixtures/events.json', 'utf8'))
 
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -102,5 +102,89 @@ describe('console in a page', () => {
     expect((await store.get(doc.id)).data.blocks).toEqual([{ key: 'hero', span: 12 }, { key: 'makers', span: 12 }, { key: 'story', span: 6 }])
     await act(async () => root.unmount())
     page.remove()
+  })
+
+  it('opens what is clicked on the page, and sizes it by dragging its edge', async () => {
+    localStorage.clear()
+    const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+    const store = localStore({ schema: ss })
+    const doc = await store.create({ type: 'page', data: { title: 'Services', blocks: [
+      { _id: 'intro', _type: 'contentSection', layout: 'centered', title: 'Welcome' },
+      { _id: 'thai', _type: 'service', title: 'Thai Yoga' },
+    ] } })
+    const page = document.createElement('div')
+    page.innerHTML = '<section data-eotm-edit="page:' + doc.slug + '" data-eotm-item="thai" data-eotm-label="Thai Yoga" data-eotm-size="width" data-eotm-min="30" data-eotm-max="100"><h2>Thai Yoga</h2></section>'
+    document.body.append(page)
+    const section = page.firstChild
+    const box = (width) => () => ({ top: 100, left: 0, right: width, bottom: 300, width, height: 200 })
+    section.getBoundingClientRect = box(500)
+    page.getBoundingClientRect = box(1000)
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+
+    await act(async () => section.querySelector('h2').dispatchEvent(new MouseEvent('pointerover', { bubbles: true })))
+    await tick(20)
+    const edit = byText(host, 'button.eotm-target-edit', 'Edit Thai Yoga')
+    expect(edit).toBeTruthy()
+    await act(async () => edit.click())
+    await tick(20)
+    // The document opens with the clicked section expanded.
+    expect(host.querySelector('[data-eotm-item="thai"]').classList.contains('is-open')).toBe(true)
+    expect(host.querySelector('[data-eotm-item="intro"]').classList.contains('is-open')).toBe(false)
+
+    // Dragging the right edge 100px wider: 600 of 1000. Snapping (the default)
+    // lands on seven twelfths; free sizing keeps 60%.
+    const dragTo = async (x) => act(async () => {
+      host.querySelector('button.eotm-target-size').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 500 }))
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: x }))
+      window.dispatchEvent(new MouseEvent('pointerup', {}))
+    })
+    await dragTo(600)
+    await tick(900)
+    expect((await store.get(doc.id)).data.blocks[1].width).toBe(58)
+    await act(async () => byText(host, 'button.eotm-target-snap', 'Snap').click())
+    expect(byText(host, 'button.eotm-target-snap', 'Free')).toBeTruthy()
+    await dragTo(600)
+    await tick(900)
+    expect((await store.get(doc.id)).data.blocks[1].width).toBe(60)
+    localStorage.removeItem('eotm:snap')
+    await act(async () => root.unmount())
+    page.remove()
+  })
+
+  it('lets the owner design a section type and then place it on a page', async () => {
+    localStorage.clear()
+    const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+    const store = localStore({ schema: ss })
+    await store.create({ type: 'page', data: { title: 'Home', blocks: [] } })
+    const bridge = createBridge()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={ss} store={store} bridge={bridge} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+    const type = async (el, text) => act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, text)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    await act(async () => byText(host, 'button.eotm-card', 'Your own types').click())
+    await act(async () => byText(host, 'button', 'New section type').click())
+    await type(host.querySelector('input[placeholder="e.g. Banner"]'), 'Banner')
+    await type(host.querySelector('input[aria-label="Field name"]'), 'Message')
+    await act(async () => byText(host, 'button', 'Save types').click())
+    await tick(10)
+    expect(bridge.schema.blocks.customBanner.fields[0]).toMatchObject({ name: 'message', kind: 'text', label: 'Message' })
+
+    await act(async () => host.querySelector('button[aria-label="Back"]').click())
+    await act(async () => byText(host, 'button.eotm-card', 'Pages').click())
+    await tick()
+    await act(async () => byText(host, 'button.eotm-doc-open', 'Home').click())
+    await tick(10)
+    expect(byText(host, '.eotm-palette button', 'Banner')).toBeTruthy()
+    await act(async () => root.unmount())
   })
 })

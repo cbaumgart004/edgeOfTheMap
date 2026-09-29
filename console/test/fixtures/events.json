@@ -1,0 +1,108 @@
+{
+  "site": "spiritseeds",
+  "version": 1,
+  "brand": {
+    "name": "Spirit Seeds Wellness",
+    "logo": "/uploads/SpiritSeedsLogo.jpg",
+    "modes": {
+      "light": { "bg": "#fff4da", "surface": "#fffaf0", "ink": "#3a2a18", "muted": "#8b5e00", "line": "#f0dcb0", "accent": "#ffb347", "accentInk": "#3a2a18" },
+      "dark": { "bg": "#2a1f12", "surface": "#35281a", "ink": "#fff1cc", "muted": "#e9b87d", "line": "#5a4428", "accent": "#ffb347", "accentInk": "#2a1f12" }
+    },
+    "fonts": { "body": "Georgia, serif", "heading": "'Cormorant Garamond', Georgia, serif" },
+    "radius": "12px"
+  },
+  "textStyles": [
+    { "name": "gradient", "label": "Watercolour gradient", "className": "text-gradient" },
+    { "name": "outline", "label": "Honey outline", "className": "text-outline" }
+  ],
+  "types": {
+    "event": {
+      "label": "Event",
+      "plural": "Events",
+      "titleField": "title",
+      "slugFrom": "title",
+      "previewPath": "/events/{slug}",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Event name", "required": true },
+        { "name": "startsAt", "kind": "datetime", "label": "Starts", "required": true },
+        { "name": "endsAt", "kind": "datetime", "label": "Ends" },
+        { "name": "location", "kind": "text", "label": "Where", "help": "A studio name, an address, or Online." },
+        { "name": "description", "kind": "richtext", "label": "Description", "required": true },
+        { "name": "image", "kind": "image", "label": "Photo" },
+        { "name": "price", "kind": "money", "label": "Price", "help": "Leave blank for a free event." },
+        { "name": "bookingUrl", "kind": "url", "label": "Booking link", "help": "OfferingTree or the host studio's page." },
+        { "name": "bookingLabel", "kind": "text", "label": "Button text", "default": "Book" }
+      ]
+    },
+    "banner": {
+      "label": "Banner",
+      "plural": "Banners",
+      "titleField": "message",
+      "previewPath": "/",
+      "fields": [
+        { "name": "message", "kind": "richtext", "label": "Message", "required": true },
+        { "name": "linkLabel", "kind": "text", "label": "Button text" },
+        { "name": "linkUrl", "kind": "url", "label": "Button link" },
+        { "name": "style", "kind": "select", "label": "Look", "default": "announcement", "options": [
+          { "value": "announcement", "label": "Announcement" }, { "value": "urgent", "label": "Urgent" }, { "value": "quiet", "label": "Quiet" } ] },
+        { "name": "startsAt", "kind": "datetime", "label": "Show from", "help": "Blank shows it as soon as it is published." },
+        { "name": "endsAt", "kind": "datetime", "label": "Hide after", "help": "Blank keeps it up until you unpublish it." }
+      ]
+    },
+    "page": {
+      "label": "Page",
+      "plural": "Pages",
+      "titleField": "title",
+      "slugFrom": "title",
+      "previewPath": "/{slug}",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Title", "required": true },
+        { "name": "navLabel", "kind": "text", "label": "Menu label" },
+        { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
+        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed"] }
+      ]
+    }
+  },
+  "blocks": {
+    "contentSection": {
+      "label": "Content section",
+      "className": "section",
+      "fields": [
+        { "name": "layout", "kind": "select", "label": "Layout", "default": "centered", "options": [
+          { "value": "splash", "label": "Splash" }, { "value": "imageText", "label": "Image and text" },
+          { "value": "centered", "label": "Centered text" }, { "value": "cardGrid", "label": "Card grid" },
+          { "value": "values", "label": "Values list" }, { "value": "event", "label": "Event / announcement" } ] },
+        { "name": "eyebrow", "kind": "text", "label": "Small line above the heading" },
+        { "name": "title", "kind": "text", "label": "Heading" },
+        { "name": "body", "kind": "richtext", "label": "Text" },
+        { "name": "image", "kind": "image", "label": "Image" },
+        { "name": "cards", "kind": "list", "label": "Cards", "itemLabel": "title", "fields": [
+          { "name": "image", "kind": "image", "label": "Thumbnail" }, { "name": "title", "kind": "text", "label": "Title" },
+          { "name": "description", "kind": "textarea", "label": "Text" }, { "name": "buttonLabel", "kind": "text", "label": "Button text" },
+          { "name": "buttonUrl", "kind": "url", "label": "Button link" } ] },
+        { "name": "spacing", "kind": "select", "label": "Spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
+      ]
+    },
+    "service": {
+      "label": "Service",
+      "className": "section service",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Service name", "required": true },
+        { "name": "body", "kind": "richtext", "label": "Description" },
+        { "name": "image", "kind": "image", "label": "Image" },
+        { "name": "bookingOptions", "kind": "list", "label": "Booking options", "itemLabel": "label", "fields": [
+          { "name": "label", "kind": "text", "label": "Option", "required": true }, { "name": "price", "kind": "money", "label": "Price" },
+          { "name": "url", "kind": "url", "label": "Booking link" } ] }
+      ]
+    },
+    "embed": {
+      "label": "Embed",
+      "className": "section embed",
+      "fields": [
+        { "name": "url", "kind": "url", "label": "Page to embed", "required": true },
+        { "name": "height", "kind": "number", "label": "Height (px)", "integer": true, "min": 100, "default": 600 }
+      ]
+    }
+  }
+}

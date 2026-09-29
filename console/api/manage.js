@@ -132,7 +132,7 @@ export function createManage(deps, { onSiteChange }) {
       if (!schema) throw new ServiceError(400, `No schema ships for ${slug}.`)
       const problems = checkSchema(schema)
       if (problems.length) throw new ServiceError(400, `The shipped schema is invalid: ${problems[0]}`)
-      set('schema', schema)
+      set('schema', schema) // the owner's own types stay in custom_schema
     }
     if (!sets.length) throw new ServiceError(400, 'Nothing to change.')
     params.push(slug)

@@ -18,13 +18,22 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   from the site's own classes (`blocks` in the schema), so a new section looks like the others.
 - **Rich text** with headings, lists, links, inline photos and the site's brand text styles
   (`textStyles`), stored as sanitized HTML the site renders with its own CSS.
-- **Photos** resized in the browser before upload. StoryShaped photos carry a `Light` or `Dark` index.
+- **Photos** compressed in the browser before upload: longest edge 2400 px, WebP, stepping down in
+  quality and size until the file is under 900 KB. Each photo can be turned, mirrored and faded,
+  reused from the site's other photos, or given by address. StoryShaped photos carry a `Light` or `Dark` index.
 - **Live preview on the page.** Every keystroke is pushed to the page through `window.EOTM`; the page
   re-renders from the draft before anything is saved. Autosave follows 800 ms after the last change.
   Draft and live are separate: nothing reaches visitors until Publish.
 - **Phones first.** A bottom sheet with three heights (a one-line banner, half screen, nearly full);
   drag the grip or tap the title to change it. **Preview** hides the sheet but its header so the page under it shows and takes taps; it reads **Edit** while on. On the home screen, ← returns to the admin dashboard (0.1.5+).
   On a screen 1024 px or wider the same panel docks right.
+- **Click-to-edit and drag-to-size on the page (0.1.8+).** Pointing at a section shows an Edit
+  button that opens it; its edge, a side image's edge and images in rich text drag to a new width,
+  snapping to a 12-column grid or moving freely. The page marks what is editable (SCHEMA.md,
+  "Marks a page gives the editor").
+- **Their own types (0.1.8+).** An owner designs sections and collections with their own fields
+  ("Your own types"); a custom section is placed on pages like a built-in one (SCHEMA.md). More
+  than six types on a phone become a dropdown, on the home view and in a section palette.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
   "Use their version" or "Keep mine" instead of silently overwriting.
 
@@ -181,6 +190,10 @@ no login.
   Android Chrome yet.
 
 ## Not built yet
+
+- **Styling a custom section.** It renders in the site's plain section style until its developer
+  gives it a design; a custom collection is served by the public API but shown nowhere until the
+  site's code places it.
 
 - **Viewing and editing a site's schema on the admin page** (requested 2026-09-29). Today a schema
   change is a commit to `schema/sites/<site>.json`, an API redeploy, and a Manage save that reloads

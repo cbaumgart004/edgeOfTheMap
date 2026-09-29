@@ -41,10 +41,10 @@ says what each key means.
 
 | Kind | Stored as | Options |
 |---|---|---|
-| `text` | string | `maxLength` |
+| `text` | string | `maxLength`; `suggest: { block, field }` offers that field of every such section in the same document, and publishing refuses a value matching none (a button tied to a Service by its heading) |
 | `textarea` | string | `maxLength` |
 | `richtext` | sanitized HTML string | Links, inline images, headings, lists, and the site's `textStyles` as `<span class>` |
-| `url` | string | Must be `https:`, `http:`, `mailto:`, `tel:` or a site path starting `/` |
+| `url` | string | Must be `https:`, `http:`, `mailto:`, `tel:`, a site path starting `/`, or an `#anchor` on the page |
 | `number` | number | `min`, `max`, `step`, `integer` |
 | `placement` | string: `""` last, `"^"` first, else the key of the entry it follows | Options come from the site (`EOTM.setOrder(type, [{ key, title, docId }])`), else the type's other documents by slug |
 | `layout` | `[{ "key", "span" }]` in page order; `span` is columns of 12 | Keys come from the page: a `data-eotm-layout` container whose direct children carry `data-eotm-block="<key>"`, `data-eotm-label` and the `data-eotm-span` they render at. The console draws move and resize handles over them |
@@ -54,7 +54,7 @@ says what each key means.
 | `date` | `YYYY-MM-DD` | |
 | `datetime` | ISO 8601 string with offset | |
 | `select` | string | `options: [{ value, label }]` |
-| `image` | `{ src, alt, width, height }` | |
+| `image` | `{ src, alt, width, height, rotate?, flip?, opacity? }` | The owner can turn it (`rotate` 0, 90, 180, 270), mirror it (`flip`) and fade it (`opacity` 10 to 100); the site applies them as CSS. "Site photos" reuses one already on the site, or takes a pasted address |
 | `photos` | `[{ src, alt, width, height, index }]` | `indexes: ["Light", "Dark"]` labels each photo. StoryShaped's daylight/blacklight pairs |
 | `relation` | document id, or an array of ids when `many` | `to: "<type>"` |
 | `group` | object | `fields` |
@@ -62,6 +62,26 @@ says what each key means.
 | `blocks` | array of `{ _id, _type, ...fields }` | `of: ["<block>", ...]` |
 
 Every field also takes `label`, `help`, `required` and `default`.
+
+## The owner's own types
+
+An owner can design sections and collections in the editor ("Your own types"), saved in
+`sites.custom_schema` and merged over this file on every load (`schema/custom.js`). Custom names
+start with `custom`, use only kinds that need no code (`CUSTOM_KINDS`), and join every page's
+section palette. A site renders a custom section generically from its fields until it is designed;
+`window.EOTM.schema` has the merged schema while editing, the public `boot` has it otherwise.
+
+## Marks a page gives the editor
+
+| Attribute | On | Gives |
+|---|---|---|
+| `data-eotm-edit="<type>:<id or slug>"` | any element showing a document | an Edit button that opens it (click-to-edit) |
+| `data-eotm-item="<_id>"` | a section or row inside it | opens with that section expanded |
+| `data-eotm-label` | either | names the Edit button |
+| `data-eotm-size="<field>"`, `data-eotm-min`, `data-eotm-max` | an element whose width is that number field, in % of its parent | a drag handle; snaps to twelfths or moves freely (the owner's toggle) |
+| `data-eotm-edge="left"`, `data-eotm-centered` | a sizable element | the handle on the left edge; a centred element's edge moves half as far |
+| `data-eotm-richtext="<field>"` | a rich text container | a handle on each image in it, stored as `width="n%"` |
+| `data-eotm-layout`, `data-eotm-block`, `data-eotm-span` | a page arranged by a `layout` field | Arrange's move and resize boxes |
 
 ## Documents
 

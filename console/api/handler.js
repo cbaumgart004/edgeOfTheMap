@@ -12,6 +12,7 @@ import { createPgRepo } from './repo-pg.js'
 import { checkSchema } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
+import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/avif': 'avif' }
@@ -82,6 +83,9 @@ export function createHandler(deps) {
     const { rows } = await deps.control.query('SELECT * FROM sites WHERE slug = $1', [slug])
     const site = rows[0] ?? null
     if (site) {
+      // The owner's own types over the shipped schema (schema/custom.js).
+      site.base_schema = site.schema
+      site.schema = mergeCustom(site.schema, site.custom_schema)
       const problems = checkSchema(site.schema)
       if (problems.length) throw new ServiceError(500, `Site schema is invalid: ${problems[0]}`)
     }
@@ -226,6 +230,31 @@ export function createHandler(deps) {
       // Who this sign-in is, for a site's own backend guarding its admin routes
       // (StoryShaped's inventory): a 200 means a member of this site.
       if (method === 'GET' && rest === '/me') return json(200, { id: user.id, email: user.email ?? null, role: user.role }, headers)
+      // The owner's own section and collection types (schema/custom.js). Owners
+      // only; a type still used by a document cannot be dropped.
+      if (method === 'PUT' && rest === '/custom-schema') {
+        if (user.role !== 'owner') throw new ServiceError(403, 'Only the site owner can change its types.')
+        const custom = parseBody(event).custom ?? {}
+        const problems = checkCustom(site.base_schema ?? site.schema, custom)
+        if (problems.length) throw new ServiceError(400, `Those types cannot be saved: ${problems[0]}`, { errors: problems })
+        const gone = droppedCustom(site.custom_schema, custom)
+        if (gone.types.length || gone.blocks.length) {
+          const db = await deps.siteDb(site)
+          for (const t of gone.types) {
+            if ((await db.query('SELECT 1 FROM documents WHERE type = $1 LIMIT 1', [t])).rows.length) {
+              throw new ServiceError(409, `"${site.custom_schema.types[t].label}" still has entries. Delete them first.`)
+            }
+          }
+          for (const b of gone.blocks) {
+            if ((await db.query(`SELECT 1 FROM documents WHERE data::text LIKE $1 OR published_data::text LIKE $1 LIMIT 1`, [`%"_type": "${b}"%`])).rows.length) {
+              throw new ServiceError(409, `"${site.custom_schema.blocks[b].label}" is still on a page. Remove those sections first.`)
+            }
+          }
+        }
+        await deps.control.query('UPDATE sites SET custom_schema = $2, updated_at = now() WHERE id = $1', [site.id, custom])
+        siteCache.delete(site.slug)
+        return json(200, { schema: mergeCustom(site.base_schema ?? site.schema, custom) }, headers)
+      }
       // "Request a change" from the editor on the site itself.
       if (method === 'POST' && rest === '/requests') return json(201, await requests.submit(site, user, parseBody(event)), headers)
       const svc = await serviceFor(site)

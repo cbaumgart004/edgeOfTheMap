@@ -47,6 +47,9 @@ export function checkSchema(schema) {
       if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
       if (f.kind === 'relation' && !types[f.to]) errors.push(`${at}: relation to unknown type "${f.to}"`)
       if (f.kind === 'photos' && f.indexes && !Array.isArray(f.indexes)) errors.push(`${at}: indexes must be a list`)
+      if (f.suggest && (f.kind !== 'text' || !blocks[f.suggest.block] || !f.suggest.field)) {
+        errors.push(`${at}: suggest needs a text field and { block, field } naming a block and one of its fields`)
+      }
       if (f.kind === 'group' || f.kind === 'list') checkFields(f.fields, at)
       if (f.kind === 'blocks') {
         if (!(f.of?.length > 0)) errors.push(`${at}: blocks needs "of"`)
@@ -135,16 +138,22 @@ export function duplicateDocument(schema, doc, existingSlugs = []) {
 
 // ---------------------------------------------------------------- validation
 
-const URL_OK = /^(https?:\/\/|mailto:|tel:|\/(?!\/))/i
+// An #anchor is a link to a section on the same page (a Service card).
+const URL_OK = /^(https?:\/\/|mailto:|tel:|\/(?!\/)|#[\w-]+$)/i
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function isBlank(v) {
   return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
 }
 
+// A photo may also carry how the owner turned and faded it: rotate in quarter
+// turns, flip left to right, opacity in %. The site applies them as CSS.
 function checkImage(v, at, errors) {
   if (!v || typeof v !== 'object' || typeof v.src !== 'string' || !v.src) errors.push(`${at}: image needs a src`)
   else if (!URL_OK.test(v.src)) errors.push(`${at}: image src must be a URL or a site path`)
+  if (v?.rotate != null && ![0, 90, 180, 270].includes(v.rotate)) errors.push(`${at}: rotate must be 0, 90, 180 or 270`)
+  if (v?.flip != null && typeof v.flip !== 'boolean') errors.push(`${at}: flip must be true or false`)
+  if (v?.opacity != null && !(Number.isInteger(v.opacity) && v.opacity >= 10 && v.opacity <= 100)) errors.push(`${at}: opacity must be 10 to 100`)
 }
 
 function checkValue(field, value, at, schema, errors, opts) {
@@ -156,6 +165,14 @@ function checkValue(field, value, at, schema, errors, opts) {
     case 'text': case 'textarea': case 'richtext':
       if (typeof value !== 'string') errors.push(`${at}: must be text`)
       else if (field.maxLength && value.length > field.maxLength) errors.push(`${at}: longer than ${field.maxLength}`)
+      // A name that must match a section on the same page (a button tied to a
+      // Service by its heading). Checked on publish only, so autosave never
+      // fails halfway through typing it.
+      else if (field.suggest && opts.root && !opts.draft) {
+        const names = suggestionsFor(schema, opts.root, field.suggest).map((n) => n.toLowerCase())
+        const label = schema.blocks[field.suggest.block]?.label ?? field.suggest.block
+        if (!names.includes(value.trim().toLowerCase())) errors.push(`${at}: no ${label} titled "${value}" on this page`)
+      }
       break
     case 'url':
       if (typeof value !== 'string' || !URL_OK.test(value)) errors.push(`${at}: must be a link (https://, mailto:, tel: or /path)`)
@@ -248,8 +265,22 @@ export function checkDocument(schema, typeName, data, opts = {}) {
   const type = schema.types?.[typeName]
   if (!type) return [`unknown type "${typeName}"`]
   const errors = []
-  checkFields(type.fields, data ?? {}, '', schema, errors, opts)
+  checkFields(type.fields, data ?? {}, '', schema, errors, { ...opts, root: data ?? {} })
   return errors
+}
+
+// Values a `suggest` field may take: `field` of every `block` section anywhere
+// in the document's data, in page order.
+export function suggestionsFor(schema, data, { block, field }) {
+  const out = []
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.forEach(walk)
+    if (!v || typeof v !== 'object') return
+    if (v._type === block && typeof v[field] === 'string' && v[field].trim()) out.push(v[field].trim())
+    for (const [k, x] of Object.entries(v)) if (k !== field && typeof x === 'object') walk(x)
+  }
+  walk(data)
+  return [...new Set(out)]
 }
 
 // Relation ids a document points at, for the API to confirm they exist.
@@ -273,4 +304,31 @@ export function titleOf(schema, doc) {
   const f = schema.types[doc.type]?.titleField
   const t = f ? doc.data?.[f] : ''
   return (typeof t === 'string' && t.trim()) || doc.slug || 'Untitled'
+}
+
+// A copy of `data` with `field` set to `value` on the section or row whose _id
+// is `itemId` (the document itself when itemId is null), however deep it sits.
+// Unchanged when no such item exists. Used by drag-to-size on the page.
+// `value` may be a function of the old value.
+export function setItemField(data, itemId, field, value) {
+  const next = (old) => (typeof value === 'function' ? value(old) : value)
+  if (!itemId) return { ...data, [field]: next(data?.[field]) }
+  let found = false
+  const walk = (v) => {
+    if (found || !v || typeof v !== 'object') return v
+    if (Array.isArray(v)) {
+      const next = v.map(walk)
+      return found ? next : v
+    }
+    if (v._id === itemId) { found = true; return { ...v, [field]: next(v[field]) } }
+    for (const [k, x] of Object.entries(v)) {
+      if (x && typeof x === 'object') {
+        const next = walk(x)
+        if (found) return { ...v, [k]: next }
+      }
+    }
+    return v
+  }
+  const out = walk(data)
+  return found ? out : data
 }

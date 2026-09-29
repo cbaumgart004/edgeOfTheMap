@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor } from '../schema/schema.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import { prepareImage } from './images.js'
@@ -28,8 +28,18 @@ function Field({ field, value, onChange, ctx, path }) {
   )
 
   switch (field.kind) {
-    case 'text':
-      return wrap(<input id={id} className="eotm-input" value={value ?? ''} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />)
+    case 'text': {
+      // `suggest`: offer the headings of that kind of section on this page, and
+      // say at once when the typed name matches none of them.
+      const names = field.suggest ? suggestionsFor(ctx.schema, ctx.docData, field.suggest) : null
+      const unmatched = names && value?.trim() && !names.some((n) => n.toLowerCase() === value.trim().toLowerCase())
+      return wrap(<>
+        <input id={id} className="eotm-input" value={value ?? ''} maxLength={field.maxLength} list={names ? `${id}-list` : undefined}
+          onChange={(e) => onChange(e.target.value)} />
+        {names && <datalist id={`${id}-list`}>{names.map((n) => <option key={n} value={n} />)}</datalist>}
+        {unmatched && !error && <p className="eotm-error" role="status">No {ctx.schema.blocks[field.suggest.block]?.label ?? 'section'} called “{value.trim()}” on this page yet.</p>}
+      </>)
+    }
     case 'url':
       return wrap(<input id={id} className="eotm-input" type="url" inputMode="url" value={value ?? ''} placeholder="https://… or /page" onChange={(e) => onChange(e.target.value)} />)
     case 'textarea':
@@ -126,25 +136,94 @@ async function uploadPhoto(file, ctx) {
   return { src, width, height, alt: '' }
 }
 
+// Turn, flip and fade a photo. Stored on the image ({ rotate, flip, opacity })
+// and applied by the site as CSS, so the file itself is never re-encoded.
+function PhotoLook({ value, onChange }) {
+  const rotate = value.rotate ?? 0
+  const opacity = value.opacity ?? 100
+  const turn = (d) => onChange({ ...value, rotate: (rotate + d + 360) % 360 })
+  return (
+    <div className="eotm-photo-look">
+      <div className="eotm-row">
+        <button type="button" className="eotm-icon" aria-label="Rotate left" title="Rotate left" onClick={() => turn(-90)}>↺</button>
+        <button type="button" className="eotm-icon" aria-label="Rotate right" title="Rotate right" onClick={() => turn(90)}>↻</button>
+        <button type="button" className={`eotm-btn is-quiet${value.flip ? ' is-on' : ''}`} aria-pressed={!!value.flip}
+          onClick={() => onChange({ ...value, flip: !value.flip })}>Flip</button>
+        {(rotate || value.flip || opacity !== 100) ? (
+          <button type="button" className="eotm-btn is-quiet" onClick={() => { const { rotate: r, flip, opacity: o, ...rest } = value; onChange(rest) }}>Reset</button>
+        ) : null}
+      </div>
+      <label className="eotm-label eotm-range">
+        Opacity <output>{opacity}%</output>
+        <input type="range" min="10" max="100" step="5" value={opacity}
+          onChange={(e) => onChange({ ...value, opacity: Number(e.target.value) })} />
+      </label>
+    </div>
+  )
+}
+
+// Every photo address already used in this site's documents, for reusing one
+// without uploading it again (what a media library is for).
+async function sitePhotos(ctx) {
+  const srcs = new Set()
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.forEach(walk)
+    if (!v || typeof v !== 'object') return
+    if (typeof v.src === 'string' && v.src) srcs.add(v.src)
+    Object.values(v).forEach(walk)
+  }
+  for (const type of Object.keys(ctx.schema.types)) {
+    try { walk((await ctx.store.list(type)).map((d) => d.data)) } catch { /* a type that fails to list is skipped */ }
+  }
+  walk(ctx.docData)
+  return [...srcs]
+}
+
 function ImageField({ id, value, onChange, ctx }) {
   const [busy, setBusy] = useState(false)
+  const [library, setLibrary] = useState(null) // null closed, [] loading or empty
   const pick = async (file) => {
     if (!file) return
     setBusy(true)
     try { onChange(await uploadPhoto(file, ctx)) } catch (e) { ctx.notify(e.message) } finally { setBusy(false) }
   }
+  const openLibrary = async () => {
+    if (library) return setLibrary(null)
+    setLibrary([])
+    setLibrary(await sitePhotos(ctx))
+  }
   return (
     <div className="eotm-image">
-      {value?.src && <img src={value.src} alt="" />}
+      {value?.src && <img src={value.src} alt="" style={{
+        transform: `rotate(${value.rotate ?? 0}deg)${value.flip ? ' scaleX(-1)' : ''}`, opacity: (value.opacity ?? 100) / 100 }} />}
       <div className="eotm-row">
         <label className="eotm-btn">
           {busy ? 'Uploading…' : value?.src ? 'Replace photo' : 'Add photo'}
           <input id={id} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files[0]); e.target.value = '' }} />
         </label>
+        <button type="button" className="eotm-btn is-quiet" aria-expanded={!!library} onClick={openLibrary}>Site photos</button>
         {value?.src && <button type="button" className="eotm-btn is-quiet" onClick={() => onChange(null)}>Remove</button>}
       </div>
+      {library && (
+        <div className="eotm-library">
+          {library.length ? library.map((src) => (
+            <button key={src} type="button" className={`eotm-thumb${value?.src === src ? ' is-on' : ''}`} aria-label="Use this photo"
+              onClick={() => { onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' }); setLibrary(null) }}>
+              <img src={src} alt="" loading="lazy" />
+            </button>)) : <p className="eotm-help">No photos on the site yet.</p>}
+          <input className="eotm-input" placeholder="Or paste a photo address: https://… or /uploads/…"
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              const src = e.currentTarget.value.trim()
+              if (/^(https?:\/\/|\/(?!\/))/i.test(src)) { onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' }); setLibrary(null) }
+              else ctx.notify('A photo address starts with https:// or /')
+            }} />
+        </div>
+      )}
       {value?.src && <input className="eotm-input" placeholder="Describe the photo for screen readers" value={value.alt ?? ''}
         onChange={(e) => onChange({ ...value, alt: e.target.value })} />}
+      {value?.src && <PhotoLook value={value} onChange={onChange} />}
     </div>
   )
 }
@@ -228,7 +307,14 @@ function Relation({ id, field, value, onChange, ctx }) {
 
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
 function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, add, sections }) {
-  const [open, setOpen] = useState(() => new Set())
+  // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
+  // here already expanded and scrolled into view.
+  const [open, setOpen] = useState(() => new Set(items.some((x) => x._id === ctx.focus) ? [ctx.focus] : []))
+  useEffect(() => {
+    if (!ctx.focus || !items.some((x) => x._id === ctx.focus)) return
+    setOpen((s) => new Set(s).add(ctx.focus))
+    requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
+  }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
   const toggle = (key) => setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
   const update = (i, v) => onChange(items.map((x, j) => (j === i ? v : x)))
   const move = (i, d) => {
@@ -258,7 +344,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
           const isOpen = open.has(key)
           const hasError = ctx.errors?.some((e) => e.startsWith(`${path}[${i}]`))
           return (
-            <li key={key} className={`eotm-item${isOpen ? ' is-open' : ''}${hasError ? ' has-error' : ''}`}>
+            <li key={key} data-eotm-item={key} className={`eotm-item${isOpen ? ' is-open' : ''}${hasError ? ' has-error' : ''}`}>
               <div className="eotm-item-head">
                 <button type="button" className="eotm-item-title" aria-expanded={isOpen} onClick={() => toggle(key)}>
                   {itemTitle(item, i)}
@@ -279,9 +365,18 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
           )
         })}
       </ol>
-      <div className="eotm-palette">
-        {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}
-      </div>
+      {add.length > 6 && !matchMedia('(min-width: 1024px)').matches ? (
+        // More than six kinds on a phone: one dropdown instead of a wall of buttons.
+        <select className="eotm-input eotm-palette-pick" aria-label={`Add to ${label}`} value=""
+          onChange={(e) => { const a = add.find((x) => x.key === e.target.value); if (a) insert(a.make) }}>
+          <option value="">+ Add…</option>
+          {add.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+        </select>
+      ) : (
+        <div className="eotm-palette">
+          {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}
+        </div>
+      )}
     </fieldset>
   )
 }

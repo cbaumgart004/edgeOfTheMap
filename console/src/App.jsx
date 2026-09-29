@@ -1,7 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, titleOf } from '../schema/schema.js'
+import { checkDocument, titleOf, setItemField } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList } from './Fields.jsx'
+import Targets from './Targets.jsx'
+import CustomTypes from './CustomTypes.jsx'
+import { createPortal } from 'react-dom'
+
+// The nth image of a rich text field set to `pct`% wide; its height follows.
+function imageWidthIn(html, index, pct) {
+  const box = document.createElement('div')
+  box.innerHTML = html ?? ''
+  const img = box.querySelectorAll('img')[index]
+  if (!img) return html
+  img.setAttribute('width', `${pct}%`)
+  img.removeAttribute('height')
+  return box.innerHTML
+}
 
 const SAVE_DELAY = 800 // ms after the last change (platform plan §3.4)
 const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, with unpublished changes' }
@@ -45,7 +59,7 @@ function brandStyle(brand, mode) {
 // a one-line banner; `half` shows form and page together; `full` is for long
 // forms. Desktop: the same panel docked right. Peek fades the panel so the
 // owner can see the page under it without collapsing.
-function useWide() {
+export function useWide() {
   const [wide, setWide] = useState(() => matchMedia('(min-width: 1024px)').matches)
   useEffect(() => {
     const mq = matchMedia('(min-width: 1024px)')
@@ -83,7 +97,11 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
 
 // ---------------------------------------------------------------- app
 
-export default function App({ schema, store, bridge, auth, dashboard, onClose }) {
+export default function App({ schema: shipped, store, bridge, auth, dashboard, onClose }) {
+  // The schema the owner edits with; saving their own types (CustomTypes.jsx)
+  // replaces it, and the page hears of it through the bridge.
+  const [schema, setSchema] = useState(shipped)
+  useEffect(() => { bridge.setSchema?.(schema) }, [bridge, schema])
   const mode = useBrandMode(schema.brand)
   const wide = useWide()
   const [size, setSize] = useState(wide ? 'full' : 'half')
@@ -99,7 +117,7 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
 
   const style = brandStyle(schema.brand, mode)
   const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
-    : view.name === 'request' ? 'Request a change' : schema.brand.name
+    : view.name === 'request' ? 'Request a change' : view.name === 'types' ? 'Your own types' : schema.brand.name
 
   const header = (
     <header className="eotm-head">
@@ -128,10 +146,44 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
 
   const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek }
 
+  // Click-to-edit (Targets.jsx): the page names a document by id or slug.
+  const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
+  const openTarget = async ({ type, key, item }) => {
+    if (!schema.types[type]) return
+    try {
+      const doc = await findDoc(type, key)
+      if (!doc) return notify('That part of the page is not in the editor yet.')
+      setPeek(false)
+      if (size === 'bar') setSize('half')
+      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusAt: Date.now() })
+    } catch (e) {
+      notify(e.message)
+    }
+  }
+
+  // Drag-to-size: the open editor takes the value at once (the page re-renders
+  // from the draft); a document not open yet is opened and takes the latest
+  // value when it loads.
+  const editorApi = useRef(null)
+  const pendingSize = useRef(null)
+  const opening = useRef(null)
+  const resizeTarget = async ({ type, key, item, field, value, imageIndex = null }) => {
+    if (!schema.types[type]) return
+    const api = editorApi.current
+    if (api && (api.id === key || api.slug === key)) return api.setField(item, field, value, imageIndex)
+    pendingSize.current = { key, item, field, value, imageIndex }
+    if (opening.current === key) return
+    opening.current = key
+    await openTarget({ type, key, item })
+    opening.current = null
+  }
+
   let body
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
-  else if (view.name === 'home') body = <Home schema={schema} store={store} open={(type) => setView({ name: 'list', type })} onRequest={() => setView({ name: 'request' })} />
+  else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
+    onRequest={() => setView({ name: 'request' })} onTypes={() => setView({ name: 'types' })} />
+  else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'request') body = <RequestChange store={store} notify={notify} onSent={() => setView({ name: 'home' })} />
   else if (view.name === 'list') body = (
     <DocList schema={schema} store={store} type={view.type} notify={notify}
@@ -140,7 +192,8 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
     <Editor key={view.id} schema={schema} store={store} bridge={bridge} id={view.id} ctxBase={ctxBase} notify={notify}
       onState={(patch) => setView((v) => ({ ...v, ...patch }))}
       onGone={() => setView({ name: 'list', type: view.type })}
-      onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })} />)
+      onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
+      focus={view.focus} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
 
   return (
     <div className="eotm-root" data-eotm-mode={mode} style={style}>
@@ -149,6 +202,7 @@ export default function App({ schema, store, bridge, auth, dashboard, onClose })
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
       <div ref={setOverlay} />
+      {user && overlay && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} />, overlay)}
     </div>
   )
 }
@@ -209,14 +263,46 @@ function RequestChange({ store, notify, onSent }) {
   )
 }
 
-function Home({ schema, store, open, onRequest }) {
+// More than this many types on a phone become a dropdown instead of cards.
+const CARD_LIMIT = 6
+
+function Home({ schema, store, wide, open, onRequest, onTypes }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
   }, [schema, store])
+  const types = Object.entries(schema.types)
+  const extra = (
+    <>
+      <li>
+        <button type="button" className="eotm-card is-request" onClick={onTypes}>
+          <strong>Your own types</strong>
+          <span>Design a section or a list</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" className="eotm-card is-request" onClick={onRequest}>
+          <strong>Request a change</strong>
+          <span>Anything the editor can’t do</span>
+        </button>
+      </li>
+    </>
+  )
+  if (!wide && types.length > CARD_LIMIT) {
+    return (
+      <div className="eotm-types-picker">
+        <label className="eotm-label" htmlFor="eotm-type-pick">What would you like to edit?</label>
+        <select id="eotm-type-pick" className="eotm-input" value="" onChange={(e) => e.target.value && open(e.target.value)}>
+          <option value="">Choose…</option>
+          {types.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{counts[name] != null ? ` (${counts[name]})` : ''}</option>)}
+        </select>
+        <ul className="eotm-types">{extra}</ul>
+      </div>
+    )
+  }
   return (
     <ul className="eotm-types">
-      {Object.entries(schema.types).map(([name, t]) => (
+      {types.map(([name, t]) => (
         <li key={name}>
           <button type="button" className="eotm-card" onClick={() => open(name)}>
             <strong>{t.plural ?? t.label}</strong>
@@ -224,12 +310,7 @@ function Home({ schema, store, open, onRequest }) {
           </button>
         </li>
       ))}
-      <li>
-        <button type="button" className="eotm-card is-request" onClick={onRequest}>
-          <strong>Request a change</strong>
-          <span>Anything the editor can’t do</span>
-        </button>
-      </li>
+      {extra}
     </ul>
   )
 }
@@ -269,7 +350,7 @@ function DocList({ schema, store, type, open, notify }) {
   )
 }
 
-function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen }) {
+function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, focus, focusAt, editorApi, pendingSize }) {
   const [doc, setDoc] = useState(null)
   const [conflict, setConflict] = useState(null)
   const [serverErrors, setServerErrors] = useState([])
@@ -311,15 +392,38 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
     }
   }, [id, store, schema, onState, notify])
 
+  // Against docRef, not the render's `doc`: a drag on the page calls this many
+  // times between renders, and each call must build on the one before.
   const change = (data) => {
-    const next = { ...doc, data }
+    const cur = docRef.current
+    const next = { ...cur, data }
+    docRef.current = next
     setDoc(next)
     bridge.push(next) // the page re-renders now; the save follows
-    pending.current = { data, slug: undefined, base: pending.current?.base ?? doc.version }
+    pending.current = { data, slug: undefined, base: pending.current?.base ?? cur.version }
     onState({ saveState: 'pending', title: titleOf(schema, next) })
     clearTimeout(timer.current)
     timer.current = setTimeout(flush, SAVE_DELAY)
   }
+
+  // Drag-to-size on the page (App's resizeTarget) writes through here; a drag
+  // that opened this document hands over its latest value once it has loaded.
+  const loaded = !!doc
+  useEffect(() => {
+    if (!loaded) return undefined
+    const setField = (item, field, value, imageIndex = null) => {
+      const cur = docRef.current
+      // An image inside rich text keeps its size in the HTML, as width="n%".
+      const write = imageIndex == null ? value : (html) => imageWidthIn(html, imageIndex, value)
+      const data = setItemField(cur.data, item, field, write)
+      if (data !== cur.data) change(data)
+    }
+    const d = docRef.current
+    editorApi.current = { id: d.id, slug: d.slug, setField }
+    const p = pendingSize.current
+    if (p && (p.key === d.id || p.key === d.slug)) { pendingSize.current = null; setField(p.item, p.field, p.value, p.imageIndex) }
+    return () => { if (editorApi.current?.id === d.id) editorApi.current = null }
+  }, [loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (fn, okMsg) => {
     clearTimeout(timer.current)
@@ -337,7 +441,7 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
   if (!doc) return <p className="eotm-empty">Loading…</p>
   const type = schema.types[doc.type]
   const draftErrors = checkDocument(schema, doc.type, doc.data, { draft: true })
-  const ctx = { ...ctxBase, docId: doc.id, docType: doc.type, errors: [...draftErrors, ...serverErrors] }
+  const ctx = { ...ctxBase, docId: doc.id, docType: doc.type, docData: doc.data, focus, focusAt, errors: [...draftErrors, ...serverErrors] }
 
   return (
     <div className="eotm-editor">

@@ -14,8 +14,12 @@ export function createBridge() {
   const emit = (change) => listeners.forEach((fn) => { try { fn(change) } catch (e) { console.error('[EOTM]', e) } })
 
   return {
-    version: 2,
+    version: 3,
     editing: false,
+    // The schema the console is editing with, the owner's own types included
+    // (schema/custom.js). A site renders a custom section from its fields;
+    // `{ type: '$schema' }` arrives when the owner changes them.
+    schema: null,
 
     // Site side ------------------------------------------------------------
 
@@ -56,6 +60,11 @@ export function createBridge() {
     },
 
     // Console side ---------------------------------------------------------
+
+    setSchema(schema) {
+      this.schema = schema
+      emit({ type: '$schema' })
+    },
 
     push(doc) {
       drafts.set(`${doc.type}:${doc.id}`, doc)

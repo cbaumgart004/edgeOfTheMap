@@ -5,7 +5,7 @@ import createDOMPurify from 'dompurify'
 import { createHandler } from '../api/handler.js'
 import { sanitizeRichText, sanitizeDocumentData } from '../src/richtext.js'
 
-const schema = JSON.parse(readFileSync(new URL('../schema/sites/spiritseeds.json', import.meta.url), 'utf8'))
+const schema = JSON.parse(readFileSync(new URL('./fixtures/events.json', import.meta.url), 'utf8'))
 const purify = createDOMPurify(new JSDOM('').window)
 const ORIGIN = 'https://spiritseedswellness.com'
 const SITE = {

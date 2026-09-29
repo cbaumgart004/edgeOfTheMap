@@ -5,6 +5,7 @@
 import { createService, ServiceError } from '../core/service.js'
 import { createMemoryRepo } from '../core/repo-memory.js'
 import { sanitizeDocumentData } from './richtext.js'
+import { checkCustom, mergeCustom } from '../schema/custom.js'
 
 export class StoreError extends Error {
   constructor(status, message, extra = {}) {
@@ -37,6 +38,8 @@ export function httpStore({ apiBase, site, getToken }) {
     remove: (id, baseVersion) => call('DELETE', `/documents/${id}?baseVersion=${baseVersion}`),
     // "Request a change": emailed and pushed to Edge of the Map (api/requests.js).
     request: (input) => call('POST', '/requests', input),
+    // The owner's own types (schema/custom.js); answers { schema } merged.
+    saveCustom: (custom) => call('PUT', '/custom-schema', { custom }),
     async upload(blob) {
       const { uploadUrl, src } = await call('POST', '/uploads', { contentType: blob.type, bytes: blob.size })
       const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'content-type': blob.type }, body: blob })
@@ -46,14 +49,12 @@ export function httpStore({ apiBase, site, getToken }) {
   }
 }
 
-export function localStore({ schema, key = `eotm:local:${schema.site}` }) {
+export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
   const read = () => { try { return JSON.parse(localStorage.getItem(key)) } catch { return null } }
   const write = (v) => { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private mode: memory only */ } }
-  const svc = createService({
-    schema,
-    repo: createMemoryRepo({ load: read, persist: write }),
-    sanitize: (type, data) => sanitizeDocumentData(schema, type, data),
-  })
+  const repo = createMemoryRepo({ load: read, persist: write })
+  const make = (schema) => createService({ schema, repo, sanitize: (type, data) => sanitizeDocumentData(schema, type, data) })
+  let svc = make(base)
   const wrap = (fn) => async (...args) => {
     try {
       return await fn(...args)
@@ -74,6 +75,14 @@ export function localStore({ schema, key = `eotm:local:${schema.site}` }) {
     listPublished: wrap((type) => svc.listPublished(type)),
     // Local mode has no one to send to.
     request: async () => { throw new StoreError(400, 'Requests are sent from the real editor, not the demo.') },
+    // Local mode keeps the owner's types for this page load only.
+    async saveCustom(custom) {
+      const errors = checkCustom(base, custom)
+      if (errors.length) throw new StoreError(400, `Those types cannot be saved: ${errors[0]}`, { errors })
+      const schema = mergeCustom(base, custom)
+      svc = make(schema)
+      return { schema }
+    },
     // Local mode keeps photos as data URLs; fine for a demo, never for a site.
     upload: (blob) => new Promise((resolve, reject) => {
       const r = new FileReader()

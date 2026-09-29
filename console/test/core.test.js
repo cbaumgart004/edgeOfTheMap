@@ -1,19 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { checkSchema, checkDocument, duplicateDocument, newBlock, relationIds } from '../schema/schema.js'
+import { checkSchema, checkDocument, duplicateDocument, newBlock, relationIds, suggestionsFor, setItemField } from '../schema/schema.js'
 import { createService, ConflictError } from '../core/service.js'
 import { createMemoryRepo } from '../core/repo-memory.js'
 
 const load = (name) => JSON.parse(readFileSync(new URL(`../schema/sites/${name}.json`, import.meta.url), 'utf8'))
 const storyshaped = load('storyshaped')
-const spiritseeds = load('spiritseeds')
+// Events and banners: SpiritSeeds' first sketch, kept to test dates, money,
+// rich text and singletons (the live schema mirrors its TinaCMS model).
+const spiritseeds = JSON.parse(readFileSync(new URL('./fixtures/events.json', import.meta.url), 'utf8'))
 // StoryShaped's inventory moved to its own Stock Item tables (StoryShaped
 // ADR-0002); its former console types stay here because they exercise money,
 // labelled photos, relations and drafts.
 const inventory = JSON.parse(readFileSync(new URL('./fixtures/inventory.json', import.meta.url), 'utf8'))
 
 describe('site schemas', () => {
-  it.each([['storyshaped', storyshaped], ['spiritseeds', spiritseeds], ['edgeofthemap', load('edgeofthemap')], ['inventory fixture', inventory]])('%s is a valid schema', (_, schema) => {
+  it.each([['storyshaped', storyshaped], ['spiritseeds', load('spiritseeds')], ['events fixture', spiritseeds], ['edgeofthemap', load('edgeofthemap')], ['inventory fixture', inventory]])('%s is a valid schema', (_, schema) => {
     expect(checkSchema(schema)).toEqual([])
   })
 
@@ -123,5 +125,43 @@ describe('service', () => {
       price: { amount: 100, currency: 'USD' }, quantityOnHand: 1, photos: [photo], components: [{ _id: 'a', component: c.id, quantityPerUnit: 2 }] } })
     await s.remove(c.id, { baseVersion: c.version })
     await expect(s.publish(doc.id, { baseVersion: doc.version })).rejects.toMatchObject({ status: 422, message: expect.stringMatching(/Component no longer exists/) })
+  })
+})
+
+describe('page-scoped suggestions and sizing', () => {
+  const ss = load('spiritseeds')
+  const page = (buttonService) => ({
+    title: 'Services',
+    blocks: [
+      { _id: 'a', _type: 'service', title: 'Thai Yoga', status: 'available' },
+      { _id: 'b', _type: 'contentSection', layout: 'centered', buttons: [{ _id: 'c', label: 'Book', service: buttonService }] },
+    ],
+  })
+
+  it('offers the headings of Service sections on the same page', () => {
+    expect(suggestionsFor(ss, page('x'), { block: 'service', field: 'title' })).toEqual(['Thai Yoga'])
+  })
+
+  it('refuses to publish a button tied to a Service the page does not have, but saves the draft', () => {
+    expect(checkDocument(ss, 'page', page('thai yoga'))).toEqual([])
+    expect(checkDocument(ss, 'page', page('Reiki'))[0]).toMatch(/blocks\[1\]\.buttons\[0\]\.service: no Service \/ offering titled "Reiki"/)
+    expect(checkDocument(ss, 'page', page('Reiki'), { draft: true })).toEqual([])
+  })
+
+  it('accepts an #anchor link to a section on the page', () => {
+    const data = page('Thai Yoga')
+    data.blocks[1].buttons[0].url = '#thai-yoga'
+    expect(checkDocument(ss, 'page', data)).toEqual([])
+  })
+
+  it('sets a field on a section by its id, however deep, and leaves the rest alone', () => {
+    const data = page('x')
+    const out = setItemField(data, 'c', 'label', 'Book now')
+    expect(out.blocks[1].buttons[0].label).toBe('Book now')
+    expect(out.blocks[0]).toBe(data.blocks[0])
+    expect(data.blocks[1].buttons[0].label).toBe('Book')
+    expect(setItemField(data, 'missing', 'x', 1)).toBe(data)
+    expect(setItemField(data, null, 'title', 'T').title).toBe('T')
+    expect(setItemField(data, 'c', 'label', (old) => `${old}!`).blocks[1].buttons[0].label).toBe('Book!')
   })
 })
