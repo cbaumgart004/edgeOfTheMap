@@ -109,8 +109,8 @@
     .sigils { position: fixed; top: 20px; bottom: 20px; width: calc((100vw - var(--main-w, 420px)) / 2 - 54px);
       container: pane / inline-size; overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px; isolation: isolate;
       background: linear-gradient(to bottom, #03060f 0%, #071329 38%, #0c2340 62%, #123a4f 74%, #0b1622 100%); }
-    .sigils.is-left { left: 22px; }
-    .sigils.is-right { right: 22px; }
+    .sigils.is-left { left: 22px; --fire-x: 36%; }
+    .sigils.is-right { right: 22px; --fire-x: 64%; }
     .sigils > * { position: absolute; }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
@@ -124,27 +124,19 @@
     .ridge-far { fill: #1a3354; }
     .ridge-near { fill: #0f2138; }
     .ground { fill: #06080c; }
-    .pines { bottom: 0; height: 64%; width: min(50%, 240px); fill: #020409; }
-    .pines.is-left { left: -6px; }
-    .pines.is-right { right: -6px; }
+    .trees { inset: 0; width: 100%; height: 100%; }
     /* The fire's light on everything near it, flickering with the flames. */
     .firelight { left: 0; right: 0; bottom: 0; height: 60%; pointer-events: none; mix-blend-mode: screen;
-      background: radial-gradient(ellipse 70% 55% at 50% 100%, rgb(249 115 22 / .34), rgb(234 88 12 / .12) 45%, transparent 75%);
+      background: radial-gradient(ellipse 70% 55% at var(--fire-x) 100%, rgb(249 115 22 / .34), rgb(234 88 12 / .12) 45%, transparent 75%);
       animation: firelight 1.8s ease-in-out infinite; }
     @keyframes firelight { 0%, 100% { opacity: .85; } 30% { opacity: 1; } 55% { opacity: .7; } 80% { opacity: .95; } }
     /* The pit: back stones, the fire's canvas, then logs and front stones, stacked in one box. */
-    .pit { left: 50%; bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
+    .pit { left: var(--fire-x); bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
     .pit > * { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
     .pit > canvas.flame-canvas { left: 21.875%; top: -30.43%; width: 56.25%; height: 113.04%; }
     .pool { animation: firelight 1.8s ease-in-out infinite; }
-    .stones path { fill: #45403b; }
-    .logs line { stroke: #3a281c; stroke-width: 14; stroke-linecap: round; }
-    .embers-bed line { stroke: #f97316; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 2px #ea580c); opacity: .6;
-      animation: crack 1.6s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.4s); }
-    @keyframes crack { from { opacity: .35; } to { opacity: .95; } }
-    .far-trees { fill: #0b1a2b; }
     /* Runes rise out of the fire as its smoke. */
-    .smoke i { position: absolute; bottom: 60px; left: calc(50% - 90px + (var(--i) - 3) * 14px); width: 180px; height: 180px; border-radius: 50%;
+    .smoke i { position: absolute; bottom: 60px; left: calc(var(--fire-x) - 90px + (var(--i) - 3) * 14px); width: 180px; height: 180px; border-radius: 50%;
       background: radial-gradient(circle, rgb(148 163 184 / .16), rgb(94 234 212 / .08) 45%, transparent 70%); filter: blur(18px);
       animation: smoke 16s linear infinite; animation-delay: calc(var(--i) * -2.3s); }
     .smoke i:nth-child(even) { background: radial-gradient(circle, rgb(122 77 231 / .16), rgb(148 163 184 / .08) 45%, transparent 70%); animation-duration: 19s; }
@@ -156,7 +148,7 @@
     }
     .smoke, .rise, .embers { inset: 0; }
     .rise { z-index: 4; }
-    button.sigil { position: absolute; left: 50%; bottom: 150px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
+    button.sigil { position: absolute; left: var(--fire-x); bottom: 150px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
       font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0;
       animation: rise 42s linear infinite; animation-delay: calc(var(--i) * -42s / var(--n)); }
     button.sigil.is-echo { display: none; }
@@ -189,7 +181,7 @@
     .sigils:hover .sigil, .sigils:hover .sigil span, .sigils:focus-within .sigil, .sigils:focus-within .sigil span { animation-play-state: paused; }
     /* Sparks from the fire. */
     .embers { z-index: 5; pointer-events: none; }
-    .embers i { position: absolute; bottom: 90px; left: calc(50% + (var(--i) - 4) * 7px); width: 2.5px; height: 2.5px; border-radius: 50%; background: #fed7aa;
+    .embers i { position: absolute; bottom: 90px; left: calc(var(--fire-x) + (var(--i) - 4) * 7px); width: 2.5px; height: 2.5px; border-radius: 50%; background: #fed7aa;
       box-shadow: 0 0 6px 2px rgb(249 115 22 / .8); animation: ember 4.5s ease-out infinite; animation-delay: calc(var(--i) * -.53s); }
     .embers i:nth-child(even) { animation-name: ember-left; animation-duration: 5.5s; }
     @keyframes ember { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(34px, -300px); opacity: 0; } }
