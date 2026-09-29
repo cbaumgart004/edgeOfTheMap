@@ -11,17 +11,20 @@ both on their `preview` branches.
 
 1. **Lambda `eotm-console-api` → Code → Upload from → .zip:** `console/dist/api.zip` (built by
    `npm run package:api` on the `console` branch).
-2. **Test tab:** `{"eotmMigrate": true}`. Applies control migrations 005 (sign-in help) and 006
-   (owners' own types).
+2. **Test tab:** `{"eotmMigrate": true}`. Applies control migrations 005 (sign-in help), 006
+   (owners' own types) and 007 (company details). Until it runs, Manage fails to
+   load (it reads 007's column).
 3. **Test tab**, one site database each inside the control project (no connection string to copy):
    - `{"eotmCreateSite": {"site": "edgeofthemap", "allowedOrigins": ["https://theedgeofthemap.com", "https://www.theedgeofthemap.com"], "owners": []}}`
    - `{"eotmCreateSite": {"site": "spiritseeds", "allowedOrigins": ["https://spiritseedswellness.com", "https://www.spiritseedswellness.com", "<SpiritSeeds preview Amplify URL>"], "owners": []}}`
-4. **admin.theedgeofthemap.com → Manage:** each site → Editor version **1.1.0** → Save (this also
+4. **admin.theedgeofthemap.com → Manage:** each site → Editor version **1.1.2** → Save (this also
    reloads its schema). Add yourself to both new sites as owner, and Melissa to SpiritSeeds.
-5. **Photo buckets** (uploads answer 503 until a site has one), per site:
-   an S3 bucket, a CloudFront distribution in front of it, a bucket CORS rule allowing `PUT` from
-   the site's origins, and `s3:PutObject` on it for the Lambda role. Then Manage → Photo bucket and
-   Photo address.
+5. **The shared photo bucket**, once for every site (uploads answer 503 until it exists): one S3
+   bucket, one CloudFront distribution in front of it, a bucket CORS rule allowing `PUT` from `*`,
+   and `s3:PutObject` on it for the Lambda role. Then Lambda → Configuration → Environment
+   variables: `MEDIA_BUCKET=<bucket name>`, `MEDIA_BASE_URL=https://<distribution domain>`. Each
+   site writes under `sites/<slug>/`; nothing per site. Record the distribution id in Manage → each
+   site → Company details. Needs the console API built after the shared-bucket change.
 6. **SES** (change-request email; push works without it): Verified identities → Create →
    Domain `theedgeofthemap.com`, Easy DKIM RSA 2048. Add the three CNAMEs it shows (section 4).
    Then Lambda → Configuration → Environment variables: `NOTIFY_FROM=notifications@theedgeofthemap.com`;
