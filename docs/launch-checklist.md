@@ -58,6 +58,6 @@ Home Screen app). Sign in, then **Turn on notifications on this device** and **S
 | StoryShaped Studios | **not recorded**, needed from Chris | Amplify → Domain management → add the domain; it lists the ACM validation CNAME and the `www`/apex targets. Apex at Porkbun is an ALIAS to the CloudFront host. No SES: the site sends no email |
 | SpiritSeeds Wellness | `spiritseedswellness.com`, **Squarespace until the move to Porkbun (target 2026-11-11)** | Same Amplify records as above, entered in Squarespace DNS until the move. No SES. Before the move, copy every existing record from Squarespace (above all MX and TXT, which carry `melissacarey@spiritseedswellness.com`) into Porkbun. The move itself: SpiritSeeds' [NEXT-STEPS.md](https://github.com/cbaumgart004/LiveSpiritSeedsMk2/blob/preview/docs/NEXT-STEPS.md) |
 
-**Unverified:** the Amplify preview URLs, StoryShaped's domain, and whether the site database can be
-created inside the control project (`eotmCreateSite` has not yet run against Neon). The DKIM token
+**Unverified:** StoryShaped's domain. `eotmCreateSite` ran against Neon for both new sites on 2026-09-29, so a site database can be
+created inside the control project. The DKIM token
 values exist only once SES generates them.
