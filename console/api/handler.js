@@ -190,6 +190,9 @@ export function createHandler(deps) {
       // so a cached draft list would be served to the next caller.
       headers = { ...headers, 'cache-control': 'private, no-store' }
       const user = await authorize(event, site)
+      // Who this sign-in is, for a site's own backend guarding its admin routes
+      // (StoryShaped's inventory): a 200 means a member of this site.
+      if (method === 'GET' && rest === '/me') return json(200, { id: user.id, email: user.email ?? null, role: user.role }, headers)
       const svc = await serviceFor(site)
       const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
 

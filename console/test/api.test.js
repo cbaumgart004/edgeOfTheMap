@@ -91,6 +91,13 @@ describe('console API', () => {
     expect((await setup({ member: false }).call('GET', `${base}/documents`, { query: { type: 'event' } })).statusCode).toBe(403)
   })
 
+  it('tells a site backend who a member is, and nothing to anyone else', async () => {
+    const me = await setup().call('GET', `${base}/me`, { origin: undefined })
+    expect([me.statusCode, me.json]).toEqual([200, { id: 'user-1', email: null, role: 'owner' }])
+    expect((await setup({ member: false }).call('GET', `${base}/me`, { origin: undefined })).statusCode).toBe(403)
+    expect((await setup().call('GET', `${base}/me`, { token: 'forged', origin: undefined })).statusCode).toBe(401)
+  })
+
   it('sanitizes rich text on create: no handlers, no javascript: links, only brand classes', async () => {
     const r = await setup().call('POST', `${base}/documents`, { body: { type: 'event', data: event } })
     expect(r.statusCode).toBe(201)
