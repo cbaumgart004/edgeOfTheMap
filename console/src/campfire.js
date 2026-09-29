@@ -29,8 +29,8 @@ const PIT = {
   back: [[58, 170, 21, 13], [96, 159, 19, 12], [136, 153, 17, 10], [180, 153, 18, 11], [221, 159, 20, 12], [260, 170, 22, 13]],
   front: [[44, 196, 25, 16], [93, 208, 28, 17], [150, 213, 26, 16], [206, 209, 28, 17], [260, 197, 25, 16]],
   // Inner logs stand behind the fire, outer ones in front of it.
-  backLogs: [[-24, 7, 64], [30, -6, 60], [4, -2, 70]],
-  logs: [[-58, -10, 52], [56, 10, 56]],
+  backLogs: [[-26, 12, 42], [30, -12, 40], [2, -6, 46]],
+  logs: [[-58, 10, 34], [56, -10, 36]],
 }
 
 export function campfire(key) {
@@ -98,7 +98,7 @@ export function startScene(pane, key, side) {
 // nothing; drawn with additive blending, so where they overlap the fire is
 // hottest. Colours are pre-drawn sprites, one per stage of a particle's life.
 function sprites() {
-  const stops = [[255, 214, 140], [255, 236, 170], [255, 190, 80], [248, 120, 30], [205, 62, 20], [120, 30, 12]]
+  const stops = [[235, 110, 35], [255, 175, 70], [255, 205, 115], [250, 135, 40], [205, 62, 20], [120, 30, 12]]
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
   return Array.from({ length: 24 }, (_, i) => {
     const t = (i / 23) * (stops.length - 1)
@@ -107,8 +107,8 @@ function sprites() {
     s.width = s.height = 64
     const g = s.getContext('2d')
     const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-    grad.addColorStop(0, `rgba(${c},0.34)`)
-    grad.addColorStop(0.35, `rgba(${c},0.14)`)
+    grad.addColorStop(0, `rgba(${c},0.3)`)
+    grad.addColorStop(0.35, `rgba(${c},0.12)`)
     grad.addColorStop(1, `rgba(${c},0)`)
     g.fillStyle = grad
     g.fillRect(0, 0, 64, 64)
@@ -147,20 +147,26 @@ export function startFire(canvas) {
     const src = sources[Math.floor(Math.random() * sources.length)]
     const x = src.x + gauss() * 5
     const edge = Math.min(1, Math.abs(x - fx) / 34)
-    parts.push({ x, y: fy + gauss() * 4, vx: gauss() * 0.08, vy: -(1 + Math.random() * 0.8),
-      life: 0, decay: 0.009 + Math.random() * 0.01 + edge * 0.012, r: 12 + Math.random() * 9 - edge * 3, seed: Math.random() * 100 })
+    parts.push({ x, y: fy + gauss() * 4, vx: gauss() * 0.08, vy: -(1.5 + Math.random() * 0.8),
+      life: 0, decay: 0.0075 + Math.random() * 0.009 + edge * 0.012, r: 12 + Math.random() * 9 - edge * 3, seed: Math.random() * 100 })
   }
   let t = 0
+  let surge = 1
+  let target = 1
   const step = () => {
     t += 1
+    if (Math.random() < 0.004) target = 0.82 + Math.random() * 0.55
+    surge += (target - surge) * 0.012
     for (const src of sources) src.x = fx + src.at + Math.sin(t * src.speed + src.phase) * 7
-    for (let i = 0; i < 6; i++) spawn()
+    const count = 5 + surge * 2.5
+    // A ceiling, so a long surge can never pile up more than a frame can draw.
+    if (parts.length < 1400) for (let i = 0; i < count; i++) spawn()
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i]
-      p.life += p.decay
+      p.life += p.decay / surge
       if (p.life >= 1) { parts.splice(i, 1); continue }
       // Hot gas speeds up as it rises and is drawn in toward the tip, wavering.
-      p.vy = Math.max(-3.4, p.vy - 0.045)
+      p.vy = Math.max(-3.4 * Math.sqrt(surge), p.vy - 0.045 * surge)
       p.vx = p.vx * 0.94 + (fx - p.x) * 0.0035 + Math.sin(t * 0.11 + p.seed + p.y * 0.06) * 0.08
       p.x += p.vx
       p.y += p.vy
@@ -178,7 +184,7 @@ export function startFire(canvas) {
       const r = p.r * (p.life < 0.3 ? 0.45 + p.life * 1.9 : 1.02 - (p.life - 0.3) * 1.3)
       const stretch = 1.2 + p.life * 1.4 + Math.min(1.2, -p.vy * 0.3)
       // Faint while young: the bed is where most particles overlap, and would white out.
-      ctx.globalAlpha = Math.min(1, p.life / 0.2) * (0.22 + 0.78 * Math.min(1, p.life / 0.45))
+      ctx.globalAlpha = Math.min(1, p.life / 0.2) * (0.15 + 0.85 * Math.min(1, p.life / 0.5))
       ctx.drawImage(sprite, p.x - r, p.y - r * stretch * 0.6, r * 2, r * 2 * stretch)
     }
     ctx.globalAlpha = 1

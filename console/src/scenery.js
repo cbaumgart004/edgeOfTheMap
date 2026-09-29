@@ -250,7 +250,8 @@ export function paintPit(canvas, key, layer, pit) {
   const ctx = canvas.getContext('2d')
   const fbm = noise(seeded(key * 31337))
   const fire = { x: pit.cx, y: pit.base - 22, lift: 34, power: 3.2, reach: 70 }
-  const logFire = { ...fire, y: pit.base - 16, lift: 20, power: 1.5 }
+  // The logs sit in the fire; light them from a little way off so they read as wood, not glare.
+  const logFire = { ...fire, y: pit.base - 30, lift: 42, power: 1.3 }
   if (layer === 'back') {
     pit.back.forEach(([x, y, rx, ry], i) => paintStone(ctx, k, x, y, rx, ry, fire, fbm, i * 1.7 + key))
     pit.backLogs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 6, pit.cx + top, pit.base - h, 7, logFire, fbm, i * 3.1 + key + 20))

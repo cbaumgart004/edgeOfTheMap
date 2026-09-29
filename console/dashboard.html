@@ -109,8 +109,8 @@
     .sigils { position: fixed; top: 20px; bottom: 20px; width: calc((100vw - var(--main-w, 420px)) / 2 - 54px);
       container: pane / inline-size; overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px; isolation: isolate;
       background: linear-gradient(to bottom, #03060f 0%, #071329 38%, #0c2340 62%, #123a4f 74%, #0b1622 100%); }
-    .sigils.is-left { left: 22px; --fire-x: 36%; }
-    .sigils.is-right { right: 22px; --fire-x: 64%; }
+    .sigils.is-left { left: 22px; --fire-x: 36%; --fire-cq: 36cqw; }
+    .sigils.is-right { right: 22px; --fire-x: 64%; --fire-cq: 64cqw; }
     .sigils > * { position: absolute; }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
@@ -133,7 +133,8 @@
     /* The pit: back stones, the fire's canvas, then logs and front stones, stacked in one box. */
     .pit { left: var(--fire-x); bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
     .pit > * { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .pit > canvas.pit-mid { opacity: .6; }
+    /* Multiplied, not faded: dark wood over flame reads as warm shadow, where a faded copy turned grey. */
+    .pit > canvas.pit-mid { opacity: .8; mix-blend-mode: multiply; }
     .pit > canvas.flame-canvas { left: 21.875%; top: -30.43%; width: 56.25%; height: 113.04%; }
     .pool { animation: firelight 1.8s ease-in-out infinite; }
     /* Runes rise out of the fire as its smoke. */
@@ -149,13 +150,14 @@
     }
     .smoke, .rise, .embers { inset: 0; }
     .rise { z-index: 4; }
-    button.sigil { position: absolute; left: var(--fire-x); bottom: 150px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
+    button.sigil { position: absolute; left: var(--fire-x); bottom: 135px; --dx: 0px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
       font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0;
       animation: rise 80s linear infinite; animation-delay: calc(var(--i) * -80s / var(--n)); }
     button.sigil.is-echo { display: none; }
     /* A wide pane: three lanes, and the echo rising between, so it is never one lonely column. */
     @container pane (min-width: 380px) {
-      button.sigil { left: calc(20% + var(--lane) * 30%); }
+      /* Born at the fire like the rest, then carried out to its lane. */
+      button.sigil { --dx: calc(20cqw + var(--lane) * 30cqw - var(--fire-cq)); }
       button.sigil.is-echo { display: block; }
     }
     /* Runes meander across the pane as they rise: a wide, uneven path, not a small sway. */
@@ -165,11 +167,14 @@
     button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }
     button.sigil:hover b, button.sigil:focus-visible b { color: #fff; text-shadow: 0 0 10px #5eead4, 0 0 30px #5eead4; }
     @keyframes rise {
-      0% { transform: translate(-50%, 0) scale(.6); opacity: 0; filter: blur(8px); }
-      4% { opacity: 1; filter: blur(0); transform: translate(-50%, -40px) scale(1); }
+      /* Out of the flame's smoke: small, grey and blurred, taking colour and shape as it rises. */
+      0% { transform: translate(-50%, 0) scale(.25); opacity: 0; filter: blur(7px) grayscale(1) brightness(.6); }
+      3% { opacity: .45; filter: blur(5px) grayscale(1) brightness(.7); }
+      8% { transform: translate(calc(-50% + var(--dx) * .3), calc((-100dvh + 170px) * .24)) scale(.85); opacity: .9; filter: blur(1.5px) grayscale(.4) brightness(.9); }
+      12% { transform: translate(calc(-50% + var(--dx) * .55), calc((-100dvh + 170px) * .36)) scale(1); opacity: 1; filter: blur(0) grayscale(0) brightness(1); }
       25% { opacity: .95; filter: blur(0); }
-      33% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; filter: blur(10px); }
-      100% { transform: translate(-50%, calc(-100dvh + 180px)); opacity: 0; }
+      33% { transform: translate(calc(-50% + var(--dx)), calc(-100dvh + 170px)) scale(1); opacity: 0; filter: blur(10px); }
+      100% { transform: translate(calc(-50% + var(--dx)), calc(-100dvh + 170px)); opacity: 0; }
     }
     @keyframes sway {
       0%, 100% { transform: translateX(0); }
