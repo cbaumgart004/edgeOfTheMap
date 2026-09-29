@@ -7,7 +7,7 @@ self.addEventListener('push', (event) => {
   try { data = event.data.json() } catch { data = { body: event.data?.text() } }
   event.waitUntil(self.registration.showNotification(data.title ?? 'Edge of the Map', {
     body: data.body ?? '',
-    icon: '/icon.svg',
+    icon: '/icon-192.png',
     data: { url: data.url ?? '/?manage' },
   }))
 })
