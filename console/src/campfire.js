@@ -142,11 +142,11 @@ export function startFire(canvas) {
   }
   // Tongues: a few sources that wander along the bed of the fire. Particles
   // from one source rise together, so the flame parts into separate tongues.
-  const sources = Array.from({ length: 6 }, (_, i) => ({ at: (i - 2.5) * 11, phase: Math.random() * 6.3, speed: 0.012 + Math.random() * 0.02, x: fx }))
+  const sources = Array.from({ length: 7 }, (_, i) => ({ at: (i - 3) * 12.5, phase: Math.random() * 6.3, speed: 0.012 + Math.random() * 0.02, x: fx }))
   const spawn = () => {
     const src = sources[Math.floor(Math.random() * sources.length)]
-    const x = src.x + gauss() * 5
-    const edge = Math.min(1, Math.abs(x - fx) / 34)
+    const x = src.x + gauss() * 6
+    const edge = Math.min(1, Math.abs(x - fx) / 46)
     parts.push({ x, y: fy + gauss() * 4, vx: gauss() * 0.08, vy: -(1.5 + Math.random() * 0.8),
       life: 0, decay: 0.0075 + Math.random() * 0.009 + edge * 0.012, r: 12 + Math.random() * 9 - edge * 3, seed: Math.random() * 100 })
   }
