@@ -106,7 +106,8 @@
     .sigils { display: none; }
     @media (min-width: 900px) { body:not(:has(main.is-wide)) .sigils { display: block; --main-w: 420px; } }
     @media (min-width: 1340px) { body:has(main.is-wide) .sigils { display: block; --main-w: 980px; } }
-    .sigils { position: fixed; top: 20px; bottom: 20px; width: min(260px, calc((100vw - var(--main-w, 420px)) / 2 - 44px));
+    .sigils { position: fixed; top: 20px; bottom: 20px; width: calc((100vw - var(--main-w, 420px)) / 2 - 54px);
+      container: pane / inline-size; --fires: 13;
       overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px;
       background: linear-gradient(to top, #0b0604 0%, #04060a 22%, #070a12 100%); isolation: isolate; }
     .sigils.is-left { left: 22px; }
@@ -125,6 +126,13 @@
     button.sigil { position: absolute; left: 50%; bottom: 70px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
       font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0; z-index: 4;
       animation: rise 42s linear infinite; animation-delay: calc(var(--i) * -42s / var(--n)); }
+    button.sigil.is-echo { display: none; }
+    /* A wide pane: three lanes, and the echo rising between, so it is never one lonely column. */
+    @container pane (min-width: 380px) {
+      button.sigil { left: calc(20% + var(--lane) * 30%); }
+      button.sigil.is-echo { display: block; }
+    }
+    @container pane (min-width: 380px) { .fire { --fires: 21; } }
     button.sigil span { display: grid; justify-items: center; gap: 2px; animation: sway 7s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -1.3s); }
     button.sigil b { font: 400 44px/1 var(--runes); text-shadow: 0 0 8px rgb(94 234 212 / .9), 0 0 22px rgb(94 234 212 / .45); }
     button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }
@@ -147,7 +155,7 @@
     .fire::after { content: ''; position: absolute; left: 5%; right: 5%; bottom: 80px; height: 70px;
       background: linear-gradient(to top, rgb(251 191 36 / .10), transparent); filter: blur(8px); animation: haze 2.3s ease-in-out infinite alternate; }
     @keyframes haze { from { opacity: .4; transform: scaleY(.9); } to { opacity: .9; transform: scaleY(1.15); } }
-    .fire i { position: absolute; bottom: 0; left: calc(-4% + var(--i) * 9%); width: 13%; height: 78%; overflow: hidden;
+    .fire i { position: absolute; bottom: 0; left: calc(-4% + var(--i) * 116% / var(--fires)); width: calc(var(--wf, 1) * 170% / var(--fires)); height: 78%; overflow: hidden;
       border-radius: 50% 50% 40% 40% / 85% 85% 15% 15%;
       background: radial-gradient(ellipse 40% 75% at 50% 95%, rgb(255 244 214 / 1) 0%, rgb(251 191 36 / .92) 22%, rgb(234 88 12 / .8) 48%, rgb(154 52 18 / .5) 72%, transparent 100%);
       mix-blend-mode: screen; filter: blur(4px); transform-origin: 50% 100%;
@@ -156,8 +164,10 @@
     .fire i::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(to top, transparent 0 14px, rgb(4 6 10 / .32) 20px, transparent 30px);
       background-size: 100% 60px; mix-blend-mode: multiply; animation: licks .9s linear infinite; animation-delay: calc(var(--i) * -.21s); }
     @keyframes licks { from { background-position: 0 0; } to { background-position: 0 -60px; } }
-    .fire i:nth-child(3n) { height: 100%; width: 11%; animation-duration: 2.3s; }
-    .fire i:nth-child(3n + 1) { height: 58%; width: 15%; animation-duration: 1.3s; }
+    .fire i:nth-child(3n) { height: 100%; --wf: .85; animation-duration: 2.3s; }
+    .fire i:nth-child(3n + 1) { height: 58%; --wf: 1.15; animation-duration: 1.3s; }
+    .fire i:nth-child(n + 14) { display: none; }
+    @container pane (min-width: 380px) { .fire i:nth-child(n + 14) { display: block; } }
     .fire i:nth-child(4n) { height: 88%; animation-duration: 1.9s; }
     .fire i:nth-child(5n) { height: 46%; }
     @keyframes flicker {
@@ -177,6 +187,7 @@
       .smoke i, .embers i, .fire i, .fire i::after, .fire::after, button.sigil span { animation: none !important; }
       .rise { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 140px; overflow-y: auto; }
       button.sigil { position: static; opacity: 1; transform: none; animation: none; }
+      button.sigil.is-echo { display: none !important; }
     }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }

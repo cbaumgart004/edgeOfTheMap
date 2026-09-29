@@ -76,18 +76,26 @@ export function mountRunes(root) {
   return select
 }
 
+// Lanes in an uneven order, so the rise reads as drift rather than a staircase.
+const LANES = [0, 2, 1, 2, 0, 1]
+
 // A side pane: runes `from` to `to` (1-based) rising through smoke from a fire
 // at its foot. Each is a button that calls pick(n). All motion is CSS
 // (dashboard.html, .sigils); this lays out the pieces and their delays.
 export function mountSigils(pane, from, to, pick) {
   const runes = ALL.slice(from - 1, to)
+  const sigil = (r, n, beat, lane, echo) => `<button type="button" class="sigil${echo ? ' is-echo' : ''}" data-rune="${n}"
+    style="--i:${beat};--n:${runes.length};--lane:${lane}" ${echo ? 'tabindex="-1" aria-hidden="true"' : `aria-label="${n}. ${esc(r.name)}"`}>
+    <span><b aria-hidden="true">${r.glyph}</b><em>${esc(r.name)}</em></span></button>`
   const bits = (count) => Array.from({ length: count }, (_, i) => `<i style="--i:${i}"></i>`).join('')
   pane.innerHTML = `
     <div class="smoke" aria-hidden="true">${bits(7)}</div>
-    <div class="rise">${runes.map((r, i) => `<button type="button" class="sigil" data-rune="${from + i}" style="--i:${i};--n:${runes.length}"
-      aria-label="${from + i}. ${esc(r.name)}"><span><b aria-hidden="true">${r.glyph}</b><em>${esc(r.name)}</em></span></button>`).join('')}</div>
+    <div class="rise">${runes.map((r, i) => sigil(r, from + i, i, LANES[i % 6], false)).join('')}${
+      // A second stream, shown only when the pane is wide: half a beat behind in another lane,
+      // starting half-way through the row so neighbours are never the same rune.
+      runes.map((_, i) => { const k = (i + runes.length / 2) % runes.length; return sigil(runes[k], from + k, i + 0.5, LANES[(i + 3) % 6], true) }).join('')}</div>
     <div class="singe" aria-hidden="true"></div>
-    <div class="fire" aria-hidden="true">${bits(13)}</div>
+    <div class="fire" aria-hidden="true">${bits(21)}</div>
     <div class="embers" aria-hidden="true">${bits(9)}</div>`
   pane.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-rune]')
