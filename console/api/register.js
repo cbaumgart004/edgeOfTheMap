@@ -14,7 +14,9 @@ export async function register(db, input) {
   if (!allowedOrigins?.length || allowedOrigins.some((o) => !/^https:\/\/[^/]+$/.test(o))) {
     throw new Error('allowedOrigins must be https origins with no path')
   }
-  if (!connectionParam?.startsWith('/eotm/sites/')) throw new Error('connectionParam must be an /eotm/sites/ parameter name')
+  if (!connectionParam?.startsWith('/eotm/sites/') && !/^control-db:site_[a-z0-9_]+$/.test(connectionParam ?? '')) {
+    throw new Error('connectionParam must be an /eotm/sites/ parameter name or control-db:site_<slug>')
+  }
   const schema = JSON.parse(await readFile(new URL(`../schema/sites/${site}.json`, import.meta.url), 'utf8'))
   const problems = checkSchema(schema)
   if (problems.length) throw new Error(`schema: ${problems[0]}`)

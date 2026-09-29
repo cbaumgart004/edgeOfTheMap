@@ -8,7 +8,9 @@
 //                           notifications@theedgeofthemap.com; unset = no email (push still goes)
 //
 // Each site's connection string is the SSM parameter named in sites.connection_param
-// (ADR-0007), so adding a customer needs no redeploy.
+// (ADR-0007), so adding a customer needs no redeploy. A connection_param of
+// `control-db:<database>` instead names a database inside the control project,
+// reached with the control project's own credentials (eotmCreateSite below).
 
 import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
@@ -42,11 +44,21 @@ async function secret(name) {
   return secrets.get(name)
 }
 
+// A site's connection string: its SSM parameter, or the control project's with
+// the database swapped for `control-db:<database>`.
+async function connectionFor(param) {
+  const inControl = /^control-db:([a-z][a-z0-9_]*)$/.exec(param)
+  if (!inControl) return secret(param)
+  const url = new URL(await secret(process.env.CONTROL_DATABASE_PARAM))
+  url.pathname = `/${inControl[1]}`
+  return url.href
+}
+
 // One small pool per project per container. Neon scales to zero; the first query
 // after idle waits for it to wake.
 const pools = new Map()
 async function poolFor(param) {
-  if (!pools.has(param)) pools.set(param, new pg.Pool({ connectionString: await secret(param), max: 2, idleTimeoutMillis: 10_000 }))
+  if (!pools.has(param)) pools.set(param, new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000 }))
   return pools.get(param)
 }
 
@@ -139,6 +151,7 @@ export async function handler(event, context) {
   if (event?.eotmRegister && !event.requestContext) {
     return register(await poolFor(process.env.CONTROL_DATABASE_PARAM), event.eotmRegister)
   }
+  if (event?.eotmCreateSite && !event.requestContext) return createSite(event.eotmCreateSite)
   return http(event, context)
 }
 
@@ -147,7 +160,7 @@ export async function handler(event, context) {
 export async function migrate(event = {}) {
   const out = {}
   const run = async (param, target) => {
-    const client = new pg.Client({ connectionString: await secret(param) })
+    const client = new pg.Client({ connectionString: await connectionFor(param) })
     await client.connect()
     try { out[param] = await runMigrations(client, target) } finally { await client.end() }
   }
@@ -156,4 +169,23 @@ export async function migrate(event = {}) {
   const registered = (await control.query('SELECT connection_param FROM sites')).rows.map((r) => r.connection_param)
   for (const param of new Set([...(event.siteParams ?? []), ...registered])) await run(param, 'site')
   return out
+}
+
+// A new site without a Neon project of its own: a database `site_<slug>` in the
+// control project, migrated, then registered. A Test-tab invoke:
+// {"eotmCreateSite": {"site": "<slug>", "allowedOrigins": ["https://…"], "owners": []}}
+// Safe to repeat: an existing database is kept and only migrated.
+export async function createSite(input = {}) {
+  if (!/^[a-z0-9-]+$/.test(input.site ?? '')) throw new Error('site must be a slug')
+  const database = `site_${input.site.replace(/-/g, '_')}`
+  const control = await poolFor(process.env.CONTROL_DATABASE_PARAM)
+  const exists = (await control.query('SELECT 1 FROM pg_database WHERE datname = $1', [database])).rows.length > 0
+  if (!exists) await control.query(`CREATE DATABASE "${database}"`)
+  const connectionParam = `control-db:${database}`
+  const client = new pg.Client({ connectionString: await connectionFor(connectionParam) })
+  await client.connect()
+  let migrated
+  try { migrated = await runMigrations(client, 'site') } finally { await client.end() }
+  const site = await register(control, { ...input, connectionParam })
+  return { database, created: !exists, migrated, site }
 }

@@ -128,6 +128,12 @@ no login.
   role `eotm-console-api-role-3asduby6` with inline policy `eotm-console-ssm` (read `/eotm/*`, decrypt
   through SSM only). Function URL with auth NONE; the Amplify rewrite `/api/<*>` (200) forwards to it.
   Upload `dist/api.zip` from `npm run package:api` through the Lambda console to update it.
+- **A site without its own Neon project** (Edge of the Map itself, and any site where a separate
+  project is not worth it): `{"eotmCreateSite": {"site": "<slug>", "allowedOrigins": ["https://…"], "owners": []}}`
+  creates database `site_<slug>` in the control project, migrates it and registers the site with
+  `connection_param` `control-db:site_<slug>`, reached with the control project's credentials. No
+  connection string is copied anywhere. It can be moved to its own project later by changing
+  `connection_param` to an SSM name.
 - **Registering a site** is also a Test-tab invoke: `{"eotmRegister": {"site": "<slug>", "allowedOrigins": ["https://…"], "connectionParam": "/eotm/sites/<slug>/database", "owners": ["<Neon Auth user id>"]}}`. The schema and pinned version come from the package. StoryShaped is registered with the preview origin; no photo bucket yet, so uploads answer 503.
 - **Change requests and notifications** (`api/requests.js`, migration `004`): "Request a change"
   in the editor or on the admin page saves the request in the control project, lists it for operators
