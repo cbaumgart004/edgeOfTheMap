@@ -28,7 +28,9 @@ const PIT = {
   base: BASE,
   back: [[58, 170, 21, 13], [96, 159, 19, 12], [136, 153, 17, 10], [180, 153, 18, 11], [221, 159, 20, 12], [260, 170, 22, 13]],
   front: [[44, 196, 25, 16], [93, 208, 28, 17], [150, 213, 26, 16], [206, 209, 28, 17], [260, 197, 25, 16]],
-  logs: [[-58, -10, 52], [56, 10, 56], [-24, 7, 64], [30, -6, 60]],
+  // Inner logs stand behind the fire, outer ones in front of it.
+  backLogs: [[-24, 7, 64], [30, -6, 60], [4, -2, 70]],
+  logs: [[-58, -10, 52], [56, 10, 56]],
 }
 
 export function campfire(key) {
@@ -63,6 +65,7 @@ export function campfire(key) {
       </svg>
       <canvas class="pit-back"></canvas>
       <canvas class="flame-canvas"></canvas>
+      <canvas class="pit-mid"></canvas>
       <canvas class="pit-front"></canvas>
     </div>`
 }
@@ -74,6 +77,7 @@ export function startScene(pane, key, side) {
   const paintAll = () => {
     paintTrees(pane.querySelector('canvas.trees'), key, side, fireX)
     paintPit(pane.querySelector('canvas.pit-back'), key, 'back', PIT)
+    paintPit(pane.querySelector('canvas.pit-mid'), key, 'mid', PIT)
     paintPit(pane.querySelector('canvas.pit-front'), key, 'front', PIT)
   }
   let timer = null
@@ -94,7 +98,7 @@ export function startScene(pane, key, side) {
 // nothing; drawn with additive blending, so where they overlap the fire is
 // hottest. Colours are pre-drawn sprites, one per stage of a particle's life.
 function sprites() {
-  const stops = [[255, 250, 225], [255, 223, 140], [255, 170, 60], [245, 110, 25], [200, 60, 20], [120, 30, 12]]
+  const stops = [[255, 214, 140], [255, 236, 170], [255, 190, 80], [248, 120, 30], [205, 62, 20], [120, 30, 12]]
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
   return Array.from({ length: 24 }, (_, i) => {
     const t = (i / 23) * (stops.length - 1)
@@ -103,8 +107,8 @@ function sprites() {
     s.width = s.height = 64
     const g = s.getContext('2d')
     const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-    grad.addColorStop(0, `rgba(${c},0.36)`)
-    grad.addColorStop(0.35, `rgba(${c},0.16)`)
+    grad.addColorStop(0, `rgba(${c},0.34)`)
+    grad.addColorStop(0.35, `rgba(${c},0.14)`)
     grad.addColorStop(1, `rgba(${c},0)`)
     g.fillStyle = grad
     g.fillRect(0, 0, 64, 64)
@@ -136,26 +140,30 @@ export function startFire(canvas) {
     canvas.height = Math.round(H * scale)
     return true
   }
+  // Tongues: a few sources that wander along the bed of the fire. Particles
+  // from one source rise together, so the flame parts into separate tongues.
+  const sources = Array.from({ length: 6 }, (_, i) => ({ at: (i - 2.5) * 11, phase: Math.random() * 6.3, speed: 0.012 + Math.random() * 0.02, x: fx }))
   const spawn = () => {
-    const spread = 32
-    const x = fx + gauss() * spread
-    const edge = Math.abs(x - fx) / spread
-    parts.push({ x, y: fy - 6 + gauss() * 4, vx: gauss() * 0.2, vy: -(1.3 + Math.random() * 1.5) * (1.2 - edge * 0.55),
-      life: 0, decay: 0.009 + Math.random() * 0.013 + edge * 0.012, r: 16 + Math.random() * 14, seed: Math.random() * 100 })
+    const src = sources[Math.floor(Math.random() * sources.length)]
+    const x = src.x + gauss() * 5
+    const edge = Math.min(1, Math.abs(x - fx) / 34)
+    parts.push({ x, y: fy + gauss() * 4, vx: gauss() * 0.08, vy: -(1 + Math.random() * 0.8),
+      life: 0, decay: 0.009 + Math.random() * 0.01 + edge * 0.012, r: 12 + Math.random() * 9 - edge * 3, seed: Math.random() * 100 })
   }
   let t = 0
   const step = () => {
     t += 1
-    for (let i = 0; i < 11; i++) spawn()
+    for (const src of sources) src.x = fx + src.at + Math.sin(t * src.speed + src.phase) * 7
+    for (let i = 0; i < 6; i++) spawn()
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i]
       p.life += p.decay
       if (p.life >= 1) { parts.splice(i, 1); continue }
-      // Draw toward the centre as it rises, with a wavering sideways pull: tongues.
-      p.vx += (fx - p.x) * 0.003 + Math.sin(t * 0.07 + p.seed * 0.3 + p.y * 0.035) * 0.06
+      // Hot gas speeds up as it rises and is drawn in toward the tip, wavering.
+      p.vy = Math.max(-3.4, p.vy - 0.045)
+      p.vx = p.vx * 0.94 + (fx - p.x) * 0.0035 + Math.sin(t * 0.11 + p.seed + p.y * 0.06) * 0.08
       p.x += p.vx
       p.y += p.vy
-      p.vy *= 0.997
     }
   }
   const draw = () => {
@@ -164,9 +172,14 @@ export function startFire(canvas) {
     ctx.globalCompositeOperation = 'lighter'
     for (const p of parts) {
       const sprite = SPRITES[Math.min(23, Math.floor(p.life * 24))]
-      const r = p.r * (1 - p.life * 0.7)
-      ctx.globalAlpha = p.life < 0.08 ? p.life / 0.08 : 1
-      ctx.drawImage(sprite, p.x - r, p.y - r, r * 2, r * 2)
+      // Shrinks and stretches upward as it rises, so tongues end in points.
+      // Small where it is born (so the bed glows rather than blows out), fullest
+      // a third of the way up, then narrowing to a point.
+      const r = p.r * (p.life < 0.3 ? 0.45 + p.life * 1.9 : 1.02 - (p.life - 0.3) * 1.3)
+      const stretch = 1.2 + p.life * 1.4 + Math.min(1.2, -p.vy * 0.3)
+      // Faint while young: the bed is where most particles overlap, and would white out.
+      ctx.globalAlpha = Math.min(1, p.life / 0.2) * (0.22 + 0.78 * Math.min(1, p.life / 0.45))
+      ctx.drawImage(sprite, p.x - r, p.y - r * stretch * 0.6, r * 2, r * 2 * stretch)
     }
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'

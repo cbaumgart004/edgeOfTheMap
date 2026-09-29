@@ -133,6 +133,7 @@
     /* The pit: back stones, the fire's canvas, then logs and front stones, stacked in one box. */
     .pit { left: var(--fire-x); bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
     .pit > * { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .pit > canvas.pit-mid { opacity: .6; }
     .pit > canvas.flame-canvas { left: 21.875%; top: -30.43%; width: 56.25%; height: 113.04%; }
     .pool { animation: firelight 1.8s ease-in-out infinite; }
     /* Runes rise out of the fire as its smoke. */
@@ -150,7 +151,7 @@
     .rise { z-index: 4; }
     button.sigil { position: absolute; left: var(--fire-x); bottom: 150px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
       font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0;
-      animation: rise 42s linear infinite; animation-delay: calc(var(--i) * -42s / var(--n)); }
+      animation: rise 80s linear infinite; animation-delay: calc(var(--i) * -80s / var(--n)); }
     button.sigil.is-echo { display: none; }
     /* A wide pane: three lanes, and the echo rising between, so it is never one lonely column. */
     @container pane (min-width: 380px) {
@@ -158,7 +159,7 @@
       button.sigil.is-echo { display: block; }
     }
     /* Runes meander across the pane as they rise: a wide, uneven path, not a small sway. */
-    button.sigil span { display: grid; justify-items: center; gap: 2px; --drift: 24cqw; animation: sway 13s ease-in-out infinite; animation-delay: calc(var(--i) * -3.1s); }
+    button.sigil span { display: grid; justify-items: center; gap: 2px; --drift: 24cqw; animation: sway 26s ease-in-out infinite; animation-delay: calc(var(--i) * -5.3s); }
     @container pane (min-width: 380px) { button.sigil span { --drift: 11cqw; } }
     button.sigil b { font: 400 44px/1 var(--runes); text-shadow: 0 0 8px rgb(94 234 212 / .9), 0 0 22px rgb(94 234 212 / .45); }
     button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }

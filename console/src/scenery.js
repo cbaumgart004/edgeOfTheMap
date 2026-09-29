@@ -237,7 +237,8 @@ export function paintTrees(canvas, key, side, fireX) {
   return true
 }
 
-// The pit's back stones (`layer` 'back') or its logs and front stones
+// The pit's back logs and stones (`layer` 'back', behind the fire), the back
+// logs again to veil over it ('mid'), or its front logs and stones
 // ('front'), into a canvas laid over the pit's 320 x 230 drawing.
 export function paintPit(canvas, key, layer, pit) {
   const r = canvas.getBoundingClientRect()
@@ -249,10 +250,16 @@ export function paintPit(canvas, key, layer, pit) {
   const ctx = canvas.getContext('2d')
   const fbm = noise(seeded(key * 31337))
   const fire = { x: pit.cx, y: pit.base - 22, lift: 34, power: 3.2, reach: 70 }
+  const logFire = { ...fire, y: pit.base - 16, lift: 20, power: 1.5 }
   if (layer === 'back') {
     pit.back.forEach(([x, y, rx, ry], i) => paintStone(ctx, k, x, y, rx, ry, fire, fbm, i * 1.7 + key))
+    pit.backLogs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 6, pit.cx + top, pit.base - h, 7, logFire, fbm, i * 3.1 + key + 20))
+  } else if (layer === 'mid') {
+    // The back logs again, over the fire and veiled (dashboard.html, .pit-mid):
+    // seen through the flames, as real logs are, instead of lost behind them.
+    pit.backLogs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 6, pit.cx + top, pit.base - h, 7, logFire, fbm, i * 3.1 + key + 20))
   } else {
-    pit.logs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 8, pit.cx + top, pit.base - h, 7.5, { ...fire, y: pit.base - 16, lift: 20, power: 1.5 }, fbm, i * 2.3 + key))
+    pit.logs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 8, pit.cx + top, pit.base - h, 7.5, logFire, fbm, i * 2.3 + key))
     pit.front.forEach(([x, y, rx, ry], i) => paintStone(ctx, k, x, y, rx, ry, fire, fbm, i * 2.9 + key + 40))
   }
   return true
