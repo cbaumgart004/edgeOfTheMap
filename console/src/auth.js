@@ -42,6 +42,12 @@ export function neonAuth({ base = '/_edit/auth' } = {}) {
       await call('/sign-in/email', { method: 'POST', body: JSON.stringify({ email, password }) })
       return fetchToken()
     },
+    // A new login with the password typed here. It edits nothing until Edge of
+    // the Map adds it to a site (site_members), so an open sign-up is harmless.
+    async signUp(email, password) {
+      await call('/sign-up/email', { method: 'POST', body: JSON.stringify({ email, password, name: email.split('@')[0] }) })
+      return fetchToken()
+    },
     // Emails a reset link that returns to `redirectTo` with ?token=. Better
     // Auth renamed this endpoint; try the current name, then the older one.
     async requestPasswordReset(email, redirectTo) {

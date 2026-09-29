@@ -69,6 +69,20 @@ $('#forgot').addEventListener('click', async () => {
   }
 })
 
+$('#signup').addEventListener('click', async () => {
+  const email = $('#email').value.trim()
+  const password = $('#password').value
+  if (!email || password.length < 8) return say('Enter your email and a password of at least 8 characters, then choose “Create login”.', true)
+  say('Creating your login…')
+  try {
+    await auth.signUp(email, password)
+    say('')
+    await loadSites()
+  } catch (err) {
+    say(/exist/i.test(err.message) ? `A login already uses ${email}. Sign in instead.` : err.message, true)
+  }
+})
+
 $('#reset-form').addEventListener('submit', async (e) => {
   e.preventDefault()
   const token = new URLSearchParams(location.search).get('token')
