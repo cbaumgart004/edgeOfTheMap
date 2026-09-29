@@ -38,9 +38,14 @@
 .eotm-sheet.is-bar { height: calc(64px + env(safe-area-inset-bottom)); }
 .eotm-sheet.is-half { height: 52dvh; }
 .eotm-sheet.is-full { height: 90dvh; }
-.eotm-sheet.is-peek { opacity: 0.15; }
-.eotm-sheet.is-peek .eotm-head { opacity: 1; }
-.eotm-sheet.is-peek:hover, .eotm-sheet.is-peek:focus-within { opacity: 0.9; }
+/* Peek: the page shows through everywhere but the header, which stays solid so
+   the owner can toggle back. Opacity on the sheet would fade the header too (a
+   child cannot be more opaque than its parent), so the sheet's own paint goes
+   and its contents hide instead, and clicks fall through to the page. */
+.eotm-sheet.is-peek { background: transparent; border-color: transparent; box-shadow: none; pointer-events: none; }
+.eotm-sheet.is-peek .eotm-grip, .eotm-sheet.is-peek .eotm-scroll { visibility: hidden; }
+.eotm-sheet.is-peek .eotm-head { pointer-events: auto; background: var(--eotm-surface); border: 1px solid var(--eotm-line);
+  border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); }
 
 .eotm-sheet.is-wide {
   left: auto; top: 0; width: min(460px, 38vw); height: 100dvh;
