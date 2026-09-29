@@ -126,6 +126,8 @@ export function createManage(deps, { onSiteChange }) {
       if (password.length < 8) throw new ServiceError(400, 'The temporary password needs at least 8 characters.')
       user = await deps.createLogin({ email, password, name: String(body.name ?? '').trim() || email.split('@')[0] })
       created = true
+      // The operator knows this password, so the user must replace it before anything else.
+      await q('INSERT INTO password_change_required (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id])
     }
     if (body.site) await addMember(String(body.site), user.id, body.role ?? 'editor')
     return { id: user.id, email, created }

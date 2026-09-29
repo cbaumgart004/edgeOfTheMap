@@ -107,6 +107,17 @@ export function createHandler(deps) {
     }
   }
 
+  // Still on an operator's temporary password (control migration 008). Before
+  // that migration runs the table is missing (42P01), which means no one is.
+  async function passwordChangeRequired(userId) {
+    try {
+      return (await deps.control.query('SELECT 1 FROM password_change_required WHERE user_id = $1', [userId])).rows.length > 0
+    } catch (err) {
+      if (err?.code === '42P01') return false
+      throw err
+    }
+  }
+
   async function authorize(event, site) {
     const user = await verified(event)
     const { rows } = await deps.control.query(
@@ -157,9 +168,18 @@ export function createHandler(deps) {
       // the admin page trades its Neon JWT for an editor token bound to one site
       // and hands it to that site in the URL fragment. Only a Neon JWT may ask:
       // an editor token cannot mint another.
+      // The user has changed the temporary password an operator gave them
+      // (the admin page calls this once auth.changePassword succeeds).
+      if (method === 'POST' && path === '/api/me/password-changed') {
+        const user = await verified(event)
+        if (user.site) throw new ServiceError(403, 'Sign in on the admin page.')
+        await deps.control.query('DELETE FROM password_change_required WHERE user_id = $1', [user.id])
+        return json(200, { ok: true }, { 'cache-control': 'no-store' })
+      }
       if (method === 'POST' && path === '/api/handoff') {
         const user = await verified(event)
         if (user.site) throw new ServiceError(403, 'Sign in on the admin page.')
+        if (await passwordChangeRequired(user.id)) throw new ServiceError(403, 'Choose your own password first, on the admin page.')
         const slug = String(parseBody(event).site ?? '')
         const site = /^[a-z0-9-]+$/.test(slug) ? await loadSite(slug) : null
         if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
@@ -200,7 +220,8 @@ export function createHandler(deps) {
           `SELECT s.slug, s.name, s.allowed_origins, s.schema, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
            WHERE m.user_id = $1 ORDER BY s.name`, [user.id])
         const operator = !user.site && (await deps.control.query('SELECT 1 FROM operators WHERE user_id = $1', [user.id])).rows.length > 0
-        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0], origins: r.allowed_origins, logo: logoOf(r.schema, r.allowed_origins[0]) })) },
+        const mustChangePassword = await passwordChangeRequired(user.id)
+        return json(200, { email: user.email, operator, mustChangePassword, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0], origins: r.allowed_origins, logo: logoOf(r.schema, r.allowed_origins[0]) })) },
           { 'cache-control': 'private, no-store' })
       }
 

@@ -199,10 +199,12 @@ describe('sign-in help', () => {
 })
 
 describe('editor handoff', () => {
-  const make = ({ member = true } = {}) => {
+  const make = ({ member = true, mustChange = [] } = {}) => {
     const handle = createHandler({
       control: {
-        async query(sql) {
+        async query(sql, p = []) {
+          if (sql.startsWith('SELECT 1 FROM password_change_required')) return { rows: mustChange.includes(p[0]) ? [{}] : [] }
+          if (sql.startsWith('DELETE FROM password_change_required')) { mustChange.splice(mustChange.indexOf(p[0]) >>> 0, 1); return { rows: [] } }
           if (sql.includes('FROM sites')) return { rows: [SITE] }
           if (sql.includes('FROM site_members')) return { rows: member ? [{ role: 'owner' }] : [] }
           throw new Error(sql)
@@ -242,5 +244,15 @@ describe('editor handoff', () => {
     const q = '/documents'
     expect((await call('GET', `/api/sites/spiritseeds${q}`, { token: 'editor:spiritseeds', origin: ORIGIN })).status).toBe(200)
     expect((await call('GET', `/api/sites/spiritseeds${q}`, { token: 'editor:storyshaped', origin: ORIGIN })).status).toBe(403)
+  })
+
+  it('opens no editor until a temporary password is replaced, then does', async () => {
+    const mustChange = ['user-1']
+    const call = make({ mustChange })
+    expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds' } })).status).toBe(403)
+    expect((await call('POST', '/api/me/password-changed', { token: 'editor:spiritseeds' })).status).toBe(403)
+    expect((await call('POST', '/api/me/password-changed', { token: 'neon' })).status).toBe(200)
+    expect(mustChange).toEqual([])
+    expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds' } })).status).toBe(200)
   })
 })

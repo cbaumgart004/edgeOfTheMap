@@ -116,7 +116,11 @@ no login.
   details (`PROFILE_FIELDS` in `api/manage.js`), an optional photo bucket of its own, and members
   (name, email, a role changed in the row), every login, and "Add a user", which creates a Neon Auth login with a temporary
   password through `sign-up/email` (`api/manage.js`, `createLogin` in `api/lambda.js`). The user
-  changes it under "Change password" (`change-password`, other sessions revoked). Public "Create
+  must replace it at first sign-in: the admin page shows only "Choose your own password" (typed twice)
+  and `/api/handoff` opens no editor while a `password_change_required` row exists (control migration
+  008); `/api/me/password-changed` removes it after `change-password` succeeds. The row is cleared by
+  the page, not by Neon Auth, so a user calling that endpoint directly skips only their own change.
+  Later changes go through "Change password" (`change-password`, other sessions revoked). Public "Create
   login" is gone: logins are added by an operator. Password-reset email still does not arrive (Neon
   Auth's shared sender, observed 2026-09-28); a custom email provider in Neon Auth is the fix.
 - **Single sign-on (console 0.1.2+):** a site link on the admin page trades the admin session's Neon

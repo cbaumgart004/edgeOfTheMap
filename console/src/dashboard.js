@@ -86,10 +86,15 @@ async function showForSite() {
 async function loadSites() {
   const token = await auth.getToken()
   if (!token) return show('signin')
-  if (pending) return handoff(pending.site, pending.back, pending.origin)
   const res = await fetch('/api/me/sites', { headers: { authorization: `Bearer ${token}` } })
   if (res.status === 401) return show('signin')
   const data = await res.json()
+  // A login made with an operator's temporary password: nothing else until it is replaced.
+  if (data.mustChangePassword) {
+    $('#who-first').textContent = data.email ?? ''
+    return show('first')
+  }
+  if (pending) return handoff(pending.site, pending.back, pending.origin)
   $('#who').textContent = data.email ?? ''
   $('#manage-open').hidden = !data.operator
   // admin.theedgeofthemap.com/?manage opens the management page directly.
@@ -209,6 +214,7 @@ async function loadManage({ quiet = false } = {}) {
   $('#m-sites').innerHTML = state.sites.map((s) => `
     <li class="card" data-slug="${esc(s.slug)}">
       <h3>${esc(s.name)}</h3>
+      ${s.console_version === versions[0] ? '' : `<p class="behind">Editor ${esc(s.console_version)}; the newest is ${esc(versions[0])}. Choose it under Editor version and Save.</p>`}
       <p class="meta">${s.origins.map((o) => `<a href="${esc(o)}" target="_blank" rel="noopener">${esc(o.replace(/^https:\/\//, ''))}</a>`).join(' · ')}
         ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}${
         // Every recorded address in one line, so each piece is a click away.
@@ -441,6 +447,18 @@ $('#m-op').addEventListener('submit', run(async () => {
   await loadManage({ quiet: true })
 }))
 
+$('#first-form').addEventListener('submit', run(async () => {
+  const current = $('#first-current').value
+  const next = $('#first-new').value
+  if (next !== $('#first-again').value) throw new Error('The two new passwords do not match.')
+  if (next === current) throw new Error('Choose a password different from the temporary one.')
+  await auth.changePassword(current, next)
+  await api('POST', '/api/me/password-changed')
+  for (const id of ['#first-current', '#first-new', '#first-again']) $(id).value = ''
+  say('Password set. Other devices are signed out.')
+  await loadSites()
+}))
+
 $('#change-form').addEventListener('submit', run(async () => {
   await auth.changePassword($('#current-password').value, $('#changed-password').value)
   $('#current-password').value = ''
@@ -462,9 +480,11 @@ $('#reset-form').addEventListener('submit', async (e) => {
   }
 })
 
-$('#signout').addEventListener('click', async () => {
-  await auth.signOut()
-  show('signin')
-})
+for (const b of document.querySelectorAll('#signout, [data-signout]')) {
+  b.addEventListener('click', async () => {
+    await auth.signOut()
+    show('signin')
+  })
+}
 
 start().catch((err) => say(err.message, true))

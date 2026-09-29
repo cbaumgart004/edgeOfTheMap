@@ -5,6 +5,7 @@ import { createHandler } from '../api/handler.js'
 function world({ operator = true } = {}) {
   const logins = [{ id: 'op-1', email: 'op@eotm.example', name: 'Op' }]
   const members = []
+  const mustChange = []
   const sites = [{ id: 's-1', slug: 'storyshaped', name: 'Story Shaped', repo: null, allowed_origins: ['https://ss.example'],
     console_version: '0.1.1', console_integrity: 'sha384-old', media_bucket: '', media_base_url: '' }]
   const updates = []
@@ -13,6 +14,7 @@ function world({ operator = true } = {}) {
       if (sql.startsWith('SELECT 1 FROM operators')) return { rows: operator && p[0] === 'op-1' ? [{}] : [] }
       if (sql.includes('FROM neon_auth."user" WHERE lower(email)')) return { rows: logins.filter((l) => l.email === p[0]) }
       if (sql.startsWith('SELECT id FROM sites')) return { rows: sites.filter((s) => s.slug === p[0]) }
+      if (sql.startsWith('INSERT INTO password_change_required')) { mustChange.push(p[0]); return { rows: [] } }
       if (sql.startsWith('INSERT INTO site_members')) { members.push({ site_id: p[0], user_id: p[1], role: p[2] }); return { rows: [] } }
       if (sql.startsWith('UPDATE site_members')) {
         const m = members.find((x) => x.site_id === p[0] && x.user_id === p[1])
@@ -38,7 +40,7 @@ function world({ operator = true } = {}) {
   const call = (method, path, { token = 'op', body } = {}) => handle({ requestContext: { http: { method } }, rawPath: path,
     headers: token ? { authorization: `Bearer ${token}` } : {}, body: body && JSON.stringify(body) })
     .then((r) => ({ status: r.statusCode, json: JSON.parse(r.body) }))
-  return { call, members, created, updates }
+  return { call, members, created, updates, mustChange }
 }
 
 describe('management page API', () => {
@@ -54,6 +56,7 @@ describe('management page API', () => {
     const r = await w.call('POST', '/api/manage/users', { body: { email: 'New@Shop.example', password: 'temp-pass-1', site: 'storyshaped', role: 'editor' } })
     expect(r.json).toMatchObject({ email: 'new@shop.example', created: true })
     expect(w.members).toEqual([{ site_id: 's-1', user_id: 'u-1', role: 'editor' }])
+    expect(w.mustChange).toEqual(['u-1'])
     expect((await w.call('POST', '/api/manage/users', { body: { email: 'b@shop.example', password: 'short' } })).status).toBe(400)
   })
 
@@ -62,6 +65,7 @@ describe('management page API', () => {
     const r = await w.call('POST', '/api/manage/users', { body: { email: 'op@eotm.example', site: 'storyshaped', role: 'owner' } })
     expect(r.json.created).toBe(false)
     expect(w.created).toEqual([])
+    expect(w.mustChange).toEqual([])
   })
 
   it('changes a member role in place, and only to owner or editor', async () => {

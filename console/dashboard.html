@@ -73,6 +73,8 @@
       .member.is-head { display: none; }
       .m-email { grid-column: 1 / -1; grid-row: 2; }
     }
+    /* A site pinned to an older editor than the newest release. */
+    .behind { margin: 0; padding: 8px 12px; border: 1px solid var(--danger); border-radius: 8px; color: var(--danger); font-size: 14px; }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
@@ -116,6 +118,21 @@
         <label for="new-password">New password</label>
         <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
         <div class="row"><button type="submit">Set password</button></div>
+      </form>
+    </section>
+
+    <section data-view="first" hidden>
+      <h2 style="margin-top:0">Choose your own password</h2>
+      <p class="meta">Signed in as <span id="who-first"></span> with a temporary password from Edge of the Map. Replace it before opening your sites.</p>
+      <form id="first-form">
+        <label for="first-current">Temporary password</label>
+        <input id="first-current" type="password" autocomplete="current-password" required />
+        <label for="first-new">New password (8 characters or more)</label>
+        <input id="first-new" type="password" autocomplete="new-password" minlength="8" required />
+        <label for="first-again">New password again</label>
+        <input id="first-again" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="row"><button type="submit">Set my password</button>
+          <button type="button" class="link" data-signout>Sign out</button></div>
       </form>
     </section>
 
