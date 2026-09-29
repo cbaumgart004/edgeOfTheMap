@@ -171,13 +171,20 @@ describe('console in a page', () => {
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
 
-    await act(async () => byText(host, 'button.eotm-card', 'Your own types').click())
+    await act(async () => byText(host, 'button.eotm-card', 'Types and names').click())
     await act(async () => byText(host, 'button', 'New section type').click())
     await type(host.querySelector('input[placeholder="e.g. Banner"]'), 'Banner')
     await type(host.querySelector('input[aria-label="Field name"]'), 'Message')
-    await act(async () => byText(host, 'button', 'Save types').click())
+    await act(async () => byText(host, 'button.is-primary', 'Save').click())
     await tick(10)
     expect(bridge.schema.blocks.customBanner.fields[0]).toMatchObject({ name: 'message', kind: 'text', label: 'Message' })
+
+    // Rename a built-in section; the page's palette uses the new name, with a sketch.
+    await act(async () => byText(host, '.eotm-item-title', 'Service').click())
+    await type(host.querySelector('input[aria-label="Name of Service / offering"]'), 'Treatment')
+    await act(async () => byText(host, 'button.is-primary', 'Save').click())
+    await tick(10)
+    expect(bridge.schema.blocks.service.label).toBe('Treatment')
 
     await act(async () => host.querySelector('button[aria-label="Back"]').click())
     await act(async () => byText(host, 'button.eotm-card', 'Pages').click())
@@ -185,6 +192,8 @@ describe('console in a page', () => {
     await act(async () => byText(host, 'button.eotm-doc-open', 'Home').click())
     await tick(10)
     expect(byText(host, '.eotm-palette button', 'Banner')).toBeTruthy()
+    expect(byText(host, '.eotm-palette button', 'Treatment')).toBeTruthy()
+    expect(byText(host, '.eotm-palette button', 'Treatment').querySelector('.eotm-sketch-p')).toBeTruthy()
     await act(async () => root.unmount())
   })
 })

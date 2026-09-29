@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { CUSTOM_KINDS, customName, fieldName } from '../schema/custom.js'
 
-// "Your own types": the owner designs a section (placed on any page) or a
-// collection (its own list), names its fields and picks what each holds. Saved
-// to the site through PUT /custom-schema (schema/custom.js has the rules).
+// "Types and names": the owner designs a section (placed on any page) or a
+// collection (its own list), names its fields and picks what each holds, and
+// renames the site's built-in types and fields to words they would use.
+// Saved to the site through PUT /custom-schema (schema/custom.js has the rules).
 
 const KIND_LABELS = {
   text: 'Short text', textarea: 'Paragraph', richtext: 'Formatted text', url: 'Link', number: 'Number',
@@ -53,6 +54,75 @@ function toFields(rows) {
     }
     return f
   })
+}
+
+// Renaming what the site ships: the type (and its plural) and every field,
+// lists' own fields included. Names are labels only; content is untouched.
+function RenameFields({ fields, prefix, labels, setLabel }) {
+  return (fields ?? []).map((f) => {
+    const path = `${prefix}.${f.name}`
+    return (
+      <div key={path} className="eotm-rename-field">
+        <RenameInput label={f.label ?? f.name} shipped={f.shippedLabel} value={labels.fields?.[path]}
+          onChange={(v) => setLabel('fields', path, v)} />
+        {f.fields && <div className="eotm-custom-sub"><RenameFields fields={f.fields} prefix={path} labels={labels} setLabel={setLabel} /></div>}
+      </div>
+    )
+  })
+}
+
+// Shows the current name; typing sets the owner's own, Reset returns to the site's.
+function RenameInput({ label, shipped, value, onChange, aria }) {
+  const current = value ?? label
+  const original = shipped ?? label
+  return (
+    <div className="eotm-row">
+      <input className="eotm-input" aria-label={aria ?? `Rename ${original}`} value={current} maxLength={60}
+        onChange={(e) => onChange(e.target.value === original ? undefined : e.target.value)} />
+      {current !== original && (
+        <button type="button" className="eotm-btn is-quiet" title={`Back to “${original}”`} onClick={() => onChange(undefined)}>Reset</button>
+      )}
+    </div>
+  )
+}
+
+function Rename({ schema, labels, setLabel }) {
+  const builtIn = (kind) => Object.entries(schema[kind] ?? {}).filter(([, d]) => !d.custom)
+  const [open, setOpen] = useState(null)
+  const entry = (kind, name, def) => {
+    const k = `${kind}.${name}`
+    const own = labels[kind]?.[name] ?? {}
+    return (
+      <li key={k} className={`eotm-item${open === k ? ' is-open' : ''}`}>
+        <div className="eotm-item-head">
+          <button type="button" className="eotm-item-title" aria-expanded={open === k} onClick={() => setOpen(open === k ? null : k)}>
+            {own.label ?? def.label ?? name} <span className="eotm-help">· {kind === 'types' ? 'type' : 'section'}</span>
+          </button>
+        </div>
+        {open === k && (
+          <div className="eotm-item-body">
+            <p className="eotm-label">Name</p>
+            <RenameInput label={def.label ?? name} shipped={def.shippedLabel} value={own.label} aria={`Name of ${def.shippedLabel ?? def.label ?? name}`}
+              onChange={(v) => setLabel(kind, name, v, 'label')} />
+            {kind === 'types' && def.plural && (
+              <>
+                <p className="eotm-label">Name for more than one</p>
+                <RenameInput label={def.plural} shipped={def.shippedPlural} value={own.plural} onChange={(v) => setLabel(kind, name, v, 'plural')} />
+              </>
+            )}
+            <p className="eotm-label">Fields</p>
+            <RenameFields fields={def.fields} prefix={k} labels={labels} setLabel={setLabel} />
+          </div>
+        )}
+      </li>
+    )
+  }
+  return (
+    <ul className="eotm-custom-list">
+      {builtIn('types').map(([n, d]) => entry('types', n, d))}
+      {builtIn('blocks').map(([n, d]) => entry('blocks', n, d))}
+    </ul>
+  )
 }
 
 function FieldRows({ rows, onChange, kinds, depth = 0 }) {
@@ -111,6 +181,23 @@ export default function CustomTypes({ schema, store, notify, onSaved }) {
     return list
   }, [schema])
   const [items, setItems] = useState(initial)
+  const [labels, setLabels] = useState(() => structuredClone(schema.custom?.labels ?? {}))
+  // kind 'fields': path -> text; kind 'types'/'blocks': name -> { label, plural }.
+  const setLabel = (kind, name, value, key) => setLabels((all) => {
+    const next = structuredClone(all)
+    if (kind === 'fields') {
+      next.fields ??= {}
+      if (value == null) delete next.fields[name]
+      else next.fields[name] = value
+    } else {
+      next[kind] ??= {}
+      next[kind][name] ??= {}
+      if (value == null) delete next[kind][name][key]
+      else next[kind][name][key] = value
+      if (!Object.keys(next[kind][name]).length) delete next[kind][name]
+    }
+    return next
+  })
   const [open, setOpen] = useState(null)
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState([])
@@ -123,7 +210,7 @@ export default function CustomTypes({ schema, store, notify, onSaved }) {
   }
 
   const save = async () => {
-    const custom = { blocks: {}, types: {} }
+    const custom = { blocks: {}, types: {}, labels }
     const used = new Set([...Object.keys(schema.blocks ?? {}), ...Object.keys(schema.types ?? {})])
     for (const it of items) {
       let name = it.name
@@ -187,8 +274,11 @@ export default function CustomTypes({ schema, store, notify, onSaved }) {
         <button type="button" className="eotm-btn is-quiet" onClick={() => add('section')}>+ New section type</button>
         <button type="button" className="eotm-btn is-quiet" onClick={() => add('collection')}>+ New collection</button>
       </div>
+      <h3 className="eotm-label">Rename the site's own types and fields</h3>
+      <p className="eotm-help">Call things what you call them. Only the names in the editor change; your content and the site stay as they are.</p>
+      <Rename schema={schema} labels={labels} setLabel={setLabel} />
       {errors.length > 0 && <ul className="eotm-error" role="alert">{errors.slice(0, 5).map((e) => <li key={e}>{e}</li>)}</ul>}
-      <button type="button" className="eotm-btn is-primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save types'}</button>
+      <button type="button" className="eotm-btn is-primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
     </div>
   )
 }

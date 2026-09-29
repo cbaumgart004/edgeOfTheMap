@@ -32,6 +32,8 @@ says what each key means.
   },
   "blocks": {                            // page sections, used by fields of kind "blocks"
     "prose": { "label": "Text section", "className": "prose-block",
+               "preview": "/assets/sections/prose.png",   // optional thumbnail on its "add" button;
+                                                          // without one the editor sketches it from its fields
                "fields": [ { "name": "heading", "kind": "text" } ] }
   }
 }
@@ -70,6 +72,11 @@ An owner can design sections and collections in the editor ("Your own types"), s
 start with `custom`, use only kinds that need no code (`CUSTOM_KINDS`), and join every page's
 section palette. A site renders a custom section generically from its fields until it is designed;
 `window.EOTM.schema` has the merged schema while editing, the public `boot` has it otherwise.
+
+The owner can also rename the site's own types, sections and fields ("Types and names"), kept in
+the same record as `labels`: `{ types: { page: { label, plural } }, blocks: { service: { label } },
+fields: { "blocks.service.title": "Treatment name" } }`. Only the editor's words change; stored names,
+content and the site's code do not, so a rename never needs a migration.
 
 ## Marks a page gives the editor
 

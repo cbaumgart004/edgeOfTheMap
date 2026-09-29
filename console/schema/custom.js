@@ -30,23 +30,80 @@ export function fieldName(label) {
   return n ? n[0].toLowerCase() + n.slice(1) : ''
 }
 
-// The shipped schema with the owner's types added. Custom sections join the
-// palette of every blocks field of every type.
+// The owner's names for built-in types and fields, the third part of custom:
+//
+//   "labels": { "types":  { "page": { "label": "Page", "plural": "Pages" } },
+//               "blocks": { "service": { "label": "Treatment" } },
+//               "fields": { "blocks.service.title": "Treatment name",
+//                           "blocks.service.bookingOptions.label": "Session" } }
+//
+// Only what the editor shows changes: stored names, saved content and the
+// site's code are untouched, so a rename is always safe.
+const MAX_LABEL = 60
+
+function renameFields(fields, prefix, names) {
+  return (fields ?? []).map((f) => {
+    const path = `${prefix}.${f.name}`
+    // shippedLabel: what the site calls it, for the editor's Reset.
+    const out = names[path] ? { ...f, label: names[path], shippedLabel: f.label ?? f.name } : f
+    return f.fields ? { ...out, fields: renameFields(f.fields, path, names) } : out
+  })
+}
+
+// The shipped schema with the owner's types added and names applied. Custom
+// sections join the palette of every blocks field of every type. The owner's
+// own definitions ride along as `custom`, for the editor that changes them.
 export function mergeCustom(base, custom) {
   const blocks = custom?.blocks ?? {}
   const types = custom?.types ?? {}
-  if (!Object.keys(blocks).length && !Object.keys(types).length) return base
+  const labels = custom?.labels ?? {}
+  const renamed = Object.keys(labels.types ?? {}).length + Object.keys(labels.blocks ?? {}).length + Object.keys(labels.fields ?? {}).length
+  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed) return base
   const extra = Object.keys(blocks)
   const withPalette = (fields) => (fields ?? []).map((f) => (f.kind === 'blocks' ? { ...f, of: [...new Set([...f.of, ...extra])] } : f))
+  const names = labels.fields ?? {}
   const merged = {
     ...base,
-    blocks: { ...(base.blocks ?? {}) },
+    blocks: {},
     types: {},
+    custom,
   }
-  for (const [name, t] of Object.entries(base.types ?? {})) merged.types[name] = { ...t, fields: withPalette(t.fields) }
+  const apply = (def, name, kind) => {
+    const own = labels[kind]?.[name]
+    const shipped = own ? { shippedLabel: def.label, shippedPlural: def.plural } : {}
+    return { ...def, ...shipped, ...(own ?? {}), fields: renameFields(def.fields, `${kind}.${name}`, names) }
+  }
+  for (const [name, t] of Object.entries(base.types ?? {})) merged.types[name] = apply({ ...t, fields: withPalette(t.fields) }, name, 'types')
+  for (const [name, b] of Object.entries(base.blocks ?? {})) merged.blocks[name] = apply(b, name, 'blocks')
   for (const [name, b] of Object.entries(blocks)) merged.blocks[name] = { ...b, custom: true }
   for (const [name, t] of Object.entries(types)) merged.types[name] = { ...t, custom: true }
   return merged
+}
+
+function checkLabels(base, labels, errors) {
+  if (labels == null) return
+  if (typeof labels !== 'object' || Array.isArray(labels)) return errors.push('labels must be an object')
+  const text = (v) => typeof v === 'string' && v.trim() && v.length <= MAX_LABEL
+  for (const kind of ['types', 'blocks']) {
+    for (const [name, l] of Object.entries(labels[kind] ?? {})) {
+      if (!base[kind]?.[name]) errors.push(`labels.${kind}.${name}: no such built-in`)
+      for (const [k, v] of Object.entries(l ?? {})) {
+        if (!['label', 'plural'].includes(k)) errors.push(`labels.${kind}.${name}.${k}: only label and plural can be renamed`)
+        else if (!text(v)) errors.push(`labels.${kind}.${name}.${k}: a name of 1 to ${MAX_LABEL} characters`)
+      }
+    }
+  }
+  for (const [path, v] of Object.entries(labels.fields ?? {})) {
+    const [kind, name, ...rest] = path.split('.')
+    let fields = base[kind]?.[name]?.fields
+    let found = null
+    for (const part of rest) {
+      found = fields?.find((f) => f.name === part) ?? null
+      fields = found?.fields
+    }
+    if (!found || !rest.length) errors.push(`labels.fields.${path}: no such built-in field`)
+    else if (!text(v)) errors.push(`labels.fields.${path}: a name of 1 to ${MAX_LABEL} characters`)
+  }
 }
 
 // Problems with an owner's definitions; empty means they can be saved.
@@ -77,6 +134,7 @@ export function checkCustom(base, custom) {
     if (typeof t?.label !== 'string' || !t.label.trim()) errors.push(`types.${name}: needs a name`)
     checkFields(t?.fields, `types.${name}`, CUSTOM_KINDS)
   }
+  checkLabels(base, custom.labels, errors)
   if (!errors.length) errors.push(...checkSchema(mergeCustom(base, custom)))
   return errors
 }

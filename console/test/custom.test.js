@@ -92,3 +92,31 @@ describe('PUT /custom-schema', () => {
     expect(r.json.error).toMatch(/still/)
   })
 })
+
+describe('renaming built-in types and fields', () => {
+  const labels = {
+    types: { page: { label: 'Web page', plural: 'Web pages' } },
+    blocks: { service: { label: 'Treatment' } },
+    fields: { 'blocks.service.title': 'Treatment name', 'blocks.service.bookingOptions.label': 'Session' },
+  }
+
+  it('changes only what the editor shows, and remembers the site\'s own names', () => {
+    expect(checkCustom(base, { labels })).toEqual([])
+    const merged = mergeCustom(base, { labels })
+    expect(merged.types.page).toMatchObject({ label: 'Web page', plural: 'Web pages', shippedLabel: 'Page' })
+    expect(merged.blocks.service.label).toBe('Treatment')
+    const title = merged.blocks.service.fields.find((f) => f.name === 'title')
+    expect(title).toMatchObject({ name: 'title', label: 'Treatment name', shippedLabel: 'Heading' })
+    const option = merged.blocks.service.fields.find((f) => f.name === 'bookingOptions').fields.find((f) => f.name === 'label')
+    expect(option.label).toBe('Session')
+    // Content keeps its stored names, so it is still valid.
+    expect(checkDocument(merged, 'page', { title: 'T', blocks: [{ _id: 'a', _type: 'service', title: 'Thai' }] })).toEqual([])
+  })
+
+  it('refuses a rename of something the site does not have, or an empty or long name', () => {
+    expect(checkCustom(base, { labels: { fields: { 'blocks.service.nope': 'X' } } })[0]).toMatch(/no such built-in field/)
+    expect(checkCustom(base, { labels: { types: { nope: { label: 'X' } } } })[0]).toMatch(/no such built-in/)
+    expect(checkCustom(base, { labels: { blocks: { service: { label: '' } } } })[0]).toMatch(/1 to 60/)
+    expect(checkCustom(base, { labels: { blocks: { service: { fields: [] } } } })[0]).toMatch(/only label and plural/)
+  })
+})

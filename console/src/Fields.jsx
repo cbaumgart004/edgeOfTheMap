@@ -2,6 +2,7 @@ import React, { useEffect, useId, useState } from 'react'
 import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor } from '../schema/schema.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
+import Sketch from './Sketch.jsx'
 import { prepareImage } from './images.js'
 
 // One editor per field kind (schema/SCHEMA.md). `ctx` carries the schema, the
@@ -108,7 +109,7 @@ function Field({ field, value, onChange, ctx, path }) {
             return t ? `${def?.label}: ${t}` : def?.label ?? b._type
           }}
           fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []}
-          add={field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, make: () => newBlock(ctx.schema, name) }))} />)
+          add={field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) }))} />)
     default:
       return wrap(<p className="eotm-help">Unsupported field kind “{field.kind}”.</p>)
   }
@@ -328,10 +329,22 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
     onChange([...items.slice(0, i + 1), copy, ...items.slice(i + 1)])
     setOpen((s) => new Set(s).add(copy._id))
   }
+  const [picked, setPicked] = useState('')
   const insert = (make) => {
     const item = make()
     onChange([...items, item])
     setOpen((s) => new Set(s).add(item._id))
+    // The page draws the new section from the draft; bring it into view and
+    // outline it for a moment, so the owner sees what they added and where.
+    if (sections) {
+      setTimeout(() => {
+        const el = [...document.querySelectorAll(`[data-eotm-item="${item._id}"]`)].find((n) => !n.closest('.eotm-root'))
+        if (!el) return
+        el.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        el.classList.add('eotm-just-added')
+        setTimeout(() => el.classList.remove('eotm-just-added'), 1600)
+      }, 120)
+    }
   }
 
   return (
@@ -366,12 +379,32 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
         })}
       </ol>
       {add.length > 6 && !matchMedia('(min-width: 1024px)').matches ? (
-        // More than six kinds on a phone: one dropdown instead of a wall of buttons.
-        <select className="eotm-input eotm-palette-pick" aria-label={`Add to ${label}`} value=""
-          onChange={(e) => { const a = add.find((x) => x.key === e.target.value); if (a) insert(a.make) }}>
-          <option value="">+ Add…</option>
-          {add.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
-        </select>
+        // More than six kinds on a phone: one dropdown instead of a wall of
+        // buttons; the chosen kind shows its sketch before it is added.
+        <div className="eotm-palette-pick">
+          <select className="eotm-input" aria-label={`Add to ${label}`} value={picked} onChange={(e) => setPicked(e.target.value)}>
+            <option value="">Add a section…</option>
+            {add.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+          </select>
+          {picked && (() => {
+            const a = add.find((x) => x.key === picked)
+            return (
+              <button type="button" className="eotm-add" onClick={() => { insert(a.make); setPicked('') }}>
+                {a.def && <Sketch def={a.def} />}
+                <span>+ Add {a.label}</span>
+              </button>
+            )
+          })()}
+        </div>
+      ) : sections ? (
+        <div className="eotm-palette is-sketches">
+          {add.map((a) => (
+            <button key={a.key} type="button" className="eotm-add" onClick={() => insert(a.make)}>
+              {a.def && <Sketch def={a.def} />}
+              <span>+ {a.label}</span>
+            </button>
+          ))}
+        </div>
       ) : (
         <div className="eotm-palette">
           {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}

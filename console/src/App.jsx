@@ -117,7 +117,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   const style = brandStyle(schema.brand, mode)
   const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
-    : view.name === 'request' ? 'Request a change' : view.name === 'types' ? 'Your own types' : schema.brand.name
+    : view.name === 'request' ? 'Request a change' : view.name === 'types' ? 'Types and names' : schema.brand.name
 
   const header = (
     <header className="eotm-head">
@@ -276,8 +276,8 @@ function Home({ schema, store, wide, open, onRequest, onTypes }) {
     <>
       <li>
         <button type="button" className="eotm-card is-request" onClick={onTypes}>
-          <strong>Your own types</strong>
-          <span>Design a section or a list</span>
+          <strong>Types and names</strong>
+          <span>Design your own, rename the rest</span>
         </button>
       </li>
       <li>

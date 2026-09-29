@@ -31,6 +31,11 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   button that opens it; its edge, a side image's edge and images in rich text drag to a new width,
   snapping to a 12-column grid or moving freely. The page marks what is editable (SCHEMA.md,
   "Marks a page gives the editor").
+- **Previews when adding a section (1.1+).** Each "add" button shows a sketch of the section drawn
+  from its fields (or the site's own thumbnail, `preview` in the schema); once added, the page
+  scrolls to the new section and outlines it.
+- **Their own names (1.1+).** An owner renames any type, section or field ("Types and names"); the
+  site and stored content keep their names.
 - **Their own types (0.1.8+).** An owner designs sections and collections with their own fields
   ("Your own types"); a custom section is placed on pages like a built-in one (SCHEMA.md). More
   than six types on a phone become a dropdown, on the home view and in a section palette.
