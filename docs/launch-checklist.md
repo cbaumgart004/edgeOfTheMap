@@ -12,7 +12,8 @@ both on their `preview` branches.
 1. **Lambda `eotm-console-api` → Code → Upload from → .zip:** `console/dist/api.zip` (built by
    `npm run package:api` on the `console` branch).
 2. **Test tab:** `{"eotmMigrate": true}`. Applies control migrations 005 (sign-in help), 006
-   (owners' own types) and 007 (company details). Until it runs, Manage fails to
+   (owners' own types), 007 (company details) and 008 (new logins must replace their temporary
+   password). Until it runs, Manage fails to
    load (it reads 007's column).
 3. **Test tab**, one site database each inside the control project (no connection string to copy):
    - `{"eotmCreateSite": {"site": "edgeofthemap", "allowedOrigins": ["https://theedgeofthemap.com", "https://www.theedgeofthemap.com"], "owners": []}}`
