@@ -28,9 +28,9 @@ both on their `preview` branches.
    role `eotm-console-api-role-3asduby6` → add `ses:SendEmail`. While the account is in the SES
    sandbox it can send only to verified addresses, which covers operators; request production
    access only if that changes.
-7. **SpiritSeeds content:** open the SpiritSeeds preview with `?edit`, sign in, then in the browser's
-   developer console run `sessionStorage.getItem('eotm:token:spiritseeds')` and, in the SpiritSeeds
-   repo on `preview`: `EOTM_TOKEN=<that token> npm run import:console`.
+7. **SpiritSeeds content (done 2026-09-29):** Manage → SpiritSeeds → **Copy an editor token**, then in
+   the SpiritSeeds repo on `preview`: `EOTM_TOKEN=<that token> npm run import:console`. Re-run with
+   `--replace` at cutover.
 
 ## 2. Uptime monitoring
 
