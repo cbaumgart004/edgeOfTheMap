@@ -217,6 +217,11 @@ describe('editor handoff', () => {
     expect((await call('POST', '/api/handoff', { body: { site: 'spiritseeds' } })).status).toBe(401)
   })
 
+  it('opens only an address the site lists', async () => {
+    const call = make()
+    expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds', origin: 'https://evil.example' } })).json.url).toBe(ORIGIN)
+  })
+
   it('will not let an editor token mint another', async () => {
     expect((await make()('POST', '/api/handoff', { token: 'editor:spiritseeds', body: { site: 'spiritseeds' } })).status).toBe(403)
   })

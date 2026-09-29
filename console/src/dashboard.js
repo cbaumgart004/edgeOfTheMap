@@ -40,12 +40,12 @@ function say(msg, isError = false) {
 // with it in the URL fragment, which is never sent to a server. `back` is a path
 // on that site; the site's address itself comes from the API, so this cannot be
 // pointed at another domain.
-async function handoff(site, back = '/') {
+async function handoff(site, back = '/', origin) {
   say('Opening the editor…')
   const token = await auth.getToken()
   if (!token) return show('signin')
   const res = await fetch('/api/handoff', {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ site }),
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ site, origin }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) return say(data.error ?? 'Could not open the editor.', true)
@@ -58,7 +58,7 @@ async function handoff(site, back = '/') {
 // A site's editor sends the owner here to sign in (?handoff=<site>&return=<path>).
 const pending = (() => {
   const q = new URLSearchParams(location.search)
-  return q.get('handoff') ? { site: q.get('handoff'), back: q.get('return') ?? '/' } : null
+  return q.get('handoff') ? { site: q.get('handoff'), back: q.get('return') ?? '/', origin: q.get('origin') ?? undefined } : null
 })()
 
 // A site's logo, or its initial when it has none or the image fails to load.
@@ -86,7 +86,7 @@ async function showForSite() {
 async function loadSites() {
   const token = await auth.getToken()
   if (!token) return show('signin')
-  if (pending) return handoff(pending.site, pending.back)
+  if (pending) return handoff(pending.site, pending.back, pending.origin)
   const res = await fetch('/api/me/sites', { headers: { authorization: `Bearer ${token}` } })
   if (res.status === 401) return show('signin')
   const data = await res.json()
@@ -95,7 +95,9 @@ async function loadSites() {
   // admin.theedgeofthemap.com/?manage opens the management page directly.
   if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
   $('#sites').innerHTML = data.sites.length
-    ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a></li>`).join('')
+    ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a>${
+      // A site with a preview (or a second domain): open that one instead.
+      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}</li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
   $('#request').hidden = !data.sites.length
   $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
@@ -153,6 +155,8 @@ $('#help-form').addEventListener('submit', async (e) => {
 })
 
 $('#sites').addEventListener('click', (e) => {
+  const alt = e.target.closest('button[data-origin]')
+  if (alt) return handoff(alt.dataset.site, '/', alt.dataset.origin).catch((err) => say(err.message, true))
   const link = e.target.closest('a[data-site]')
   if (!link || e.metaKey || e.ctrlKey || e.shiftKey) return
   e.preventDefault()
@@ -213,6 +217,8 @@ async function loadManage({ quiet = false } = {}) {
       </form>
       <ul class="people">${s.members.map((m) => `<li><span>${esc(m.email ?? m.user_id)} · ${esc(m.role)}</span>
         <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button></li>`).join('') || '<li class="empty">No members.</li>'}</ul>
+      <p class="meta"><button type="button" class="link" data-token="${esc(s.slug)}">Copy an editor token</button>
+        for scripts such as a content import: edits only this site, lasts 8 hours. Paste it straight into the command; never into a file.</p>
       <form class="grid" data-form="member">
         <div><label>Add an existing login</label><input name="email" type="email" required placeholder="email" /></div>
         <div><label>Role</label><select name="role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
@@ -291,7 +297,22 @@ $('#m-sites').addEventListener('submit', run(async (e) => {
   }
   await loadManage({ quiet: true })
 }))
-$('#m-sites').addEventListener('click', (e) => {
+$('#m-sites').addEventListener('click', async (e) => {
+  const site = e.target.dataset?.token
+  if (site) {
+    try {
+      const res = await fetch('/api/handoff', {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${await auth.getToken()}` }, body: JSON.stringify({ site }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Could not make a token.')
+      await navigator.clipboard.writeText(data.token)
+      say(`Copied an editor token for ${site}. It lasts 8 hours.`)
+    } catch (err) {
+      say(err.message, true)
+    }
+    return
+  }
   const id = e.target.dataset?.remove
   if (!id) return
   const slug = e.target.closest('[data-slug]').dataset.slug

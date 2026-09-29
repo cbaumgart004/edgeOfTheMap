@@ -162,7 +162,11 @@ export function createHandler(deps) {
         if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
         const member = await authorize(event, site)
         const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
-        return json(200, { token, url: site.allowed_origins[0] }, { 'cache-control': 'private, no-store' })
+        // Which of the site's addresses to open (production or a preview);
+        // only one the site lists, so this cannot send a token elsewhere.
+        const asked = parseBody(event).origin
+        const url = site.allowed_origins.includes(asked) ? asked : site.allowed_origins[0]
+        return json(200, { token, url }, { 'cache-control': 'private, no-store' })
       }
 
       // "Request a change" from the admin page (same origin, so no CORS): a
@@ -193,7 +197,7 @@ export function createHandler(deps) {
           `SELECT s.slug, s.name, s.allowed_origins, s.schema, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
            WHERE m.user_id = $1 ORDER BY s.name`, [user.id])
         const operator = !user.site && (await deps.control.query('SELECT 1 FROM operators WHERE user_id = $1', [user.id])).rows.length > 0
-        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0], logo: logoOf(r.schema, r.allowed_origins[0]) })) },
+        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0], origins: r.allowed_origins, logo: logoOf(r.schema, r.allowed_origins[0]) })) },
           { 'cache-control': 'private, no-store' })
       }
 

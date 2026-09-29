@@ -112,7 +112,8 @@ export function editorAuth({ apiBase, site, fallback }) {
     // Leaves the page for the admin sign-in, which sends the owner back here.
     redirect() {
       const back = location.pathname + location.search
-      location.assign(`${apiBase.replace(/\/$/, '')}/?handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}`)
+      // origin: come back to this address (a preview, say), not the site's first.
+      location.assign(`${apiBase.replace(/\/$/, '')}/?handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}&origin=${encodeURIComponent(location.origin)}`)
     },
     async signOut() {
       try { sessionStorage.removeItem(editorTokenKey(site)) } catch { /* private mode */ }
