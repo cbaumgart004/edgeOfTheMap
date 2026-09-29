@@ -70,6 +70,8 @@ async function loadSites() {
   const data = await res.json()
   $('#who').textContent = data.email ?? ''
   $('#manage-open').hidden = !data.operator
+  // admin.theedgeofthemap.com/?manage opens the management page directly.
+  if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit"><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></a></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
@@ -138,6 +140,8 @@ async function loadManage() {
         <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
         <div><label>Photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="not set up" /></div>
         <div><label>Photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="https://…" /></div>
+        <div style="grid-column: 1 / -1"><label>Notes (operators only; no passwords or keys)</label>
+          <textarea name="notes" rows="4" placeholder="Registrar, DNS host, AWS app ids, email forwards…">${esc(s.notes ?? '')}</textarea></div>
         <div><button type="submit">Save</button></div>
       </form>
       <ul class="people">${s.members.map((m) => `<li><span>${esc(m.email ?? m.user_id)} · ${esc(m.role)}</span>
@@ -152,6 +156,7 @@ async function loadManage() {
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
   $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
   show('manage')
+  if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
 }
 
 // Runs a form's action with its submit button showing the outcome in place:
@@ -174,7 +179,7 @@ const run = (fn) => async (e) => {
 }
 
 $('#manage-open').addEventListener('click', run(loadManage))
-$('#manage-back').addEventListener('click', run(async () => { say(''); await loadSites() }))
+$('#manage-back').addEventListener('click', run(async () => { say(''); history.replaceState({}, '', '/'); await loadSites() }))
 
 $('#m-sites').addEventListener('submit', run(async (e) => {
   const form = e.target

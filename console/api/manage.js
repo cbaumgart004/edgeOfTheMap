@@ -12,6 +12,23 @@ import { checkSchema } from '../schema/schema.js'
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const ROLES = ['owner', 'editor']
 
+// Notes are for where things live, not the keys to them: passwords belong in a
+// password manager. Refuse text shaped like a credential, so one pasted by
+// mistake never reaches the database.
+const SECRET_SHAPES = [
+  [/\b(password|passwd|pwd|passcode)\s*[:=]/i, 'a password'],
+  [/\b(secret|token|api[_-]?key|access[_-]?key)\s*[:=]\s*\S{8,}/i, 'a key or token'],
+  [/\b(AKIA|ASIA)[A-Z0-9]{16}\b/, 'an AWS access key'],
+  [/[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:[^\s@/]+@/i, 'a connection string with a password'],
+  [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, 'a private key'],
+  [/\b(sk|rk)_(live|test)_[A-Za-z0-9]{10,}|\bgh[pousr]_[A-Za-z0-9]{30,}|\bxox[abp]-[A-Za-z0-9-]{10,}/, 'a service token'],
+]
+function checkNotes(text) {
+  if (text.length > 4000) throw new ServiceError(400, 'Notes are limited to 4,000 characters.')
+  const hit = SECRET_SHAPES.find(([re]) => re.test(text))
+  if (hit) throw new ServiceError(400, `The notes look like they contain ${hit[1]}. Keep that in a password manager; notes are for where things live.`)
+}
+
 export function createManage(deps, { onSiteChange }) {
   const q = (sql, params) => deps.control.query(sql, params)
 
@@ -45,7 +62,7 @@ export function createManage(deps, { onSiteChange }) {
   }
 
   async function overview() {
-    const sites = (await q(`SELECT id, slug, name, repo, allowed_origins, console_version, media_bucket, media_base_url, updated_at
+    const sites = (await q(`SELECT id, slug, name, repo, notes, allowed_origins, console_version, media_bucket, media_base_url, updated_at
                             FROM sites ORDER BY name`)).rows
     const members = (await q(`SELECT m.site_id, m.user_id, m.role, u.email, u.name
                               FROM site_members m LEFT JOIN neon_auth."user" u ON u.id::text = m.user_id
@@ -101,6 +118,11 @@ export function createManage(deps, { onSiteChange }) {
       if (base && !/^https:\/\/[^/\s]+(\/[^\s]*)?$/.test(base)) throw new ServiceError(400, 'Photo address must start with https://.')
       set('media_bucket', bucket)
       set('media_base_url', base)
+    }
+    if ('notes' in body) {
+      const notes = String(body.notes ?? '').trim()
+      checkNotes(notes)
+      set('notes', notes || null)
     }
     // Saving a site also takes the schema shipped with this deploy, so a
     // schema change reaches the editor without hand-run SQL.

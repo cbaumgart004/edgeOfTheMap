@@ -76,3 +76,13 @@ describe('placement field', async () => {
     expect(checkDocument(schema, 'a', { t: 'x', after: 3 }).length).toBe(1)
   })
 })
+
+describe('site notes', () => {
+  it('keeps where things live and refuses what looks like a secret', async () => {
+    const w = world()
+    expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { notes: 'Registrar: Porkbun, renews 2028-05-25. DNS at Porkbun.' } })).status).toBe(200)
+    for (const notes of ['AWS root password: hunter22', 'key AKIAABCDEFGHIJKLMNOP', 'postgres://u:pw@host/db', 'api_key = abcdefghijkl']) {
+      expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { notes } })).status).toBe(400)
+    }
+  })
+})
