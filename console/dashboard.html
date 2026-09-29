@@ -90,17 +90,22 @@
     .rune-rule { margin: 6px 0 0; font: 18px/1.2 var(--runes); letter-spacing: .35em; color: #5eead4; text-shadow: 0 0 6px rgb(94 234 212 / .8), 0 0 16px rgb(94 234 212 / .4); overflow: hidden; white-space: nowrap; }
     h1 { font: 600 30px/1.15 'Cormorant Garamond', Georgia, serif; letter-spacing: .01em; color: var(--neon); text-shadow: var(--glow); }
     h2 { color: var(--neon); }
-    /* The Elder Futhark glossary. */
-    .runes { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
-    .runes summary { font: 600 18px 'Cormorant Garamond', Georgia, serif; color: var(--neon); }
-    .aett { margin-top: 14px; }
-    .aett h3 { font: 600 17px 'Cormorant Garamond', Georgia, serif; margin: 0 0 6px; }
-    .rune-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+    /* The Elder Futhark, in the side gutters of a wide screen only. */
+    .runes-side { display: none; }
+    @media (min-width: 1560px) {
+      .runes-side { display: block; position: fixed; top: 50%; transform: translateY(-50%); width: 230px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+      .runes-side.is-left { left: 28px; }
+      .runes-side.is-right { right: 28px; }
+    }
+    .runes-side h2 { margin: 0 0 4px; font-size: 20px; }
+    .aett { margin-top: 12px; }
+    .aett h3 { font: 600 16px 'Cormorant Garamond', Georgia, serif; margin: 0 0 6px; color: var(--muted); }
+    .rune-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     button.rune { min-height: 44px; padding: 0; font: 24px/1 var(--runes); color: var(--neon); background: var(--bg); border: 1px solid var(--line); text-shadow: var(--glow); }
     button.rune:hover, button.rune[aria-pressed="true"] { border-color: var(--neon); background: color-mix(in srgb, var(--neon) 12%, transparent); }
-    .rune-entry { display: flex; gap: 14px; align-items: flex-start; margin: 14px 0 8px; padding: 12px 14px; min-height: 76px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
-    .rune-entry p { margin: 4px 0 0; font-size: 14px; }
-    .rune-big { font: 44px/1 var(--runes); color: var(--neon); text-shadow: var(--glow); }
+    .rune-entry { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); text-align: center; }
+    .rune-entry p { margin: 8px 0 0; font-size: 14px; text-align: left; }
+    .rune-big { display: block; margin-bottom: 10px; font: 72px/1 var(--runes); color: var(--neon); text-shadow: var(--glow); }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
@@ -234,13 +239,12 @@
       <ul id="m-logins" class="people"></ul>
     </section>
 
-    <details id="runes" class="runes">
-      <summary>The Elder Futhark</summary>
-      <div id="runes-body"></div>
-    </details>
-
     <p id="msg" class="msg" role="status"></p>
   </main>
+  <!-- Decoration for the empty sides of a wide screen: the futhark on the left,
+       the chosen rune on the right. Not shown where there is no room for it. -->
+  <aside id="runes-left" class="runes-side is-left" aria-label="The Elder Futhark"></aside>
+  <aside id="runes-right" class="runes-side is-right" aria-live="polite"></aside>
   <script src="/dashboard.js"></script>
 </body>
 </html>

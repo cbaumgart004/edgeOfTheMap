@@ -488,5 +488,5 @@ for (const b of document.querySelectorAll('#signout, [data-signout]')) {
   })
 }
 
-mountRunes($('#runes-body'))
+mountRunes($('#runes-left'), $('#runes-right'))
 start().catch((err) => say(err.message, true))

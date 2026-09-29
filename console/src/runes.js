@@ -46,28 +46,28 @@ export const AETTIR = [
   },
 ]
 
-// Draws the glossary into `root`: three rows of eight, and the chosen rune's
-// entry beneath. Plain DOM, like the rest of the admin page.
-export function mountRunes(root) {
+// Draws the three ættir into `left` and the chosen rune's entry into `right`
+// (the two side gutters of the admin page). Plain DOM, like the rest of it.
+export function mountRunes(left, right) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   let n = 0
-  root.innerHTML = `${AETTIR.map((aett, a) => `
+  left.innerHTML = `<h2>The Elder Futhark</h2>${AETTIR.map((aett, a) => `
     <div class="aett">
       <h3>${esc(aett.name)} <span class="meta">runes ${a * 8 + 1} to ${a * 8 + 8}</span></h3>
       <div class="rune-row">${aett.runes.map((r) => { n += 1; return `<button type="button" class="rune" data-rune="${n}" aria-label="${n}. ${esc(r.name)}" aria-pressed="false">${r.glyph}</button>` }).join('')}</div>
     </div>`).join('')}
-    <div class="rune-entry" aria-live="polite"><p class="meta">Choose a rune.</p></div>
-    <p class="meta">Order after the Kylver stone. The three groups of eight are attested on the oldest rows; their names come from later Icelandic tradition.</p>`
+    <p class="meta">Order after the Kylver stone. The groups of eight are attested on the oldest rows; their names come from later Icelandic tradition.</p>`
+  right.innerHTML = '<div class="rune-entry"><p class="meta">Choose a rune on the left.</p></div>'
   const all = AETTIR.flatMap((aett) => aett.runes.map((r) => ({ ...r, aett: aett.name })))
-  root.addEventListener('click', (e) => {
+  left.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-rune]')
     if (!b) return
     const i = Number(b.dataset.rune)
     const r = all[i - 1]
-    for (const other of root.querySelectorAll('button[data-rune]')) other.setAttribute('aria-pressed', String(other === b))
-    root.querySelector('.rune-entry').innerHTML = `
+    for (const other of left.querySelectorAll('button[data-rune]')) other.setAttribute('aria-pressed', String(other === b))
+    right.querySelector('.rune-entry').innerHTML = `
       <span class="rune-big" aria-hidden="true">${r.glyph}</span>
-      <div><strong>${i}. *${esc(r.name)}</strong> <span class="meta">${esc(r.aett)} · sound ${esc(r.sound)}</span>
-      <p>${esc(r.meaning)}</p></div>`
+      <strong>${i}. *${esc(r.name)}</strong><br /><span class="meta">${esc(r.aett)} · sound ${esc(r.sound)}</span>
+      <p>${esc(r.meaning)}</p>`
   })
 }
