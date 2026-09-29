@@ -82,7 +82,7 @@ no login.
    string in SSM as a SecureString, for example `/eotm/sites/<site>/database`.
 3. **Register it** in the control project (`api/migrations/control`): a `sites` row with the slug,
    schema, pinned `console_version` and `console_integrity` from `releases/index.json`, allowed
-   origins, the SSM parameter *name*, and the photo bucket. Add the owner's Neon Auth user id to
+   origins and the SSM parameter *name*. Photos need nothing per site (the shared bucket, below). Add the owner's Neon Auth user id to
    `site_members`.
 4. **On the site:**
    - include the loader: `<script src="https://admin.theedgeofthemap.com/loader.js" data-site="<site>" async></script>`
@@ -112,8 +112,9 @@ no login.
   (`api/auth-proxy.js`), not to Neon Auth: Amplify adds `X-Forwarded-Host` and Neon Auth rejects any
   request carrying one. Both apps keep cookies in the cache key, and `_edit/**/*` is `private, no-store`.
 - **Management page:** operators (control table `operators`, migration `002`) see "Manage all sites"
-  on the admin page: each site's repo, editor version (pinning replaces the SQL `UPDATE sites`), photo
-  bucket and members, every login, and "Add a user", which creates a Neon Auth login with a temporary
+  on the admin page: each site's repo, editor version (pinning replaces the SQL `UPDATE sites`), company
+  details (`PROFILE_FIELDS` in `api/manage.js`), an optional photo bucket of its own, and members
+  (name, email, a role changed in the row), every login, and "Add a user", which creates a Neon Auth login with a temporary
   password through `sign-up/email` (`api/manage.js`, `createLogin` in `api/lambda.js`). The user
   changes it under "Change password" (`change-password`, other sessions revoked). Public "Create
   login" is gone: logins are added by an operator. Password-reset email still does not arrive (Neon
@@ -177,10 +178,15 @@ no login.
 - **API:** one Lambda from `api/lambda.js` with a function URL, reached as
   `admin.theedgeofthemap.com/api/<*>` through an Amplify rewrite (status 200). Its settings, by name:
   `CONTROL_DATABASE_PARAM` (SSM name of the control project's connection string), `NEON_AUTH_URL`,
-  `MEDIA_REGION`. Its role needs `ssm:GetParameter` on `/eotm/*`, `kms:Decrypt` for those
-  parameters, and `s3:PutObject` on the customers' photo buckets.
-- **Photos:** each customer keeps its own bucket, served through CloudFront. The bucket needs a CORS
-  rule allowing `PUT` from the customer's origins, because the browser uploads straight to it.
+  `MEDIA_BUCKET`, `MEDIA_BASE_URL`, `MEDIA_REGION`. Its role needs `ssm:GetParameter` on `/eotm/*`, `kms:Decrypt` for those
+  parameters, and `s3:PutObject` on the shared photo bucket (and on any site's own).
+- **Photos:** one shared bucket, `MEDIA_BUCKET`, served through one CloudFront distribution at
+  `MEDIA_BASE_URL`; each site uploads under `sites/<slug>/` (`api/handler.js`, `/uploads`). A site
+  whose `media_bucket` is set uses that instead, with no prefix. The bucket's CORS rule allows `PUT`
+  from any origin (`*`): the presigned URL is the permission, and CORS cannot restrict a non-browser
+  client anyway, so a new site needs no CORS change. The editor scales photos to a 1600 px long
+  edge, at most 600 KB; a `wide` field 2560 px, 1.2 MB; "Sharper" 3200 px, 2.5 MB (`src/images.js`,
+  `LIMITS`; SCHEMA.md, `image`).
 
 ## Not verified yet
 

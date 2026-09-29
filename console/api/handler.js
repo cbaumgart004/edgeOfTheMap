@@ -59,6 +59,9 @@ function parseBody(event) {
 //   releases(): Promise<[{ version, integrity }]>      released console versions
 //   createLogin({ email, password, name }): Promise<{ id }>   a new Neon Auth login
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
+//   media: { bucket, baseUrl }                        the shared photo bucket; each site
+//                                                     writes under sites/<slug>/. A site's own
+//                                                     media_bucket, where set, overrides it.
 //   sanitize(schema): (type, data) => data
 //   sendEmail({ to, subject, text }), sendPush(sub, payload, vapid), generateVapid()   see requests.js
 // }
@@ -268,13 +271,17 @@ export function createHandler(deps) {
       if (method === 'POST' && rest === '/documents') return json(201, await svc.create(body, user), headers)
 
       if (method === 'POST' && rest === '/uploads') {
-        if (!site.media_bucket) return json(503, { error: 'Photo storage is not set up for this site yet.' }, headers)
+        // The shared bucket, each site in its own folder, unless the site has a bucket of its own.
+        const own = Boolean(site.media_bucket)
+        const bucket = own ? site.media_bucket : deps.media?.bucket
+        const baseUrl = own ? site.media_base_url : deps.media?.baseUrl
+        if (!bucket || !baseUrl) return json(503, { error: 'Photo storage is not set up for this site yet.' }, headers)
         const ext = IMAGE_TYPES[body.contentType]
         if (!ext) return json(415, { error: 'Photos must be WebP, JPEG, PNG or AVIF.' }, headers)
         if (!(body.bytes > 0 && body.bytes <= MAX_UPLOAD_BYTES)) return json(413, { error: 'Photo is too large.' }, headers)
-        const key = `uploads/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
-        const uploadUrl = await deps.presign({ bucket: site.media_bucket, key, contentType: body.contentType, bytes: body.bytes })
-        return json(200, { uploadUrl, src: `${site.media_base_url.replace(/\/$/, '')}/${key}` }, headers)
+        const key = `${own ? '' : `sites/${site.slug}/`}uploads/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
+        const uploadUrl = await deps.presign({ bucket, key, contentType: body.contentType, bytes: body.bytes })
+        return json(200, { uploadUrl, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
       }
 
       const doc = rest.match(/^\/documents\/([0-9a-f-]{36})(\/(duplicate|publish|unpublish))?$/i)

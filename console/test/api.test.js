@@ -47,19 +47,20 @@ function fakeSiteDb() {
   }
 }
 
-function setup({ member = true } = {}) {
+function setup({ member = true, site = SITE, media } = {}) {
   const db = fakeSiteDb()
   const handle = createHandler({
     control: {
       async query(sql) {
-        if (sql.includes('FROM sites')) return { rows: [SITE] }
+        if (sql.includes('FROM sites')) return { rows: [site] }
         if (sql.includes('FROM site_members')) return { rows: member ? [{ role: 'owner' }] : [] }
         throw new Error(sql)
       },
     },
     siteDb: async () => db,
     verifyToken: async (t) => { if (t !== 'good') throw new Error('bad'); return { id: 'user-1' } },
-    presign: async ({ key }) => `https://bucket.s3.amazonaws.com/${key}?sig`,
+    presign: async ({ bucket, key }) => `https://${bucket}.s3.amazonaws.com/${key}?sig`,
+    media,
     sanitize: (s) => (type, data) => sanitizeDocumentData(s, type, data, purify),
   })
   const call = (method, path, { body, token = 'good', origin = ORIGIN, query } = {}) =>
@@ -124,6 +125,16 @@ describe('console API', () => {
     const ok = await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })
     expect(ok.json.src).toMatch(/^https:\/\/media\.example\/uploads\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/)
     expect((await call('POST', `${base}/uploads`, { body: { contentType: 'text/html', bytes: 10 } })).statusCode).toBe(415)
+  })
+
+  it('puts a site without a bucket of its own in the shared bucket, under its own folder', async () => {
+    const shared = { ...SITE, media_bucket: '', media_base_url: '' }
+    const { call } = setup({ site: shared, media: { bucket: 'eotm-photos', baseUrl: 'https://photos.example/' } })
+    const ok = (await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })).json
+    expect(ok.uploadUrl).toMatch(/^https:\/\/eotm-photos\.s3\.amazonaws\.com\/sites\/spiritseeds\/uploads\//)
+    expect(ok.src).toMatch(/^https:\/\/photos\.example\/sites\/spiritseeds\/uploads\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/)
+    const none = setup({ site: shared })
+    expect((await none.call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })).statusCode).toBe(503)
   })
 })
 

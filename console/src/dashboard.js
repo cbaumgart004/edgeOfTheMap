@@ -201,22 +201,45 @@ async function loadManage({ quiet = false } = {}) {
   state = await api('GET', '/api/manage')
   if (!quiet) say('')
   const versions = state.releases.map((r) => r.version).reverse()
+  // An API older than the page sends no profileFields; show no company details rather than break.
+  const profileFields = state.profileFields ?? []
+  const urlFields = profileFields.filter((f) => f.kind === 'url')
+  // A save re-renders the cards; keep open whichever details were open.
+  const openDetails = new Set([...document.querySelectorAll('details.company[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
   $('#m-sites').innerHTML = state.sites.map((s) => `
     <li class="card" data-slug="${esc(s.slug)}">
       <h3>${esc(s.name)}</h3>
       <p class="meta">${s.origins.map((o) => `<a href="${esc(o)}" target="_blank" rel="noopener">${esc(o.replace(/^https:\/\//, ''))}</a>`).join(' · ')}
-        ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}</p>
+        ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}${
+        // Every recorded address in one line, so each piece is a click away.
+        urlFields.filter((f) => s.profile?.[f.key]).map((f) => ` · <a href="${esc(s.profile[f.key])}" target="_blank" rel="noopener">${esc(f.label.replace(/ page$/, ''))}</a>`).join('')}</p>
+      ${profileFields.length ? `<details class="company">
+        <summary>Company details${Object.keys(s.profile ?? {}).length ? '' : ' (none recorded)'}</summary>
+        <form class="grid" data-form="profile">
+          ${profileFields.map((f) => f.kind === 'lines'
+            ? `<div style="grid-column: 1 / -1"><label>${esc(f.label)}</label><textarea name="${esc(f.key)}" rows="3" placeholder="${esc(f.placeholder ?? '')}">${esc(s.profile?.[f.key] ?? '')}</textarea></div>`
+            : `<div><label>${esc(f.label)}</label><input name="${esc(f.key)}" ${f.kind === 'url' ? 'type="url" placeholder="https://…"' : `placeholder="${esc(f.placeholder ?? '')}"`} value="${esc(s.profile?.[f.key] ?? '')}" /></div>`).join('')}
+          <p class="meta" style="grid-column: 1 / -1">Names, ids and addresses only. Passwords and keys belong in a password manager.</p>
+          <div><button type="submit">Save details</button></div>
+        </form>
+      </details>` : ''}
       <form class="grid" data-form="site">
         <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
         <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
-        <div><label>Photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="not set up" /></div>
-        <div><label>Photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="https://…" /></div>
+        <div><label>Own photo bucket (blank: the shared one)</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="shared" /></div>
+        <div><label>Own photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="shared" /></div>
         <div style="grid-column: 1 / -1"><label>Notes (operators only; no passwords or keys)</label>
-          <textarea name="notes" rows="4" placeholder="Registrar, DNS host, AWS app ids, email forwards…">${esc(s.notes ?? '')}</textarea></div>
+          <textarea name="notes" rows="4" placeholder="Anything Company details has no field for…">${esc(s.notes ?? '')}</textarea></div>
         <div><button type="submit">Save</button></div>
       </form>
-      <ul class="people">${s.members.map((m) => `<li><span>${esc(m.email ?? m.user_id)} · ${esc(m.role)}</span>
-        <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button></li>`).join('') || '<li class="empty">No members.</li>'}</ul>
+      ${s.members.length ? `<ul class="members">
+        <li class="member is-head" aria-hidden="true"><span>Name</span><span>Username (email)</span><span>Role</span><span></span></li>
+        ${s.members.map((m) => `<li class="member">
+          <span class="m-name">${esc(m.name || '—')}</span>
+          <span class="m-email">${esc(m.email ?? m.user_id)}</span>
+          <select data-role="${esc(m.user_id)}" aria-label="Role for ${esc(m.email ?? m.user_id)}">${['owner', 'editor'].map((r) => `<option value="${r}"${r === m.role ? ' selected' : ''}>${r === 'owner' ? 'Owner' : 'Editor'}</option>`).join('')}</select>
+          <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button>
+        </li>`).join('')}</ul>` : '<p class="empty">No members.</p>'}
       <p class="meta"><button type="button" class="link" data-token="${esc(s.slug)}">Copy an editor token</button>
         for scripts such as a content import: edits only this site, lasts 8 hours. Paste it straight into the command; never into a file.</p>
       <form class="grid" data-form="member">
@@ -225,6 +248,7 @@ async function loadManage({ quiet = false } = {}) {
         <div><button type="submit">Add</button></div>
       </form>
     </li>`).join('')
+  for (const slug of openDetails) document.querySelector(`[data-slug="${CSS.escape(slug)}"] details.company`)?.setAttribute('open', '')
   $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
   $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
@@ -291,6 +315,9 @@ $('#m-sites').addEventListener('submit', run(async (e) => {
   if (form.dataset.form === 'site') {
     await api('PUT', `/api/manage/sites/${slug}`, { ...f, reloadSchema: true })
     say('Saved. The editor picks up the version and fields within a minute.')
+  } else if (form.dataset.form === 'profile') {
+    await api('PUT', `/api/manage/sites/${slug}`, { profile: f })
+    say('Company details saved.')
   } else {
     await api('POST', `/api/manage/sites/${slug}/members`, f)
     say('Added.')
@@ -317,6 +344,19 @@ $('#m-sites').addEventListener('click', async (e) => {
   if (!id) return
   const slug = e.target.closest('[data-slug]').dataset.slug
   run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage({ quiet: true }) })(e)
+})
+// A member's role, changed in their row.
+$('#m-sites').addEventListener('change', async (e) => {
+  const id = e.target.dataset?.role
+  if (!id) return
+  const slug = e.target.closest('[data-slug]').dataset.slug
+  try {
+    await api('PUT', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`, { role: e.target.value })
+    say('Role changed.')
+  } catch (err) {
+    say(err.message, true)
+  }
+  await loadManage({ quiet: true })
 })
 
 $('#m-requests').addEventListener('click', async (e) => {

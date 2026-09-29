@@ -64,7 +64,7 @@
         { "name": "title", "kind": "text", "label": "Heading" },
         { "name": "eyebrow", "kind": "text", "label": "Eyebrow", "help": "Splash layout: the small line above the heading, e.g. MASSAGE + SOUND HEALING." },
         { "name": "body", "kind": "richtext", "label": "Body text", "help": "Splash, Image and text, Centered text and Event layouts." },
-        { "name": "image", "kind": "image", "label": "Image", "help": "Image and text layout, and the background photo for Splash." },
+        { "name": "image", "kind": "image", "label": "Image", "wide": true, "help": "Image and text layout, and the background photo for Splash." },
         { "name": "taglinePlacement", "kind": "select", "label": "Tagline artwork", "default": "none",
           "help": "Splash only. In Beside and Over the artwork carries the words, so the heading, eyebrow and body are not shown; only the buttons.", "options": [
           { "value": "none", "label": "Don't show it" }, { "value": "beside", "label": "Beside the photo (two-up banner)" },

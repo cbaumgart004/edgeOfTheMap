@@ -59,6 +59,20 @@
     select { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
     .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
     .people li { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; overflow-wrap: anywhere; }
+    /* A site's members: one bordered row each, name | email | role | Remove. */
+    .members { gap: 6px; }
+    .member { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 130px auto; gap: 12px; align-items: center;
+      padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 14px; }
+    .member > span { overflow-wrap: anywhere; }
+    .member select { min-height: 38px; padding: 6px 10px; font-size: 14px; }
+    .member.is-head { border: 0; background: none; padding-block: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .m-email { color: var(--muted); }
+    /* Phones: name, role and Remove on one line; the email beneath. */
+    @media (max-width: 560px) {
+      .member { grid-template-columns: minmax(0, 1fr) 110px auto; row-gap: 2px; }
+      .member.is-head { display: none; }
+      .m-email { grid-column: 1 / -1; grid-row: 2; }
+    }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }

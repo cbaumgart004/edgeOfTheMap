@@ -46,6 +46,9 @@ export function checkSchema(schema) {
       if (!FIELD_KINDS.includes(f.kind)) errors.push(`${at}: unknown kind "${f.kind}"`)
       if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
       if (f.kind === 'relation' && !types[f.to]) errors.push(`${at}: relation to unknown type "${f.to}"`)
+      if ('wide' in f && (!['image', 'photos'].includes(f.kind) || typeof f.wide !== 'boolean')) {
+        errors.push(`${at}: wide is true or false, on an image or photos field`)
+      }
       if (f.kind === 'photos' && f.indexes && !Array.isArray(f.indexes)) errors.push(`${at}: indexes must be a list`)
       if (f.suggest && (f.kind !== 'text' || !blocks[f.suggest.block] || !f.suggest.field)) {
         errors.push(`${at}: suggest needs a text field and { block, field } naming a block and one of its fields`)

@@ -30,6 +30,39 @@ function checkNotes(text) {
   if (hit) throw new ServiceError(400, `The notes look like they contain ${hit[1]}. Keep that in a password manager; notes are for where things live.`)
 }
 
+// A company's setup record (sites.profile): where each piece lives and the
+// address that opens it, so any of them is one click from the Manage page.
+// kind: text (a name or id), url (https only, shown as a link), lines (one per line).
+export const PROFILE_FIELDS = [
+  { key: 'domain', label: 'Production domain', kind: 'text', placeholder: 'example.com' },
+  { key: 'registrar', label: 'Registrar', kind: 'text', placeholder: 'Porkbun' },
+  { key: 'registrarUrl', label: 'Registrar domain page', kind: 'url' },
+  { key: 'dnsHost', label: 'DNS host', kind: 'text', placeholder: 'Porkbun' },
+  { key: 'dnsUrl', label: 'DNS records page', kind: 'url' },
+  { key: 'awsAccountId', label: 'AWS account id', kind: 'text', pattern: /^\d{12}$/, placeholder: '12 digits' },
+  { key: 'amplifyAppId', label: 'Amplify app id', kind: 'text', pattern: /^[a-z0-9]{8,20}$/, placeholder: 'd1a2b3c4d5e6f7' },
+  { key: 'amplifyUrl', label: 'Amplify app page', kind: 'url' },
+  { key: 'cloudfrontId', label: 'Photo CloudFront distribution id', kind: 'text', pattern: /^E[A-Z0-9]{8,20}$/, placeholder: 'E1ABCDEF2GHIJK' },
+  { key: 'cloudfrontUrl', label: 'CloudFront distribution page', kind: 'url' },
+  { key: 'emailForwards', label: 'Email forwards (one per line: from → to)', kind: 'lines', placeholder: 'hello@example.com → owner@gmail.com' },
+]
+
+export function cleanProfile(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new ServiceError(400, 'The company details are not in the right shape.')
+  const out = {}
+  for (const f of PROFILE_FIELDS) {
+    const value = String(input[f.key] ?? '').trim()
+    if (!value) continue
+    if (value.length > (f.kind === 'lines' ? 2000 : 300)) throw new ServiceError(400, `${f.label} is too long.`)
+    if (f.kind === 'url' && !/^https:\/\/[^\s]+$/.test(value)) throw new ServiceError(400, `${f.label} must be an https:// address.`)
+    if (f.pattern && !f.pattern.test(value)) throw new ServiceError(400, `${f.label} does not look right (${f.placeholder}).`)
+    const hit = SECRET_SHAPES.find(([re]) => re.test(value))
+    if (hit) throw new ServiceError(400, `${f.label} looks like it contains ${hit[1]}. Keep that in a password manager.`)
+    out[f.key] = value
+  }
+  return out
+}
+
 export function createManage(deps, { onSiteChange }) {
   const q = (sql, params) => deps.control.query(sql, params)
 
@@ -63,7 +96,7 @@ export function createManage(deps, { onSiteChange }) {
   }
 
   async function overview() {
-    const sites = (await q(`SELECT id, slug, name, repo, notes, allowed_origins, console_version, media_bucket, media_base_url, updated_at
+    const sites = (await q(`SELECT id, slug, name, repo, notes, allowed_origins, console_version, media_bucket, media_base_url, profile, updated_at
                             FROM sites ORDER BY name`)).rows
     const members = (await q(`SELECT m.site_id, m.user_id, m.role, u.email, u.name
                               FROM site_members m LEFT JOIN neon_auth."user" u ON u.id::text = m.user_id
@@ -78,6 +111,7 @@ export function createManage(deps, { onSiteChange }) {
       operators,
       logins,
       releases: await deps.releases(),
+      profileFields: PROFILE_FIELDS.map(({ pattern, ...f }) => f),
     }
   }
 
@@ -120,6 +154,7 @@ export function createManage(deps, { onSiteChange }) {
       set('media_bucket', bucket)
       set('media_base_url', base)
     }
+    if ('profile' in body) set('profile', cleanProfile(body.profile))
     if ('notes' in body) {
       const notes = String(body.notes ?? '').trim()
       checkNotes(notes)
@@ -166,6 +201,12 @@ export function createManage(deps, { onSiteChange }) {
         const found = await userByEmail(cleanEmail(body.email))
         if (!found) throw new ServiceError(404, 'No login uses that email. Add the user first.')
         await addMember(slug, found.id, body.role ?? 'editor')
+        return { ok: true }
+      }
+      if (method === 'PUT' && userId) {
+        if (!ROLES.includes(body.role)) throw new ServiceError(400, 'Role must be owner or editor.')
+        const { rowCount } = await q('UPDATE site_members SET role = $3 WHERE site_id = $1 AND user_id = $2', [await siteId(slug), userId, body.role])
+        if (!rowCount) throw new ServiceError(404, 'That login is not a member of this site.')
         return { ok: true }
       }
       if (method === 'DELETE' && userId) {

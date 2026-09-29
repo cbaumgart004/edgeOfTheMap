@@ -82,7 +82,7 @@ function Field({ field, value, onChange, ctx, path }) {
           {field.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>)
     case 'image':
-      return wrap(<ImageField id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
+      return wrap(<ImageField id={id} field={field} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'photos':
       return wrap(<Photos id={id} field={field} value={value ?? []} onChange={onChange} ctx={ctx} />, { block: true })
     case 'relation':
@@ -131,8 +131,8 @@ function withOffset(local) {
   return `${local}:00${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`
 }
 
-async function uploadPhoto(file, ctx) {
-  const { blob, width, height } = await prepareImage(file)
+async function uploadPhoto(file, ctx, limit) {
+  const { blob, width, height } = await prepareImage(file, limit)
   const src = await ctx.upload(blob)
   return { src, width, height, alt: '' }
 }
@@ -180,13 +180,23 @@ async function sitePhotos(ctx) {
   return [...srcs]
 }
 
-function ImageField({ id, value, onChange, ctx }) {
+function ImageField({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(false)
   const [library, setLibrary] = useState(null) // null closed, [] loading or empty
-  const pick = async (file) => {
+  // The file just uploaded, kept so "Sharper" can send it again at full size
+  // without the owner picking it a second time. Gone on reload, by design.
+  const [last, setLast] = useState(null) // { file, src, limit }
+  const base = field?.wide ? 'wide' : 'standard'
+  const pick = async (file, limit = base) => {
     if (!file) return
     setBusy(true)
-    try { onChange(await uploadPhoto(file, ctx)) } catch (e) { ctx.notify(e.message) } finally { setBusy(false) }
+    try {
+      const photo = await uploadPhoto(file, ctx, limit)
+      // Keep what the owner set on the photo (alt text, turn, fade) when only the file changes.
+      onChange(limit === 'full' && value ? { ...value, ...photo, alt: value.alt ?? '' } : photo)
+      setLast({ file, src: photo.src, limit })
+      if (limit === 'full') ctx.notify('Uploaded at full quality. The file is larger, so the page loads a little slower.')
+    } catch (e) { ctx.notify(e.message) } finally { setBusy(false) }
   }
   const openLibrary = async () => {
     if (library) return setLibrary(null)
@@ -204,6 +214,10 @@ function ImageField({ id, value, onChange, ctx }) {
         </label>
         <button type="button" className="eotm-btn is-quiet" aria-expanded={!!library} onClick={openLibrary}>Site photos</button>
         {value?.src && <button type="button" className="eotm-btn is-quiet" onClick={() => onChange(null)}>Remove</button>}
+        {last && last.src === value?.src && last.limit !== 'full' && (
+          <button type="button" className="eotm-btn is-quiet" disabled={busy} onClick={() => pick(last.file, 'full')}
+            title="Uploads this photo again at up to 3200 px. Use it when the preview looks soft.">Sharper (larger file)</button>
+        )}
       </div>
       {library && (
         <div className="eotm-library">
@@ -238,7 +252,7 @@ function Photos({ id, field, value, onChange, ctx }) {
     let next = value
     for (const file of list) {
       try {
-        const photo = await uploadPhoto(file, ctx)
+        const photo = await uploadPhoto(file, ctx, field.wide ? 'wide' : 'standard')
         // Suggest the index a pair still lacks: Light first, then Dark.
         if (indexes) photo.index = indexes.find((ix) => !next.some((p) => p.index === ix)) ?? indexes[0]
         next = [...next, photo]

@@ -6,10 +6,11 @@
 
 import { readFile } from 'node:fs/promises'
 import { checkSchema } from '../schema/schema.js'
+import { cleanProfile } from './manage.js'
 
 export async function register(db, input) {
   const { site, name, allowedOrigins, connectionParam, consoleVersion, consoleIntegrity, owners = [],
-    mediaBucket = '', mediaBaseUrl = '' } = input
+    mediaBucket = '', mediaBaseUrl = '', profile = {} } = input
   if (!/^[a-z0-9-]+$/.test(site ?? '')) throw new Error('site must be a slug')
   if (!allowedOrigins?.length || allowedOrigins.some((o) => !/^https:\/\/[^/]+$/.test(o))) {
     throw new Error('allowedOrigins must be https origins with no path')
@@ -25,13 +26,16 @@ export async function register(db, input) {
   if (!release) throw new Error(`console ${consoleVersion} is not released`)
   if (consoleIntegrity && consoleIntegrity !== release.integrity) throw new Error('consoleIntegrity does not match the release')
 
+  // The company's setup record (manage.js PROFILE_FIELDS); merged, so a repeat
+  // run adds to what the Manage page holds rather than wiping it.
+  const cleanedProfile = cleanProfile(profile)
   const { rows } = await db.query(
-    `INSERT INTO sites (slug, name, schema, console_version, console_integrity, allowed_origins, connection_param, media_bucket, media_base_url)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO sites (slug, name, schema, console_version, console_integrity, allowed_origins, connection_param, media_bucket, media_base_url, profile)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (slug) DO UPDATE SET name = $2, schema = $3, console_version = $4, console_integrity = $5,
-       allowed_origins = $6, connection_param = $7, media_bucket = $8, media_base_url = $9, updated_at = now()
+       allowed_origins = $6, connection_param = $7, media_bucket = $8, media_base_url = $9, profile = sites.profile || $10, updated_at = now()
      RETURNING id, slug, console_version`,
-    [site, name ?? schema.brand?.name ?? site, schema, release.version, release.integrity, allowedOrigins, connectionParam, mediaBucket, mediaBaseUrl])
+    [site, name ?? schema.brand?.name ?? site, schema, release.version, release.integrity, allowedOrigins, connectionParam, mediaBucket, mediaBaseUrl, cleanedProfile])
   for (const userId of owners) {
     await db.query(
       `INSERT INTO site_members (site_id, user_id, role) VALUES ($1, $2, 'owner')

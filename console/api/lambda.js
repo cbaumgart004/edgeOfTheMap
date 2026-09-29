@@ -3,7 +3,9 @@
 // Environment (names only; values are set on the function):
 //   CONTROL_DATABASE_PARAM  SSM SecureString holding Edge of the Map's connection string
 //   NEON_AUTH_URL           Neon Auth base URL; JWTs are checked against its JWKS
-//   MEDIA_REGION            region of the customers' photo buckets (default us-east-1)
+//   MEDIA_BUCKET            the shared photo bucket; each site uploads under sites/<slug>/
+//   MEDIA_BASE_URL          the https address (CloudFront) that bucket is served from
+//   MEDIA_REGION            region of the photo buckets (default us-east-1)
 //   NOTIFY_FROM             verified SES sender for change-request email, e.g.
 //                           notifications@theedgeofthemap.com; unset = no email (push still goes)
 //
@@ -79,6 +81,7 @@ async function editorSecret() {
 const http = createHandler({
   control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
   siteDb: (site) => poolFor(site.connection_param),
+  media: { bucket: process.env.MEDIA_BUCKET, baseUrl: process.env.MEDIA_BASE_URL },
   async verifyToken(token) {
     if (decodeProtectedHeader(token).alg === 'HS256') {
       const { payload } = await jwtVerify(token, await editorSecret(), { issuer: EDITOR_ISSUER, algorithms: ['HS256'] })

@@ -3,14 +3,23 @@
 // ever reaches storage. The longest edge is capped, then quality and, if still
 // needed, size step down until the file is inside the budget.
 
-const MAX_EDGE = 2400
-const BUDGET = 900 * 1024 // bytes; a full-width photo rarely needs more
-const STEPS = [
-  { edge: MAX_EDGE, quality: 0.86 },
-  { edge: MAX_EDGE, quality: 0.76 },
-  { edge: 1920, quality: 0.74 },
-  { edge: 1600, quality: 0.7 },
-  { edge: 1280, quality: 0.66 },
+// Three ceilings. `standard` covers StoryShaped's widest photo (760 CSS px on a
+// 2x screen, ADR-0005); larger is stored, and downloaded by every visitor, for
+// nothing. `wide` is for a field marked "wide" in the schema: a banner or
+// full-bleed background drawn across the whole screen. `full` is the owner's
+// override ("Sharper") when a photo looks soft at the standard size.
+export const LIMITS = {
+  standard: { edge: 1600, budget: 600 * 1024 },
+  wide: { edge: 2560, budget: 1200 * 1024 },
+  full: { edge: 3200, budget: 2500 * 1024 },
+}
+// Quality first, then size, steps down from the ceiling until the file fits.
+const steps = (edge) => [
+  { edge, quality: 0.86 },
+  { edge, quality: 0.76 },
+  { edge: Math.round(edge * 0.875), quality: 0.72 },
+  { edge: Math.round(edge * 0.8), quality: 0.68 },
+  { edge: Math.round(edge * 0.64), quality: 0.64 },
 ]
 
 async function encode(bitmap, edge, quality) {
@@ -25,14 +34,15 @@ async function encode(bitmap, edge, quality) {
   return { blob, width, height }
 }
 
-export async function prepareImage(file) {
+export async function prepareImage(file, limit = 'standard') {
+  const { edge, budget } = LIMITS[limit] ?? LIMITS.standard
   if (!file.type.startsWith('image/')) throw new Error('That file is not a photo.')
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     let out = null
-    for (const step of STEPS) {
+    for (const step of steps(edge)) {
       out = await encode(bitmap, step.edge, step.quality)
-      if (out.blob.size <= BUDGET) break
+      if (out.blob.size <= budget) break
     }
     return out
   } finally {
