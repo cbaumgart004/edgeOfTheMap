@@ -5,7 +5,7 @@
 // host's /_edit/auth rewrite.
 
 import { neonAuth } from './auth.js'
-import { mountRunes } from './runes.js'
+import { mountRunes, mountSigils } from './runes.js'
 
 const auth = neonAuth({ base: '/_edit/auth' })
 const $ = (sel) => document.querySelector(sel)
@@ -233,7 +233,7 @@ async function loadManage({ quiet = false } = {}) {
       <form class="grid" data-form="site">
         <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
         <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
-        <div><label>Own photo bucket (blank: the shared one)</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="shared" /></div>
+        <div><label>Own photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="blank: the shared one" /></div>
         <div><label>Own photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="shared" /></div>
         <div style="grid-column: 1 / -1"><label>Notes (operators only; no passwords or keys)</label>
           <textarea name="notes" rows="4" placeholder="Anything Company details has no field for…">${esc(s.notes ?? '')}</textarea></div>
@@ -488,5 +488,13 @@ for (const b of document.querySelectorAll('#signout, [data-signout]')) {
   })
 }
 
-mountRunes($('#runes-left'), $('#runes-right'))
+// The glossary at the foot, and the sigils rising in the side panes, which open it.
+const showRune = mountRunes($('#runes-body'))
+const pickRune = (n) => {
+  $('#runes').open = true
+  showRune(n)
+  $('#runes').scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+mountSigils($('#sigils-left'), 1, 12, pickRune)
+mountSigils($('#sigils-right'), 13, 24, pickRune)
 start().catch((err) => say(err.message, true))
