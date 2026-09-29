@@ -13,7 +13,7 @@ const spiritseeds = load('spiritseeds')
 const inventory = JSON.parse(readFileSync(new URL('./fixtures/inventory.json', import.meta.url), 'utf8'))
 
 describe('site schemas', () => {
-  it.each([['storyshaped', storyshaped], ['spiritseeds', spiritseeds], ['inventory fixture', inventory]])('%s is a valid schema', (_, schema) => {
+  it.each([['storyshaped', storyshaped], ['spiritseeds', spiritseeds], ['edgeofthemap', load('edgeofthemap')], ['inventory fixture', inventory]])('%s is a valid schema', (_, schema) => {
     expect(checkSchema(schema)).toEqual([])
   })
 

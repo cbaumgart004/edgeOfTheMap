@@ -76,7 +76,7 @@ describe('console API', () => {
   it('serves boot data without a login, with CORS for an allowed origin', async () => {
     const r = await setup().call('GET', `${base}/boot`, { token: null })
     expect(r.statusCode).toBe(200)
-    expect(r.json).toMatchObject({ site: 'spiritseeds', version: '0.1.0' })
+    expect(r.json).toMatchObject({ site: 'spiritseeds', version: '0.1.0', url: ORIGIN, logo: `${ORIGIN}/uploads/SpiritSeedsLogo.jpg` })
     expect(r.headers['access-control-allow-origin']).toBe(ORIGIN)
   })
 
@@ -160,6 +160,30 @@ describe('password reset lookup', () => {
     for (let i = 0; i < 5; i++) expect((await call(`a${i}@example.com`, '9.9.9.9')).status).toBe(404)
     expect((await call('a6@example.com', '9.9.9.9')).status).toBe(429)
     expect((await call('a6@example.com', '8.8.8.8')).status).toBe(404)
+  })
+})
+
+describe('sign-in help', () => {
+  it('reaches operators without a login, throttled per caller', async () => {
+    const asked = []
+    const handle = createHandler({
+      control: {
+        async query(sql, p) {
+          if (sql.startsWith('INSERT INTO change_requests')) { asked.push(p); return { rows: [{ id: 'r-1' }] } }
+          if (sql.includes('FROM operators')) return { rows: [] }
+          if (sql.includes('push_subscriptions')) return { rows: [] }
+          throw new Error(sql)
+        },
+      },
+      siteDb: async () => null, verifyToken: async () => ({}), presign: async () => '', sanitize: () => (t, d) => d,
+    })
+    const call = (body) => handle({ requestContext: { http: { method: 'POST', sourceIp: '7.7.7.7' } }, rawPath: '/api/signin-help', headers: {}, body: JSON.stringify(body) })
+      .then((r) => r.statusCode)
+    expect(await call({ email: 'Owner@Example.com', body: 'The password is refused' })).toBe(201)
+    expect(asked[0]).toEqual([null, null, 'owner@example.com', null, 'The password is refused'])
+    expect(await call({ email: 'not an email' })).toBe(400)
+    for (let i = 0; i < 3; i++) await call({ email: 'a@example.com' })
+    expect(await call({ email: 'a@example.com' })).toBe(429)
   })
 })
 

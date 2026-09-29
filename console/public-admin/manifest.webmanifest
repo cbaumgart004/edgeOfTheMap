@@ -1,6 +1,6 @@
 {
-  "name": "Edge of the Map Console",
-  "short_name": "Edge of the Map",
+  "name": "Admin Console",
+  "short_name": "Admin Console",
   "start_url": "/?manage",
   "scope": "/",
   "display": "standalone",

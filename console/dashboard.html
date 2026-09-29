@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Edge of the Map Console</title>
+  <title>Admin Console</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <!-- Icons are the two heads from the Edge of the Map logo (edgeOfTheMap/src/assets/logo.png). -->
   <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
@@ -11,13 +11,26 @@
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
-    :root { --bg: #f4f1ea; --surface: #fffdf8; --ink: #1f1c17; --muted: #6b6457; --line: #ddd5c4; --accent: #3d5a47; --accent-ink: #fff; --danger: #a33b2b; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #14130f; --surface: #1e1c17; --ink: #ede7da; --muted: #a79f8f; --line: #3a362d; --accent: #8fb39a; --accent-ink: #14130f; --danger: #e27d6c; } }
+    /* Edge of the Map's two faces (edgeOfTheMap/src/App.css): warm paper and teal by day, violet at night. */
+    :root { --bg: #faf8f5; --surface: #ffffff; --ink: #191510; --muted: #5f584e; --line: #e3ddd3; --accent: #0f766e; --accent-ink: #fff; --danger: #b42318; --plate: #0b0912; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #101018; --surface: #191527; --ink: #ece5ff; --muted: #aba0c6; --line: rgb(122 77 231 / .34); --accent: #a1e7f5; --accent-ink: #14101f; --danger: #f97066; } }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
     main { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 24px; }
-    h1 { font: 400 28px/1.2 'Cormorant Garamond', Georgia, serif; margin: 0 0 4px; }
+    h1 { font: 600 22px/1.25 system-ui, sans-serif; margin: 0 0 4px; letter-spacing: -.01em; }
     .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+    .powered { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; }
+    .powered img { width: 24px; height: 24px; border-radius: 6px; background: var(--plate); }
+    .powered:hover { color: var(--accent); }
+    .for-site { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+    .logo { width: 48px; height: 48px; flex: none; object-fit: contain; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+    .logo.is-initial { display: grid; place-items: center; font: 600 20px system-ui, sans-serif; color: var(--accent); background: var(--bg); }
+    .pw { position: relative; }
+    .pw input { padding-right: 72px; }
+    .pw button { position: absolute; right: 4px; top: 4px; min-height: 38px; padding: 0 10px; background: none; border: 0; color: var(--accent); font-size: 14px; }
+    .help { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .help p { font-size: 14px; color: var(--muted); margin: 8px 0; }
+    .help h3 { font-size: 14px; margin: 16px 0 0; }
     label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
     input { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
     button { min-height: 46px; padding: 0 18px; font: 600 15px system-ui, sans-serif; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
@@ -31,9 +44,9 @@
     button.is-done { background: var(--bg); color: var(--accent); }
     button.is-failed { background: var(--danger); border-color: var(--danger); color: #fff; }
     ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-    .site { display: flex; flex-direction: column; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; background: var(--bg); }
+    .site { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; background: var(--bg); }
     .site:hover { border-color: var(--accent); }
-    .site span { color: var(--muted); font-size: 13px; }
+    .site span { display: block; color: var(--muted); font-size: 13px; }
     .empty { color: var(--muted); }
     main.is-wide { max-width: 980px; }
     h2 { font: 400 22px/1.2 'Cormorant Garamond', Georgia, serif; margin: 28px 0 10px; }
@@ -54,10 +67,12 @@
 </head>
 <body>
   <main>
-    <h1>Edge of the Map</h1>
-    <p class="sub">Site editor</p>
+    <h1>Admin Console</h1>
+    <p class="sub"><a class="powered" href="https://theedgeofthemap.com" target="_blank" rel="noopener"><img src="/icon-192.png" alt="" width="24" height="24" />Powered by Edge of the Map</a></p>
 
     <section data-view="signin" hidden>
+      <!-- Filled when a site's editor sent the owner here to sign in (?handoff=<site>). -->
+      <div id="for-site" class="for-site" hidden></div>
       <form id="signin-form">
         <label for="email">Email</label>
         <input id="email" type="email" autocomplete="username" required />
@@ -65,9 +80,21 @@
         <input id="password" type="password" autocomplete="current-password" required />
         <div class="row">
           <button type="submit">Sign in</button>
-          <button type="button" id="forgot" class="link">Set or reset password</button>
+          <button type="button" id="cant" class="link" aria-expanded="false" aria-controls="help">Can’t sign in?</button>
         </div>
       </form>
+      <div id="help" class="help" hidden>
+        <h3>Forgotten or never set your password</h3>
+        <p>We email a link to set a new one to the address above.</p>
+        <button type="button" id="forgot" class="link">Email me a link</button>
+        <h3>Still stuck</h3>
+        <p>Tell Edge of the Map; it reaches us at once and we reply by email.</p>
+        <form id="help-form">
+          <label for="help-body">What happens when you try? (optional)</label>
+          <textarea id="help-body" rows="3" maxlength="1000"></textarea>
+          <div class="row"><button type="submit">Ask for help</button></div>
+        </form>
+      </div>
     </section>
 
     <section data-view="reset" hidden>
@@ -79,7 +106,7 @@
     </section>
 
     <section data-view="sites" hidden>
-      <p class="sub">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
+      <p class="meta">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
       <ul id="sites"></ul>
       <details id="request">
         <summary>Request a change</summary>

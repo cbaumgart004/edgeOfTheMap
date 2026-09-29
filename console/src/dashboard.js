@@ -61,6 +61,28 @@ const pending = (() => {
   return q.get('handoff') ? { site: q.get('handoff'), back: q.get('return') ?? '/' } : null
 })()
 
+// A site's logo, or its initial when it has none or the image fails to load.
+const initial = (name) => `<span class="logo is-initial" aria-hidden="true">${esc(String(name ?? '?').trim().charAt(0).toUpperCase())}</span>`
+const logo = (s) => s.logo
+  ? `<img class="logo" src="${esc(s.logo)}" alt="" loading="lazy" data-initial="${esc(s.name)}" />`
+  : initial(s.name)
+document.addEventListener('error', (e) => {
+  if (e.target.matches?.('img.logo')) e.target.outerHTML = initial(e.target.dataset.initial)
+}, true)
+
+// Signing in for one site: say which, with its logo. The boot answer is public.
+async function showForSite() {
+  if (!pending || !/^[a-z0-9-]+$/.test(pending.site)) return
+  try {
+    const res = await fetch(`/api/sites/${pending.site}/boot`)
+    if (!res.ok) return
+    const s = await res.json()
+    const box = $('#for-site')
+    box.innerHTML = `${logo(s)}<span>Sign in to edit <strong>${esc(s.name)}</strong></span>`
+    box.hidden = false
+  } catch { /* the plain sign-in still works */ }
+}
+
 async function loadSites() {
   const token = await auth.getToken()
   if (!token) return show('signin')
@@ -73,7 +95,7 @@ async function loadSites() {
   // admin.theedgeofthemap.com/?manage opens the management page directly.
   if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
   $('#sites').innerHTML = data.sites.length
-    ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit"><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></a></li>`).join('')
+    ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
   $('#request').hidden = !data.sites.length
   $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
@@ -87,6 +109,48 @@ async function start() {
   if (session) await loadSites()
   else show('signin')
 }
+showForSite()
+
+// Show or hide each password as typed, for phones especially.
+for (const input of document.querySelectorAll('input[type=password]')) {
+  const wrap = document.createElement('div')
+  wrap.className = 'pw'
+  input.replaceWith(wrap)
+  const toggle = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Show' })
+  toggle.setAttribute('aria-label', 'Show password')
+  toggle.addEventListener('click', () => {
+    const hidden = input.type === 'password'
+    input.type = hidden ? 'text' : 'password'
+    toggle.textContent = hidden ? 'Hide' : 'Show'
+    toggle.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password')
+    input.focus()
+  })
+  wrap.append(input, toggle)
+}
+
+$('#cant').addEventListener('click', () => {
+  const help = $('#help')
+  help.hidden = !help.hidden
+  $('#cant').setAttribute('aria-expanded', String(!help.hidden))
+})
+
+$('#help-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const email = $('#email').value.trim()
+  if (!email) { $('#email').focus(); return say('Enter the email you sign in with, above.', true) }
+  say('Sending…')
+  try {
+    const res = await fetch('/api/signin-help', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, body: $('#help-body').value }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return say(data.error ?? 'Could not send. Try again shortly.', true)
+    $('#help-body').value = ''
+    say(`Sent. We will reply to ${email}.`)
+  } catch {
+    say('Could not reach the server. Try again shortly.', true)
+  }
+})
 
 $('#sites').addEventListener('click', (e) => {
   const link = e.target.closest('a[data-site]')
@@ -110,7 +174,7 @@ $('#signin-form').addEventListener('submit', async (e) => {
 
 $('#forgot').addEventListener('click', async () => {
   const email = $('#email').value.trim()
-  if (!email) return say('Enter your email first, then choose “Set or reset password”.', true)
+  if (!email) { $('#email').focus(); return say('Enter your email above first.', true) }
   say('Checking…')
   try {
     const res = await fetch('/api/password-reset', {

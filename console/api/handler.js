@@ -31,6 +31,14 @@ function cors(origin, site) {
   }
 }
 
+// A site's logo as an absolute URL: the schema names it as a path on the
+// site's own domain.
+function logoOf(schema, origin) {
+  const logo = schema?.brand?.logo
+  if (!logo || !origin) return null
+  try { return new URL(logo, origin).href } catch { return null }
+}
+
 function parseBody(event) {
   if (!event.body) return {}
   const raw = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body
@@ -56,14 +64,15 @@ function parseBody(event) {
 export function createHandler(deps) {
   const siteCache = new Map()
   const resetTries = new Map() // ip -> timestamps, per warm container
+  const helpTries = new Map()
   const requests = createRequests(deps)
   const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => siteCache.delete(slug) })
 
-  function allowReset(ip, now = Date.now()) {
-    const recent = (resetTries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
+  function allow(tries, ip, now = Date.now()) {
+    const recent = (tries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
     if (recent.length >= 5) return false
     recent.push(now)
-    resetTries.set(ip, recent)
+    tries.set(ip, recent)
     return true
   }
 
@@ -119,13 +128,21 @@ export function createHandler(deps) {
       // asked to be told which, so look it up first, throttled per caller.
       if (method === 'POST' && path === '/api/password-reset') {
         const ip = event.requestContext?.http?.sourceIp ?? 'unknown'
-        if (!allowReset(ip)) return json(429, { error: 'Too many tries. Wait ten minutes and try again.' }, { 'cache-control': 'no-store' })
+        if (!allow(resetTries, ip)) return json(429, { error: 'Too many tries. Wait ten minutes and try again.' }, { 'cache-control': 'no-store' })
         const email = String(parseBody(event).email ?? '').trim().toLowerCase()
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(400, { error: 'Enter an email address.' }, { 'cache-control': 'no-store' })
         const { rows } = await deps.control.query('SELECT 1 FROM neon_auth."user" WHERE lower(email) = $1 LIMIT 1', [email])
         if (!rows.length) return json(404, { exists: false, email }, { 'cache-control': 'no-store' })
         await deps.requestPasswordReset(email)
         return json(200, { exists: true, sent: true, email }, { 'cache-control': 'no-store' })
+      }
+
+      // "Can't sign in?" on the admin page, before any login: goes to operators
+      // like a change request, throttled per caller like the reset link.
+      if (method === 'POST' && path === '/api/signin-help') {
+        const ip = event.requestContext?.http?.sourceIp ?? 'unknown'
+        if (!allow(helpTries, ip)) return json(429, { error: 'Too many tries. Wait ten minutes and try again.' }, { 'cache-control': 'no-store' })
+        return json(201, await requests.signinHelp(parseBody(event)), { 'cache-control': 'no-store' })
       }
 
       // Single sign-on to a site's editor. The admin page holds the Neon Auth
@@ -169,10 +186,10 @@ export function createHandler(deps) {
       if (method === 'GET' && path === '/api/me/sites') {
         const user = await verified(event)
         const { rows } = await deps.control.query(
-          `SELECT s.slug, s.name, s.allowed_origins, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
+          `SELECT s.slug, s.name, s.allowed_origins, s.schema, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
            WHERE m.user_id = $1 ORDER BY s.name`, [user.id])
         const operator = !user.site && (await deps.control.query('SELECT 1 FROM operators WHERE user_id = $1', [user.id])).rows.length > 0
-        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0] })) },
+        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0], logo: logoOf(r.schema, r.allowed_origins[0]) })) },
           { 'cache-control': 'private, no-store' })
       }
 
@@ -191,7 +208,7 @@ export function createHandler(deps) {
       // Public: what the loader and visitors need, no login.
       if (method === 'GET' && rest === '/boot') {
         return json(200, {
-          site: site.slug, name: site.name, version: site.console_version,
+          site: site.slug, name: site.name, url: site.allowed_origins[0], logo: logoOf(site.schema, site.allowed_origins[0]), version: site.console_version,
           integrity: site.console_integrity, schema: site.schema,
         }, { ...headers, 'cache-control': 'public, max-age=60' })
       }

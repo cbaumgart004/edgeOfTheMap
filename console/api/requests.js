@@ -74,13 +74,27 @@ export function createRequests(deps) {
       return { id: saved.id, created_at: saved.created_at }
     },
 
+    // "Can't sign in?" from the admin page, before any login. The email is only
+    // what was typed: an operator checks it against the login before replying.
+    async signinHelp(input) {
+      const email = String(input?.email ?? '').trim().toLowerCase()
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ServiceError(400, 'Enter the email you sign in with.')
+      const note = String(input?.body ?? '').trim().slice(0, 1000)
+      const body = note || 'Cannot sign in.'
+      const { rows: [saved] } = await q(
+        `INSERT INTO change_requests (site_id, user_id, email, page, body) VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, created_at`, [null, null, email, null, body])
+      await announce({ subject: 'Sign-in help', text: `${email} cannot sign in:\n\n${body}`, url: MANAGE_URL })
+      return { id: saved.id }
+    },
+
     // Operators: every open request, then the last 20 done.
     async list() {
       const { rows } = await q(
-        `(SELECT r.*, s.name AS site_name, s.slug AS site FROM change_requests r JOIN sites s ON s.id = r.site_id
+        `(SELECT r.*, COALESCE(s.name, 'Sign-in help') AS site_name, s.slug AS site FROM change_requests r LEFT JOIN sites s ON s.id = r.site_id
           WHERE r.status = 'open' ORDER BY r.created_at DESC)
          UNION ALL
-         (SELECT r.*, s.name AS site_name, s.slug AS site FROM change_requests r JOIN sites s ON s.id = r.site_id
+         (SELECT r.*, COALESCE(s.name, 'Sign-in help') AS site_name, s.slug AS site FROM change_requests r LEFT JOIN sites s ON s.id = r.site_id
           WHERE r.status = 'done' ORDER BY r.done_at DESC LIMIT 20)`)
       return rows.map(({ site_id, user_id, ...r }) => r)
     },

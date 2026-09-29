@@ -72,13 +72,15 @@ no login.
    `site_members`.
 4. **On the site:**
    - include the loader: `<script src="https://admin.theedgeofthemap.com/loader.js" data-site="<site>" async></script>`
-   - add the Amplify rewrite `/_edit/auth/<*>` → the Neon Auth URL (status 200), before the SPA
+   - optional, on Amplify only: the rewrite `/_edit/auth/<*>` → the Neon Auth URL (status 200), before the SPA
      catch-all, so the login cookie is first-party (ADR-0007)
    - read published documents from `GET https://admin.theedgeofthemap.com/api/sites/<site>/public/<type>`
      and render them through `window.EOTM.merge(type, docs)`; re-render on `window.EOTM.subscribe`
    - when the site has a client router, handle `eotm:navigate` (`event.detail.path`) and call
      `preventDefault()`, or the console falls back to `pushState` plus `popstate`
-   - if the site sends a Content-Security-Policy, allow `admin.theedgeofthemap.com` in `script-src`
+   - a site on another host (Edge of the Map itself is on Railway) skips the rewrite: the editor's
+    sign-in goes through the admin page and hands back an editor token (single sign-on, below)
+  - if the site sends a Content-Security-Policy, allow `admin.theedgeofthemap.com` in `script-src`
      and `connect-src`
 
 `demo/site.js` does all of the rendering half in about 100 lines.
@@ -135,6 +137,12 @@ no login.
   still goes. The Web Push key pair is generated on first use and kept in `console_settings`, so
   there is nothing to provision; deleting that row signs every device out of notifications. On
   iPhone, push works only once the admin page is added to the Home Screen (iOS 16.4+).
+- **Admin page sign-in** reads "Admin Console, Powered by Edge of the Map", since clients sign in
+  there to edit their own site. It shows the site being signed in to (`?handoff=<site>`, from the
+  public `boot`) and each site's `brand.logo` in the list. "Can't sign in?" offers the reset link and
+  a help request (`POST /api/signin-help`, no login, five per caller per ten minutes, migration
+  `005`), which reaches operators like a change request. Edge of the Map's footer links
+  "Client sign-in" to `/?manage`: an operator lands on the management page, a client on their sites.
 - **Uptime:** watched from outside AWS (UptimeRobot), so an AWS outage cannot silence its own alarm.
   Monitored: each site's production and preview address, `admin.theedgeofthemap.com/loader.js`, and
   `admin.theedgeofthemap.com/api/sites/storyshaped/boot` (the API and control database together).

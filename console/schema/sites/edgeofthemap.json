@@ -1,0 +1,54 @@
+{
+  "site": "edgeofthemap",
+  "version": 1,
+  "brand": {
+    "name": "Edge of the Map",
+    "logo": "/icon-192.png",
+    "modeSource": { "selector": "body", "attribute": "data-face", "map": { "light": "light", "mystic-mode": "dark" } },
+    "modes": {
+      "light": { "bg": "#faf8f5", "surface": "#ffffff", "ink": "#191510", "muted": "#5f584e", "line": "#e3ddd3", "accent": "#0f766e", "accentInk": "#ffffff" },
+      "dark": { "bg": "#101018", "surface": "#191527", "ink": "#ece5ff", "muted": "#aba0c6", "line": "rgba(122,77,231,0.34)", "accent": "#a1e7f5", "accentInk": "#14101f" }
+    },
+    "fonts": { "body": "system-ui, sans-serif", "heading": "'Cormorant Garamond', Georgia, serif" },
+    "radius": "10px"
+  },
+  "types": {
+    "craft": {
+      "label": "Craft",
+      "plural": "Crafts",
+      "titleField": "title",
+      "previewPath": "/",
+      "fields": [
+        { "name": "key", "kind": "select", "label": "Which craft", "required": true, "options": [
+          { "value": "keeper", "label": "The Keeper (Web & Systems)" },
+          { "value": "storyteller", "label": "The Storyteller (Audio Narration)" },
+          { "value": "wright", "label": "The Wright (Woodworking)" } ] },
+        { "name": "title", "kind": "text", "label": "Title", "help": "Blank keeps the site's own wording, for every field here." },
+        { "name": "persona", "kind": "text", "label": "Persona" },
+        { "name": "blurb", "kind": "textarea", "label": "Card text (daylight)" },
+        { "name": "loreBlurb", "kind": "textarea", "label": "Card text (mystic)" },
+        { "name": "points", "kind": "list", "label": "Points", "itemLabel": "text", "fields": [
+          { "name": "text", "kind": "text", "label": "Point", "required": true } ] },
+        { "name": "cta", "kind": "text", "label": "Button text" }
+      ]
+    },
+    "theme": {
+      "label": "Theme",
+      "plural": "Theme",
+      "singleton": true,
+      "previewPath": "/",
+      "fields": [
+        { "name": "daylight", "kind": "group", "label": "Daylight face", "fields": [
+          { "name": "background", "kind": "color", "label": "Background" },
+          { "name": "accent", "kind": "color", "label": "Accent (teal)" },
+          { "name": "ember", "kind": "color", "label": "Ember (the reveal button)" },
+          { "name": "text", "kind": "color", "label": "Text" } ] },
+        { "name": "mystic", "kind": "group", "label": "Mystic face", "fields": [
+          { "name": "background", "kind": "color", "label": "Background" },
+          { "name": "glow", "kind": "color", "label": "Glow and accent" },
+          { "name": "violet", "kind": "color", "label": "Violet (borders and haze)" },
+          { "name": "text", "kind": "color", "label": "Text" } ] }
+      ]
+    }
+  }
+}
