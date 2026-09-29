@@ -18,13 +18,13 @@ import SvgDefs from './SvgDefs.jsx'
 import HomePage from './HomePage.jsx'
 import KeeperPage from './KeeperPage.jsx'
 import StorytellerPage from './StorytellerPage.jsx'
-import { Link, useRoute } from './router.jsx'
+import { Link, navigate, useRoute } from './router.jsx'
+import { CONSOLE_SIGN_IN, SiteTheme, usePaths } from './siteConsole.jsx'
 import { useSiteMode } from './useSiteMode.js'
 import {
   BANNER,
   BURN_MS,
   GENERAL_ENQUIRY,
-  PATHS,
   navHref,
 } from './content.js'
 
@@ -139,6 +139,8 @@ function useRouteScroll(route) {
 
 function App() {
   const route = useRoute()
+  // PATHS with the owner's wording from the console on top (siteConsole.jsx).
+  const paths = usePaths()
 
   // The face axis. `light` is first, so it is the null case and takes no class —
   // the light tokens are the bare `:root, .face` block and mystic is the
@@ -157,6 +159,22 @@ function App() {
     persistence: 'none',
   })
   const isMystic = face.value === 'mystic-mode'
+
+  // The console follows the face: its panel goes dark with the mystic face
+  // (brand.modeSource in the console's edgeofthemap.json reads this).
+  useEffect(() => {
+    document.body.dataset.face = face.value
+  }, [face.value])
+
+  // The console's page links go through this router instead of a reload.
+  useEffect(() => {
+    const onNavigate = (e) => {
+      e.preventDefault()
+      navigate(e.detail.path)
+    }
+    window.addEventListener('eotm:navigate', onNavigate)
+    return () => window.removeEventListener('eotm:navigate', onNavigate)
+  }, [])
 
   // The burn holds a *clone of the outgoing page*, captured at the moment of
   // the toggle. The clone keeps the old face because `.face` re-declares the
@@ -323,7 +341,7 @@ function App() {
               classes are reused, not restyled: `.header-bar` re-declares the
               accent tokens so `.btn-primary` resolves to the plate's neon. */}
           <nav className="site-nav" aria-label="Sections">
-            {PATHS.map((path) => (
+            {paths.map((path) => (
               <Link
                 key={path.id}
                 className="btn btn-primary btn-sm"
@@ -368,6 +386,8 @@ function App() {
         toggleLabel={toggleLabel}
       />
 
+      <SiteTheme />
+
       <footer className="site-footer">
         {/* The same plate that opens the page, closing it — full width, so the
             two bookend the document. It carries the wordmark itself, which is
@@ -386,12 +406,13 @@ function App() {
 
         <div className="footer-inner">
           <nav className="footer-nav" aria-label="Footer">
-            {PATHS.map((path) => (
+            {paths.map((path) => (
               <Link key={path.id} href={navHref(path)}>
                 {path.title}
               </Link>
             ))}
             <a href={GENERAL_ENQUIRY}>Contact</a>
+            <a href={CONSOLE_SIGN_IN}>Client sign-in</a>
           </nav>
         </div>
 

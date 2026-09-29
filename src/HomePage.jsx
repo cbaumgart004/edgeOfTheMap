@@ -9,11 +9,11 @@ import React from 'react'
 import Rune from './Rune.jsx'
 import RuneFrame from './RuneFrame.jsx'
 import { Link } from './router.jsx'
+import { usePaths } from './siteConsole.jsx'
 import {
   CONTACT_EMAIL,
   GENERAL_ENQUIRY,
   MAKER_NAME,
-  PATHS,
   SITE_HOST,
   SITE_URL,
   cardHref,
@@ -104,6 +104,7 @@ function AboutLore() {
 }
 
 export default function HomePage({ isMystic, toggleMystic, toggleLabel }) {
+  const paths = usePaths()
   return (
     <main id="top">
       <section className="hero">
@@ -174,7 +175,7 @@ export default function HomePage({ isMystic, toggleMystic, toggleLabel }) {
                 honest, where three that look alike and behave differently is
                 not. When the Storyteller earns a page this needs no edit. */}
             <ul className="hero-trust">
-              {PATHS.map((path) => (
+              {paths.map((path) => (
                 <li key={path.id}>
                   {path.href ? (
                     <Link href={path.href}>
@@ -228,7 +229,7 @@ export default function HomePage({ isMystic, toggleMystic, toggleLabel }) {
             --reveal-step. As a `${i * 80}ms` literal the cascade was stuck at
             the light face's rhythm and could not slow with the mystic face. */}
         <div className="cards">
-          {PATHS.map((path, i) => (
+          {paths.map((path, i) => (
             <article
               key={path.id}
               id={path.id}
