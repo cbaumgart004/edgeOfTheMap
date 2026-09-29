@@ -222,9 +222,16 @@ async function loadManage({ quiet = false } = {}) {
   $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
   $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
-  renderRequests(await api('GET', '/api/manage/requests'))
   show('manage')
-  pushStatus()
+  // Requests are one part of the page: failing to load them (say, a migration
+  // not yet run) must not hide the sites, versions and logins above.
+  try {
+    renderRequests(await api('GET', '/api/manage/requests'))
+  } catch (err) {
+    $('#m-req-count').textContent = ''
+    $('#m-requests').innerHTML = `<li class="empty">Requests could not load: ${esc(err.message)}</li>`
+  }
+  pushStatus().catch(() => {})
   if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
 }
 
