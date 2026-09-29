@@ -56,4 +56,20 @@ describe('console in a page', () => {
     expect((await store.list('event'))[0].status).toBe('draft')
     expect(host.textContent).toMatch(/required/)
   })
+
+  it('links home to the dashboard and labels the preview toggle', async () => {
+    localStorage.clear()
+    const host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()}
+      dashboard="https://admin.theedgeofthemap.com" onClose={() => {}} />))
+    await tick()
+    expect(host.querySelector('a[aria-label="Back to your dashboard"]').href).toBe('https://admin.theedgeofthemap.com/')
+
+    const preview = byText(host, 'button', 'Preview')
+    await act(async () => preview.click())
+    expect(preview.getAttribute('aria-pressed')).toBe('true')
+    expect(preview.textContent).toBe('Edit')
+    expect(host.querySelector('.eotm-sheet').classList.contains('is-peek')).toBe(true)
+  })
 })

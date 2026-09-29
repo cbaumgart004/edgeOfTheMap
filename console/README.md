@@ -23,7 +23,7 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   re-renders from the draft before anything is saved. Autosave follows 800 ms after the last change.
   Draft and live are separate: nothing reaches visitors until Publish.
 - **Phones first.** A bottom sheet with three heights (a one-line banner, half screen, nearly full);
-  drag the grip or tap the title to change it. **Peek** (◐) fades the sheet so the page under it shows.
+  drag the grip or tap the title to change it. **Preview** hides the sheet but its header so the page under it shows and takes taps; it reads **Edit** while on. On the home screen, ← returns to the admin dashboard (0.1.5+).
   On a screen 1024 px or wider the same panel docks right.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
   "Use their version" or "Keep mine" instead of silently overwriting.

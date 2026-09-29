@@ -33,6 +33,8 @@ export function mount({ schema, bridge, apiBase, authBase, local = false }) {
     bridge.clear()
     bridge.editing = false
   }
-  root.render(<App schema={schema} store={store} bridge={bridge} auth={auth} onClose={unmount} />)
+  // The admin page the owner came from; none in local mode.
+  const dashboard = local ? null : apiBase
+  root.render(<App schema={schema} store={store} bridge={bridge} auth={auth} dashboard={dashboard} onClose={unmount} />)
   return { unmount, store }
 }

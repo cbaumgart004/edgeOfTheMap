@@ -13,7 +13,7 @@
   -webkit-text-size-adjust: 100%;
 }
 .eotm-root *, .eotm-root *::before, .eotm-root *::after { box-sizing: border-box; }
-.eotm-root :where(button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i) {
+.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i) {
   all: unset; box-sizing: border-box;
 }
 .eotm-root :where(ul, ol, section, header, form, fieldset, p, li) { display: block; }
@@ -76,6 +76,14 @@
 .eotm-icon { min-width: 40px; min-height: 40px; border-radius: 50%; font-size: 17px; color: var(--eotm-ink); }
 .eotm-icon:hover, .eotm-icon.is-on { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); }
 .eotm-icon[disabled] { opacity: 0.3; cursor: default; }
+/* Preview: labelled, because a bare icon means nothing on a phone, where there is no tooltip. */
+.eotm-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; flex: none;
+  border: 1px solid var(--eotm-line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--eotm-ink);
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.eotm-pill svg { display: block; }
+.eotm-pill:hover, .eotm-pill.is-on { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); border-color: var(--eotm-accent); }
 
 .eotm-btn {
   min-height: 42px; padding: 0 16px; border-radius: var(--eotm-radius);

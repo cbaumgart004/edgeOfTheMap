@@ -83,7 +83,7 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
 
 // ---------------------------------------------------------------- app
 
-export default function App({ schema, store, bridge, auth, onClose }) {
+export default function App({ schema, store, bridge, auth, dashboard, onClose }) {
   const mode = useBrandMode(schema.brand)
   const wide = useWide()
   const [size, setSize] = useState(wide ? 'full' : 'half')
@@ -104,12 +104,21 @@ export default function App({ schema, store, bridge, auth, onClose }) {
       {view.name !== 'home' && (
         <button type="button" className="eotm-icon" aria-label="Back" onClick={() => setView(view.name === 'edit' ? { name: 'list', type: view.type } : { name: 'home' })}>←</button>
       )}
+      {view.name === 'home' && dashboard && (
+        <a className="eotm-icon" href={dashboard} aria-label="Back to your dashboard" title="Back to your dashboard">←</a>
+      )}
       {view.name === 'home' && schema.brand.logo && <img className="eotm-logo" src={schema.brand.logo} alt="" />}
       <button type="button" className="eotm-title" onClick={() => setSize(size === 'bar' ? 'half' : 'bar')} aria-expanded={size !== 'bar'}>
         <strong>{title}</strong>
         {view.saveState && <span className={`eotm-save is-${view.saveState}`}>{view.saveState === 'saving' ? 'Saving…' : view.saveState === 'saved' ? 'Saved' : view.saveState === 'error' ? 'Not saved' : ''}</span>}
       </button>
-      <button type="button" className={`eotm-icon${peek ? ' is-on' : ''}`} aria-pressed={peek} aria-label="Peek at the page" title="Peek at the page" onClick={() => setPeek((p) => !p)}>◐</button>
+      <button type="button" className={`eotm-pill${peek ? ' is-on' : ''}`} aria-pressed={peek}
+        title={peek ? 'Show the editor again' : 'Hide the editor to see the page under it'} onClick={() => setPeek((p) => !p)}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+        </svg>
+        {peek ? 'Edit' : 'Preview'}
+      </button>
       {!wide && <button type="button" className="eotm-icon" aria-label={size === 'full' ? 'Shrink editor' : 'Expand editor'} onClick={() => setSize(size === 'full' ? 'half' : 'full')}>{size === 'full' ? '▾' : '▴'}</button>}
       <button type="button" className="eotm-icon" aria-label="Close editor" onClick={onClose}>✕</button>
     </header>
