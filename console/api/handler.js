@@ -222,7 +222,10 @@ export function createHandler(deps) {
         return json(err.status, { error: err.message, errors: err.errors, current: err.current }, headers)
       }
       console.error('[console-api]', err)
-      return json(500, { error: 'Something went wrong on our side.' }, headers)
+      // The management page is operator-only (checked before any other query),
+      // and its logs are not to hand, so it shows the cause.
+      const detail = path.startsWith('/api/manage') ? ` (${err.message})` : ''
+      return json(500, { error: `Something went wrong on our side.${detail}` }, headers)
     }
   }
 }

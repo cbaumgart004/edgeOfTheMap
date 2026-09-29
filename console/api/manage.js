@@ -26,7 +26,7 @@ export function createManage(deps, { onSiteChange }) {
   }
 
   async function userByEmail(email) {
-    const { rows } = await q('SELECT id, email, name FROM neon_auth."user" WHERE lower(email) = $1', [email])
+    const { rows } = await q('SELECT id::text AS id, email, name FROM neon_auth."user" WHERE lower(email) = $1', [email])
     return rows[0] ?? null
   }
 
@@ -46,11 +46,11 @@ export function createManage(deps, { onSiteChange }) {
     const sites = (await q(`SELECT id, slug, name, repo, allowed_origins, console_version, media_bucket, media_base_url, updated_at
                             FROM sites ORDER BY name`)).rows
     const members = (await q(`SELECT m.site_id, m.user_id, m.role, u.email, u.name
-                              FROM site_members m LEFT JOIN neon_auth."user" u ON u.id = m.user_id
+                              FROM site_members m LEFT JOIN neon_auth."user" u ON u.id::text = m.user_id
                               ORDER BY u.email`)).rows
-    const operators = (await q(`SELECT o.user_id, u.email FROM operators o LEFT JOIN neon_auth."user" u ON u.id = o.user_id
+    const operators = (await q(`SELECT o.user_id, u.email FROM operators o LEFT JOIN neon_auth."user" u ON u.id::text = o.user_id
                                 ORDER BY u.email`)).rows
-    const logins = (await q('SELECT id, email, name, "createdAt" AS created_at FROM neon_auth."user" ORDER BY email')).rows
+    const logins = (await q('SELECT id::text AS id, email, name FROM neon_auth."user" ORDER BY email')).rows
     return {
       sites: sites.map(({ id, allowed_origins, ...s }) => ({
         ...s, origins: allowed_origins, members: members.filter((m) => m.site_id === id).map(({ site_id, ...m }) => m),
