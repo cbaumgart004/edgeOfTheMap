@@ -25,10 +25,15 @@ async function api(method, path, body) {
   if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`)
   return data
 }
+// A toast pinned to the bottom of the screen, so it is seen however far down
+// the page the owner is. Confirmations fade; errors stay until the next message.
+let sayTimer = null
 function say(msg, isError = false) {
   const el = $('#msg')
+  clearTimeout(sayTimer)
   el.textContent = msg ?? ''
   el.className = isError ? 'msg is-error' : 'msg'
+  if (msg && !isError && !/…$/.test(msg)) sayTimer = setTimeout(() => { el.textContent = '' }, 4000)
 }
 
 // Trades this page's sign-in for an editor token for one site and goes there
@@ -149,7 +154,24 @@ async function loadManage() {
   show('manage')
 }
 
-const run = (fn) => (e) => { e.preventDefault(); fn(e).catch((err) => say(err.message, true)) }
+// Runs a form's action with its submit button showing the outcome in place:
+// "Saving…", then "Saved" or "Not saved", as well as the toast.
+const run = (fn) => async (e) => {
+  e.preventDefault()
+  const form = e.target.closest?.('form')
+  const btn = form?.querySelector('button[type=submit], button:not([type])')
+  const label = btn?.textContent
+  const mark = (text, cls) => { if (!btn || !btn.isConnected) return; btn.textContent = text; btn.className = cls; btn.disabled = text === 'Saving…' }
+  mark('Saving…', '')
+  try {
+    await fn(e)
+    mark('Saved', 'is-done')
+  } catch (err) {
+    say(err.message, true)
+    mark('Not saved', 'is-failed')
+  }
+  setTimeout(() => mark(label, ''), 2500)
+}
 
 $('#manage-open').addEventListener('click', run(loadManage))
 $('#manage-back').addEventListener('click', run(async () => { say(''); await loadSites() }))

@@ -17,8 +17,13 @@
     button { min-height: 46px; padding: 0 18px; font: 600 15px system-ui, sans-serif; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
     button.link { background: none; border: 0; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; font-weight: 500; }
     .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
-    .msg { min-height: 1.5em; margin: 14px 0 0; font-size: 14px; color: var(--muted); }
-    .msg.is-error { color: var(--danger); }
+    .msg { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10;
+      width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 12px 16px; border-radius: 10px; font-size: 14px;
+      background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgb(0 0 0 / .25); }
+    .msg:empty { display: none; }
+    .msg.is-error { background: var(--danger); color: #fff; }
+    button.is-done { background: var(--bg); color: var(--accent); }
+    button.is-failed { background: var(--danger); border-color: var(--danger); color: #fff; }
     ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
     .site { display: flex; flex-direction: column; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; background: var(--bg); }
     .site:hover { border-color: var(--accent); }
