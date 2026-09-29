@@ -87,7 +87,7 @@ export function mountSigils(pane, from, to, pick) {
     <div class="rise">${runes.map((r, i) => `<button type="button" class="sigil" data-rune="${from + i}" style="--i:${i};--n:${runes.length}"
       aria-label="${from + i}. ${esc(r.name)}"><span><b aria-hidden="true">${r.glyph}</b><em>${esc(r.name)}</em></span></button>`).join('')}</div>
     <div class="singe" aria-hidden="true"></div>
-    <div class="fire" aria-hidden="true">${bits(7)}</div>
+    <div class="fire" aria-hidden="true">${bits(13)}</div>
     <div class="embers" aria-hidden="true">${bits(9)}</div>`
   pane.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-rune]')
