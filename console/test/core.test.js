@@ -7,9 +7,13 @@ import { createMemoryRepo } from '../core/repo-memory.js'
 const load = (name) => JSON.parse(readFileSync(new URL(`../schema/sites/${name}.json`, import.meta.url), 'utf8'))
 const storyshaped = load('storyshaped')
 const spiritseeds = load('spiritseeds')
+// StoryShaped's inventory moved to its own Stock Item tables (StoryShaped
+// ADR-0002); its former console types stay here because they exercise money,
+// labelled photos, relations and drafts.
+const inventory = JSON.parse(readFileSync(new URL('./fixtures/inventory.json', import.meta.url), 'utf8'))
 
 describe('site schemas', () => {
-  it.each([['storyshaped', storyshaped], ['spiritseeds', spiritseeds]])('%s is a valid schema', (_, schema) => {
+  it.each([['storyshaped', storyshaped], ['spiritseeds', spiritseeds], ['inventory fixture', inventory]])('%s is a valid schema', (_, schema) => {
     expect(checkSchema(schema)).toEqual([])
   })
 
@@ -37,17 +41,17 @@ describe('documents', () => {
   })
 
   it('accepts a complete inventory item', () => {
-    expect(checkDocument(storyshaped, 'stockItem', item)).toEqual([])
+    expect(checkDocument(inventory, 'stockItem', item)).toEqual([])
   })
 
   it('requires every photo to carry a Light or Dark index', () => {
-    const errors = checkDocument(storyshaped, 'stockItem', { ...item, photos: [photo('Dusk')] })
+    const errors = checkDocument(inventory, 'stockItem', { ...item, photos: [photo('Dusk')] })
     expect(errors[0]).toMatch(/index must be one of Light, Dark/)
   })
 
   it('lets a draft be incomplete but not malformed', () => {
-    expect(checkDocument(storyshaped, 'stockItem', { name: 'Half done' }, { draft: true })).toEqual([])
-    expect(checkDocument(storyshaped, 'stockItem', { quantityOnHand: 1.5 }, { draft: true })[0]).toMatch(/whole number/)
+    expect(checkDocument(inventory, 'stockItem', { name: 'Half done' }, { draft: true })).toEqual([])
+    expect(checkDocument(inventory, 'stockItem', { quantityOnHand: 1.5 }, { draft: true })[0]).toMatch(/whole number/)
   })
 
   it('rejects a javascript: link', () => {
@@ -63,7 +67,7 @@ describe('documents', () => {
   })
 
   it('finds relations inside lists', () => {
-    const ids = relationIds(storyshaped, 'stockItem', { ...item, components: [{ _id: 'r', component: 'c1', quantityPerUnit: 2 }] })
+    const ids = relationIds(inventory, 'stockItem', { ...item, components: [{ _id: 'r', component: 'c1', quantityPerUnit: 2 }] })
     expect(ids).toEqual([{ to: 'component', id: 'c1' }])
   })
 })
@@ -105,7 +109,7 @@ describe('service', () => {
   })
 
   it('refuses to publish a link to a deleted component', async () => {
-    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const s = createService({ schema: inventory, repo: createMemoryRepo() })
     const c = await s.create({ type: 'component', data: { name: 'Bead', quantityOnHand: 10 } })
     const photo = { src: '/p.webp', alt: '', width: 1, height: 1, index: 'Light' }
     const doc = await s.create({ type: 'stockItem', data: { name: 'Earrings', sku: 'E1', description: '<p>x</p>',

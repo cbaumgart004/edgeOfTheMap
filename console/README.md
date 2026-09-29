@@ -34,7 +34,6 @@ Use cases the two schemas cover today:
 |---|---|---|
 | SpiritSeeds | New event | Events, New event: date and time, location, rich description, photo, price, booking link |
 | SpiritSeeds | Banner | Banners: rich message, button, look, show-from and hide-after times |
-| StoryShaped | New inventory item for the site, Etsy and eBay | Inventory: SKU, price, stock, components (from Components), Light/Dark photos, Etsy and eBay groups |
 | StoryShaped | Library entry | Library: title, rich entry, position |
 
 ## Layout
@@ -158,9 +157,14 @@ no login.
 
 ## Not built yet
 
-- **Syncing to Etsy and eBay** from a published inventory item, and the stock decrement reading the
-  item's components. StoryShaped's inventory lives in its own tables (`backend/server/routes/inventory.js`);
-  moving it to documents, or mapping the `stockItem` type onto those tables, is the next decision.
+- **Viewing and editing a site's schema on the admin page** (requested 2026-09-29). Today a schema
+  change is a commit to `schema/sites/<site>.json`, an API redeploy, and a Manage save that reloads
+  it. An editor must still run `checkSchema` before saving, and say which changes strand existing
+  documents (a removed type or field).
+- **Syncing to Etsy and eBay.** StoryShaped's stock is not console documents: it lives in the
+  site's own Stock Item tables (StoryShaped ADR-0002, `backend/server/utils/stock.js`), and its
+  `component` and `stockItem` types left the schema on 2026-09-29. They survive as
+  `test/fixtures/inventory.json` for the tests of money, labelled photos and relations.
 - **Migration of existing content**: SpiritSeeds' `content/*.json` and StoryShaped's `library.md`
   into documents (platform plan phase 0).
 - **Inline editing** on the page itself (platform plan layer 1). Editing is in the sheet; the page
