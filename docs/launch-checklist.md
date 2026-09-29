@@ -1,6 +1,6 @@
 # Launch checklist: the console and the three sites
 
-What is left to switch on, in order. The console code is released as **1.0.0** (the `console`
+What is left to switch on, in order. The console code is released as **1.1.0** (the `console`
 branch). Each site's own notes: StoryShaped's
 [CURRENT_WORK.md](https://github.com/cbaumgart004/storyShapedStudios/blob/preview/docs/CURRENT_WORK.md)
 and SpiritSeeds'
@@ -16,7 +16,7 @@ both on their `preview` branches.
 3. **Test tab**, one site database each inside the control project (no connection string to copy):
    - `{"eotmCreateSite": {"site": "edgeofthemap", "allowedOrigins": ["https://theedgeofthemap.com", "https://www.theedgeofthemap.com"], "owners": []}}`
    - `{"eotmCreateSite": {"site": "spiritseeds", "allowedOrigins": ["https://spiritseedswellness.com", "https://www.spiritseedswellness.com", "<SpiritSeeds preview Amplify URL>"], "owners": []}}`
-4. **admin.theedgeofthemap.com → Manage:** each site → Editor version **1.0.0** → Save (this also
+4. **admin.theedgeofthemap.com → Manage:** each site → Editor version **1.1.0** → Save (this also
    reloads its schema). Add yourself to both new sites as owner, and Melissa to SpiritSeeds.
 5. **Photo buckets** (uploads answer 503 until a site has one), per site:
    an S3 bucket, a CloudFront distribution in front of it, a bucket CORS rule allowing `PUT` from
