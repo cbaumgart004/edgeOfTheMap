@@ -96,6 +96,13 @@ no login.
 - **Sign-in on a site:** the site's Amplify rewrite `/_edit/auth/<*>` goes to the Lambda's `/auth/<*>`
   (`api/auth-proxy.js`), not to Neon Auth: Amplify adds `X-Forwarded-Host` and Neon Auth rejects any
   request carrying one. Both apps keep cookies in the cache key, and `_edit/**/*` is `private, no-store`.
+- **Management page:** operators (control table `operators`, migration `002`) see "Manage all sites"
+  on the admin page: each site's repo, editor version (pinning replaces the SQL `UPDATE sites`), photo
+  bucket and members, every login, and "Add a user", which creates a Neon Auth login with a temporary
+  password through `sign-up/email` (`api/manage.js`, `createLogin` in `api/lambda.js`). The user
+  changes it under "Change password" (`change-password`, other sessions revoked). Public "Create
+  login" is gone: logins are added by an operator. Password-reset email still does not arrive (Neon
+  Auth's shared sender, observed 2026-09-28); a custom email provider in Neon Auth is the fix.
 - **Single sign-on (console 0.1.2+):** a site link on the admin page trades the admin session's Neon
   JWT for an editor token (`POST /api/handoff`, HS256, 8 hours, bound to one site) and opens the site
   with `#eotm-token=`; the loader keeps it in `sessionStorage` and strips it from the URL. The editor's

@@ -24,6 +24,18 @@
     .site:hover { border-color: var(--accent); }
     .site span { color: var(--muted); font-size: 13px; }
     .empty { color: var(--muted); }
+    main.is-wide { max-width: 980px; }
+    h2 { font: 400 22px/1.2 'Cormorant Garamond', Georgia, serif; margin: 28px 0 10px; }
+    h3 { font-size: 16px; margin: 0; }
+    .card { border: 1px solid var(--line); border-radius: 10px; padding: 16px; background: var(--bg); display: grid; gap: 10px; }
+    .card a { color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: end; }
+    .grid label { margin: 0 0 6px; }
+    select { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .people li { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; overflow-wrap: anywhere; }
+    .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
+    details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -40,7 +52,6 @@
         <div class="row">
           <button type="submit">Sign in</button>
           <button type="button" id="forgot" class="link">Set or reset password</button>
-          <button type="button" id="signup" class="link">Create login</button>
         </div>
       </form>
     </section>
@@ -56,7 +67,51 @@
     <section data-view="sites" hidden>
       <p class="sub">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
       <ul id="sites"></ul>
-      <div class="row"><button type="button" id="signout" class="link">Sign out</button></div>
+      <details id="change">
+        <summary>Change password</summary>
+        <form id="change-form">
+          <label for="current-password">Current (or temporary) password</label>
+          <input id="current-password" type="password" autocomplete="current-password" required />
+          <label for="changed-password">New password</label>
+          <input id="changed-password" type="password" autocomplete="new-password" minlength="8" required />
+          <div class="row"><button type="submit">Change password</button></div>
+        </form>
+      </details>
+      <div class="row">
+        <button type="button" id="manage-open" class="link" hidden>Manage all sites</button>
+        <button type="button" id="signout" class="link">Sign out</button>
+      </div>
+    </section>
+
+    <section data-view="manage" hidden>
+      <div class="row" style="margin-top:0"><button type="button" id="manage-back" class="link">← Your sites</button></div>
+      <h2>Sites</h2>
+      <ul id="m-sites"></ul>
+
+      <h2>Add a user</h2>
+      <form id="m-user" class="card">
+        <div class="grid">
+          <div><label for="mu-email">Email</label><input id="mu-email" type="email" required /></div>
+          <div><label for="mu-name">Name</label><input id="mu-name" /></div>
+          <div><label for="mu-pass">Temporary password</label><input id="mu-pass" minlength="8" autocomplete="off" /></div>
+          <div><button type="button" id="mu-gen" class="link">Generate one</button></div>
+          <div><label for="mu-site">Site</label><select id="mu-site"></select></div>
+          <div><label for="mu-role">Role</label><select id="mu-role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
+        </div>
+        <p class="meta">An existing login is only given the site; its password is not changed. Pass the temporary password on privately; they change it here after signing in.</p>
+        <div><button type="submit">Add user</button></div>
+        <p id="mu-result" class="note" hidden></p>
+      </form>
+
+      <h2>Operators</h2>
+      <ul id="m-ops" class="people"></ul>
+      <form id="m-op" class="row">
+        <input id="mo-email" type="email" placeholder="Email of an existing login" required style="flex:1" />
+        <button type="submit">Make operator</button>
+      </form>
+
+      <h2>Logins</h2>
+      <ul id="m-logins" class="people"></ul>
     </section>
 
     <p id="msg" class="msg" role="status"></p>

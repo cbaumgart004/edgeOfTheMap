@@ -12,6 +12,18 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 function show(id) {
   for (const el of document.querySelectorAll('[data-view]')) el.hidden = el.dataset.view !== id
+  document.querySelector('main').classList.toggle('is-wide', id === 'manage')
+}
+
+async function api(method, path, body) {
+  const token = await auth.getToken()
+  if (!token) { show('signin'); throw new Error('Sign in again.') }
+  const res = await fetch(path, {
+    method, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`)
+  return data
 }
 function say(msg, isError = false) {
   const el = $('#msg')
@@ -52,6 +64,7 @@ async function loadSites() {
   if (res.status === 401) return show('signin')
   const data = await res.json()
   $('#who').textContent = data.email ?? ''
+  $('#manage-open').hidden = !data.operator
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit"><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></a></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
@@ -103,19 +116,94 @@ $('#forgot').addEventListener('click', async () => {
   }
 })
 
-$('#signup').addEventListener('click', async () => {
-  const email = $('#email').value.trim()
-  const password = $('#password').value
-  if (!email || password.length < 8) return say('Enter your email and a password of at least 8 characters, then choose “Create login”.', true)
-  say('Creating your login…')
-  try {
-    await auth.signUp(email, password)
-    say('')
-    await loadSites()
-  } catch (err) {
-    say(/exist/i.test(err.message) ? `A login already uses ${email}. Sign in instead.` : err.message, true)
+// Management page (operators): every site, its editor version, photo storage and members.
+let state = null
+async function loadManage() {
+  say('Loading…')
+  state = await api('GET', '/api/manage')
+  say('')
+  const versions = state.releases.map((r) => r.version).reverse()
+  $('#m-sites').innerHTML = state.sites.map((s) => `
+    <li class="card" data-slug="${esc(s.slug)}">
+      <h3>${esc(s.name)}</h3>
+      <p class="meta">${s.origins.map((o) => `<a href="${esc(o)}" target="_blank" rel="noopener">${esc(o.replace(/^https:\/\//, ''))}</a>`).join(' · ')}
+        ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}</p>
+      <form class="grid" data-form="site">
+        <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
+        <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+        <div><label>Photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="not set up" /></div>
+        <div><label>Photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="https://…" /></div>
+        <div><button type="submit">Save</button></div>
+      </form>
+      <ul class="people">${s.members.map((m) => `<li><span>${esc(m.email ?? m.user_id)} · ${esc(m.role)}</span>
+        <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button></li>`).join('') || '<li class="empty">No members.</li>'}</ul>
+      <form class="grid" data-form="member">
+        <div><label>Add an existing login</label><input name="email" type="email" required placeholder="email" /></div>
+        <div><label>Role</label><select name="role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
+        <div><button type="submit">Add</button></div>
+      </form>
+    </li>`).join('')
+  $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
+  $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
+  $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
+  show('manage')
+}
+
+const run = (fn) => (e) => { e.preventDefault(); fn(e).catch((err) => say(err.message, true)) }
+
+$('#manage-open').addEventListener('click', run(loadManage))
+$('#manage-back').addEventListener('click', run(async () => { say(''); await loadSites() }))
+
+$('#m-sites').addEventListener('submit', run(async (e) => {
+  const form = e.target
+  const slug = form.closest('[data-slug]').dataset.slug
+  const f = Object.fromEntries(new FormData(form))
+  if (form.dataset.form === 'site') {
+    await api('PUT', `/api/manage/sites/${slug}`, f)
+    say('Saved. Sites pick up a new editor version within a minute.')
+  } else {
+    await api('POST', `/api/manage/sites/${slug}/members`, f)
+    say('Added.')
   }
+  await loadManage()
+}))
+$('#m-sites').addEventListener('click', (e) => {
+  const id = e.target.dataset?.remove
+  if (!id) return
+  const slug = e.target.closest('[data-slug]').dataset.slug
+  run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage() })(e)
 })
+
+$('#mu-gen').addEventListener('click', () => {
+  const words = new Uint32Array(3)
+  crypto.getRandomValues(words)
+  $('#mu-pass').value = [...words].map((w) => w.toString(36)).join('-')
+})
+$('#m-user').addEventListener('submit', run(async () => {
+  const body = { email: $('#mu-email').value, name: $('#mu-name').value, password: $('#mu-pass').value, site: $('#mu-site').value || undefined, role: $('#mu-role').value }
+  const r = await api('POST', '/api/manage/users', body)
+  const out = $('#mu-result')
+  out.hidden = false
+  out.textContent = r.created
+    ? `Created ${r.email}. Give them the temporary password privately and send them to admin.theedgeofthemap.com; they can change it under “Change password”.`
+    : `${r.email} already had a login; ${body.site ? 'it now has the site. Its password is unchanged.' : 'nothing changed.'}`
+  $('#mu-pass').value = ''
+  await loadManage()
+}))
+$('#m-op').addEventListener('submit', run(async () => {
+  await api('POST', '/api/manage/operators', { email: $('#mo-email').value })
+  $('#mo-email').value = ''
+  say('Operator added.')
+  await loadManage()
+}))
+
+$('#change-form').addEventListener('submit', run(async () => {
+  await auth.changePassword($('#current-password').value, $('#changed-password').value)
+  $('#current-password').value = ''
+  $('#changed-password').value = ''
+  $('#change').open = false
+  say('Password changed. Other devices are signed out.')
+}))
 
 $('#reset-form').addEventListener('submit', async (e) => {
   e.preventDefault()

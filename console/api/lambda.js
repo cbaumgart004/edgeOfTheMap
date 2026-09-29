@@ -14,6 +14,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createRemoteJWKSet, jwtVerify, SignJWT, decodeProtectedHeader } from 'jose'
 import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
@@ -74,9 +75,23 @@ const http = createHandler({
     return new SignJWT({ email, site }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
       .setIssuer(EDITOR_ISSUER).setIssuedAt().setExpirationTime(`${EDITOR_HOURS}h`).sign(await editorSecret())
   },
+  releases: async () => JSON.parse(await readFile(new URL('../releases/index.json', import.meta.url), 'utf8')),
+  // Better Auth's own sign-up, sent from the admin host (a trusted domain). The
+  // session it opens for the new login is discarded: the operator stays signed
+  // in as themselves, and the new user signs in with the temporary password.
+  async createLogin({ email, password, name }) {
+    const res = await fetch(`${authUrl.replace(/\/$/, '')}/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://admin.theedgeofthemap.com' },
+      body: JSON.stringify({ email, password, name }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.user?.id) throw new Error(`sign-up failed (${res.status}): ${data.message ?? data.code ?? 'no user returned'}`)
+    return { id: data.user.id }
+  },
   presign: ({ bucket, key, contentType, bytes }) =>
-    getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes,
-      CacheControl: 'public, max-age=31536000, immutable' }), { expiresIn: 300 }),
+    getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes }),
+    { expiresIn: 300 }),
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {

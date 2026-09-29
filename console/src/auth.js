@@ -58,6 +58,9 @@ export function neonAuth({ base = '/_edit/auth' } = {}) {
         return call('/forget-password', { method: 'POST', body })
       }
     },
+    async changePassword(currentPassword, newPassword) {
+      return call('/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword, revokeOtherSessions: true }) })
+    },
     async resetPassword(token, newPassword) {
       return call('/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) })
     },

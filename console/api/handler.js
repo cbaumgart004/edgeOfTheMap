@@ -10,6 +10,7 @@
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
 import { checkSchema } from '../schema/schema.js'
+import { createManage } from './manage.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/avif': 'avif' }
@@ -45,12 +46,15 @@ function parseBody(event) {
 //   verifyToken(jwt): Promise<{ id, email, site? }>   throws when invalid; `site`
 //                                                     is set on an editor token
 //   signEditorToken({ id, email, site }): Promise<string>
+//   releases(): Promise<[{ version, integrity }]>      released console versions
+//   createLogin({ email, password, name }): Promise<{ id }>   a new Neon Auth login
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
 //   sanitize(schema): (type, data) => data
 // }
 export function createHandler(deps) {
   const siteCache = new Map()
   const resetTries = new Map() // ip -> timestamps, per warm container
+  const manage = createManage(deps, { onSiteChange: (slug) => siteCache.delete(slug) })
 
   function allowReset(ip, now = Date.now()) {
     const recent = (resetTries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
@@ -137,13 +141,22 @@ export function createHandler(deps) {
         return json(200, { token, url: site.allowed_origins[0] }, { 'cache-control': 'private, no-store' })
       }
 
+      // The management page (same origin): operators only, see manage.js.
+      const mg = path.match(/^\/api\/manage(\/.*)?$/)
+      if (mg) {
+        const user = await verified(event)
+        const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
+        return json(200, await manage(method, mg[1] ?? '', body, user), { 'cache-control': 'private, no-store' })
+      }
+
       // The admin home page (same origin, so no CORS): the sites this login edits.
       if (method === 'GET' && path === '/api/me/sites') {
         const user = await verified(event)
         const { rows } = await deps.control.query(
           `SELECT s.slug, s.name, s.allowed_origins, m.role FROM site_members m JOIN sites s ON s.id = m.site_id
            WHERE m.user_id = $1 ORDER BY s.name`, [user.id])
-        return json(200, { email: user.email, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0] })) },
+        const operator = !user.site && (await deps.control.query('SELECT 1 FROM operators WHERE user_id = $1', [user.id])).rows.length > 0
+        return json(200, { email: user.email, operator, sites: rows.map((r) => ({ slug: r.slug, name: r.name, role: r.role, url: r.allowed_origins[0] })) },
           { 'cache-control': 'private, no-store' })
       }
 
