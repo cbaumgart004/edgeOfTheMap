@@ -54,6 +54,15 @@ function Field({ field, value, onChange, ctx, path }) {
     case 'richtext':
       return wrap(<RichText value={value} onChange={onChange} schema={ctx.schema} upload={ctx.upload} label={label} />, { block: true })
     case 'number':
+      // `slider: true`: a range between min and max with the value beside it and
+      // a Reset that clears it (blank keeps the site's own; `unit` labels it).
+      if (field.slider) return wrap(
+        <div className="eotm-slider">
+          <input id={id} type="range" min={field.min ?? 0} max={field.max ?? 100} step={field.step ?? 1}
+            value={value ?? field.sliderDefault ?? field.min ?? 0} onChange={(e) => onChange(Number(e.target.value))} />
+          <output htmlFor={id}>{value == null ? 'site’s own' : `${value}${field.unit ?? ''}`}</output>
+          {value != null && <button type="button" className="eotm-btn is-quiet" onClick={() => onChange(null)}>Reset</button>}
+        </div>)
       return wrap(<input id={id} className="eotm-input" type="number" inputMode={field.integer ? 'numeric' : 'decimal'} step={field.step ?? (field.integer ? 1 : 'any')}
         min={field.min} max={field.max} value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />)
     case 'money':

@@ -318,3 +318,8 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 /* A type listed inside another's menu (menuUnder), under its own heading. */
 .eotm-list-head { display: block; margin: 20px 0 8px; font: 600 16px var(--eotm-heading); }
+
+/* A number field shown as a slider (schema `slider: true`), its value beside it. */
+.eotm-slider { display: flex; align-items: center; gap: 10px; }
+.eotm-slider input[type="range"] { all: revert; flex: 1; min-width: 0; accent-color: var(--eotm-accent); }
+.eotm-slider output { min-width: 5.5em; text-align: right; font-variant-numeric: tabular-nums; color: var(--eotm-muted); }

@@ -407,45 +407,71 @@
             {
               "name": "background",
               "kind": "color",
-              "label": "Background"
+              "label": "Background",
+              "help": "Blank: #060806, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "accent",
               "kind": "color",
-              "label": "Accent (headings, links, buttons)"
+              "label": "Accent (headings, links, buttons)",
+              "help": "Blank: #00fb00, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "text",
               "kind": "color",
-              "label": "Text"
+              "label": "Text",
+              "help": "Blank: #d9f2d9, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "muted",
               "kind": "color",
-              "label": "Quiet text"
+              "label": "Quiet text",
+              "help": "Blank: #72ca72, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "glow",
               "kind": "color",
-              "label": "Glow colour"
+              "label": "Glow colour",
+              "help": "Blank: the accent, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "glowStrength",
               "kind": "number",
-              "label": "Glow strength (%)",
+              "label": "Glow strength",
               "integer": true,
               "min": 0,
               "max": 200,
-              "help": "100 is the site's glow today; 0 turns it off. Blank keeps the site's own."
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "How bright the tight glow around letters and edges is. 100% is today’s; 0% turns it off."
+            },
+            {
+              "name": "glowHaze",
+              "kind": "number",
+              "label": "Glow haze",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "Only the soft, diffuse part: the outer halo and the wash at the top of the page. 100% is today’s; lower it to calm the bloom."
             },
             {
               "name": "glowSpread",
               "kind": "number",
-              "label": "Glow reach (%)",
+              "label": "Glow reach",
               "integer": true,
               "min": 25,
-              "max": 300,
-              "help": "How far the glow spreads from each letter, apart from how bright it is. 100 is today's; 50 is a tight neon edge, 200 a wide haze. Blank keeps 100."
+              "max": 200,
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "How far every layer of the glow spreads. 100% is today’s; 50% is a tight neon edge."
             },
             {
               "name": "glowPulse",
@@ -478,45 +504,71 @@
             {
               "name": "background",
               "kind": "color",
-              "label": "Background"
+              "label": "Background",
+              "help": "Blank: #0f1512, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "accent",
               "kind": "color",
-              "label": "Accent (headings, links, buttons)"
+              "label": "Accent (headings, links, buttons)",
+              "help": "Blank: #d9ff6b (vaseline), the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "text",
               "kind": "color",
-              "label": "Text"
+              "label": "Text",
+              "help": "Blank: #eef2d9, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "muted",
               "kind": "color",
-              "label": "Quiet text"
+              "label": "Quiet text",
+              "help": "Blank: #b3ca73, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "glow",
               "kind": "color",
-              "label": "Glow colour"
+              "label": "Glow colour",
+              "help": "Blank: the accent, the site’s own. Changing a colour recolours the glow; it keeps its shape."
             },
             {
               "name": "glowStrength",
               "kind": "number",
-              "label": "Glow strength (%)",
+              "label": "Glow strength",
               "integer": true,
               "min": 0,
               "max": 200,
-              "help": "Daylight barely glows today; 100 gives it blacklight's glow. Blank keeps the site's own."
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "How bright the tight glow around letters and edges is. 100% is today’s; 0% turns it off."
+            },
+            {
+              "name": "glowHaze",
+              "kind": "number",
+              "label": "Glow haze",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "Only the soft, diffuse part: the outer halo and the wash at the top of the page. 100% is today’s; lower it to calm the bloom."
             },
             {
               "name": "glowSpread",
               "kind": "number",
-              "label": "Glow reach (%)",
+              "label": "Glow reach",
               "integer": true,
               "min": 25,
-              "max": 300,
-              "help": "How far the glow spreads from each letter, apart from how bright it is. 100 is today's; 50 is a tight neon edge, 200 a wide haze. Blank keeps 100."
+              "max": 200,
+              "step": 5,
+              "slider": true,
+              "unit": "%",
+              "sliderDefault": 100,
+              "help": "How far every layer of the glow spreads. 100% is today’s; 50% is a tight neon edge."
             },
             {
               "name": "glowPulse",
