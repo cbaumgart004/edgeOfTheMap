@@ -14,8 +14,13 @@ export function createBridge() {
   const emit = (change) => listeners.forEach((fn) => { try { fn(change) } catch (e) { console.error('[EOTM]', e) } })
 
   return {
-    version: 3,
+    version: 4,
     editing: false,
+    // Customer view: the owner sees the site as a visitor does, published
+    // documents only and no owner-only parts, with her drafts kept for when she
+    // returns. A site hides its owner-only parts while this is true and hears of
+    // a change as { type: '$preview' }.
+    previewing: false,
     // The schema the console is editing with, the owner's own types included
     // (schema/custom.js). A site renders a custom section from its fields;
     // `{ type: '$schema' }` arrives when the owner changes them.
@@ -32,6 +37,7 @@ export function createBridge() {
     },
     // The draft for one document, or null. Match by id or slug.
     draft(type, idOrSlug) {
+      if (this.previewing) return null
       for (const d of drafts.values()) {
         if (d.type === type && (d.id === idOrSlug || d.slug === idOrSlug)) return d
       }
@@ -39,6 +45,7 @@ export function createBridge() {
     },
     // Every draft of a type, including new documents not yet on the site.
     drafts(type) {
+      if (this.previewing) return []
       return [...drafts.values()].filter((d) => d.type === type)
     },
     // Overlay drafts on a list the site fetched: edited ones replace their
@@ -66,6 +73,15 @@ export function createBridge() {
       emit({ type: '$schema' })
     },
 
+    // Every type with a draft re-renders, so the page swaps between drafts and
+    // what is published without the console redrawing anything.
+    setPreviewing(on) {
+      if (this.previewing === Boolean(on)) return
+      this.previewing = Boolean(on)
+      emit({ type: '$preview' })
+      for (const type of new Set([...drafts.values()].map((d) => d.type))) emit({ type })
+    },
+
     push(doc) {
       drafts.set(`${doc.type}:${doc.id}`, doc)
       emit({ type: doc.type, id: doc.id, doc })
@@ -75,6 +91,10 @@ export function createBridge() {
       emit({ type, id, doc: null })
     },
     clear() {
+      if (this.previewing) {
+        this.previewing = false
+        emit({ type: '$preview' })
+      }
       const all = [...drafts.values()]
       drafts.clear()
       for (const d of all) emit({ type: d.type, id: d.id, doc: null })

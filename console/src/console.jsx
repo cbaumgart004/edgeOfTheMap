@@ -10,8 +10,10 @@ import { neonAuth, localAuth, editorAuth } from './auth.js'
 
 export const VERSION = __CONSOLE_VERSION__
 
-// opts: { schema, bridge, apiBase?, authBase?, local? }
-export function mount({ schema, bridge, apiBase, authBase, local = false }) {
+// opts: { schema, bridge, apiBase?, authBase?, local?, onClose? }. onClose runs
+// after the editor has gone, however it was closed (the loader shows its Edit
+// site button again).
+export function mount({ schema, bridge, apiBase, authBase, local = false, onClose }) {
   const style = document.createElement('style')
   style.dataset.eotm = VERSION
   style.textContent = css
@@ -32,6 +34,7 @@ export function mount({ schema, bridge, apiBase, authBase, local = false }) {
     style.remove()
     bridge.clear()
     bridge.editing = false
+    onClose?.()
   }
   // The admin page the owner came from; none in local mode.
   const dashboard = local ? null : apiBase

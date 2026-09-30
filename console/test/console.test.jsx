@@ -66,10 +66,10 @@ describe('console in a page', () => {
     await tick()
     expect(host.querySelector('a[aria-label="Back to your dashboard"]').href).toBe('https://admin.theedgeofthemap.com/')
 
-    const preview = byText(host, 'button', 'Preview')
+    const preview = byText(host, 'button', 'Preview current changes')
     await act(async () => preview.click())
     expect(preview.getAttribute('aria-pressed')).toBe('true')
-    expect(preview.textContent).toBe('Edit')
+    expect(preview.textContent).toBe('Back to editing')
     expect(host.querySelector('.eotm-sheet').classList.contains('is-peek')).toBe(true)
   })
 

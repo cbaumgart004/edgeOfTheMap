@@ -106,6 +106,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const wide = useWide()
   const [size, setSize] = useState(wide ? 'full' : 'half')
   const [peek, setPeek] = useState(false)
+  // Customer view: the editor steps aside and the page shows only what is
+  // published, as a visitor sees it (bridge.setPreviewing). Drafts are kept.
+  const [customer, setCustomer] = useState(false)
+  useEffect(() => { bridge.setPreviewing?.(customer) }, [bridge, customer])
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
   const [view, setView] = useState({ name: 'home' })
@@ -145,15 +149,28 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         <strong>{title}</strong>
         {view.saveState && <span className={`eotm-save is-${view.saveState}`}>{view.saveState === 'saving' ? 'Saving…' : view.saveState === 'saved' ? 'Saved' : view.saveState === 'error' ? 'Not saved' : ''}</span>}
       </button>
-      <button type="button" className={`eotm-pill${peek ? ' is-on' : ''}`} aria-pressed={peek}
-        title={peek ? 'Show the editor again' : 'Hide the editor to see the page under it'} onClick={() => setPeek((p) => !p)}>
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
-        </svg>
-        {peek ? 'Edit' : 'Preview'}
-      </button>
       {!wide && <button type="button" className="eotm-icon" aria-label={size === 'full' ? 'Shrink editor' : 'Expand editor'} onClick={() => setSize(size === 'full' ? 'half' : 'full')}>{size === 'full' ? '▾' : '▴'}</button>}
       <button type="button" className="eotm-icon" aria-label="Close editor" onClick={close}>✕</button>
+      {/* Two ways to look at the page, named for what each shows: the owner's
+          changes before they are live, or the live site as customers get it. */}
+      {size !== 'bar' && (
+        <div className="eotm-views">
+          <button type="button" className={`eotm-pill${peek ? ' is-on' : ''}`} aria-pressed={peek}
+            title={peek ? 'Show the editor again' : 'Fade the editor to see your changes on the page, before they are live'} onClick={() => setPeek((p) => !p)}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+            </svg>
+            {peek ? 'Back to editing' : 'Preview current changes'}
+          </button>
+          <button type="button" className="eotm-pill" title="See the live site as your customers do: none of your unpublished changes, no editor"
+            onClick={() => { setPeek(false); setCustomer(true) }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+            Customer view
+          </button>
+        </div>
+      )}
     </header>
   )
 
@@ -250,6 +267,13 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       onGone={() => setView({ name: 'list', type: view.type })}
       onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
       focus={view.focus} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
+
+  if (customer) return (
+    <div className="eotm-root" data-eotm-mode={mode} style={style}>
+      <button type="button" className="eotm-btn is-primary eotm-return" onClick={() => setCustomer(false)}
+        title="Customer view: this is the live site. Your unpublished changes are kept.">Back to editing</button>
+    </div>
+  )
 
   return (
     <div className="eotm-root" data-eotm-mode={mode} style={style}>

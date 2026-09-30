@@ -25,8 +25,16 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   re-renders from the draft before anything is saved. Autosave follows 800 ms after the last change.
   Draft and live are separate: nothing reaches visitors until Publish.
 - **Phones first.** A bottom sheet with three heights (a one-line banner, half screen, nearly full);
-  drag the grip or tap the title to change it. **Preview** hides the sheet but its header so the page under it shows and takes taps; it reads **Edit** while on. On the home screen, ← returns to the admin dashboard (0.1.5+).
+  drag the grip or tap the title to change it. **Preview current changes** hides the sheet but its header so the page under it, drafts included, shows and takes taps; it reads **Back to editing** while on (named so in 1.2.0; **Preview** before). On the home screen, ← returns to the admin dashboard (0.1.5+).
   On a screen 1024 px or wider the same panel docks right.
+- **Edit site button (loader, live for every site).** While the browser holds an editor token for the site
+  that has not run out, every page shows an **Edit site** button bottom right that opens the editor; it
+  goes when the editor opens and comes back when it closes (from console 1.2.0, which tells the loader it
+  closed). A site with its own way in sets `data-edit-button="off"` on the loader tag.
+- **Customer view (1.2.0+).** **Customer view**, beside Preview current changes under the title, steps the editor aside and shows the site as a visitor sees
+  it: published documents only (`window.EOTM.previewing`, drafts kept, not dropped). **Back to editing**
+  returns. A site hides its owner-only parts while `previewing` is true and hears of a change as
+  `{ type: '$preview' }`. Unlike Preview current changes, which only fades the sheet, drafts leave the page.
 - **Click-to-edit and drag-to-size on the page (0.1.8+).** Pointing at a section shows an Edit
   button that opens it; its edge, a side image's edge and images in rich text drag to a new width,
   snapping to a 12-column grid or moving freely. The page marks what is editable (SCHEMA.md,
@@ -122,6 +130,8 @@ no login.
      catch-all, so the login cookie is first-party (ADR-0007)
    - read published documents from `GET https://admin.theedgeofthemap.com/api/sites/<site>/public/<type>`
      and render them through `window.EOTM.merge(type, docs)`; re-render on `window.EOTM.subscribe`
+   - hide anything only the owner should see (edit links, draft pages) while `window.EOTM.previewing` is true,
+     re-checking on the `$preview` change
    - when the site has a client router, handle `eotm:navigate` (`event.detail.path`) and call
      `preventDefault()`, or the console falls back to `pushState` plus `popstate`
    - a site on another host (Edge of the Map itself is on Railway) skips the rewrite: the editor's
