@@ -33,6 +33,10 @@ export function checkSchema(schema) {
   const types = schema.types ?? {}
   const blocks = schema.blocks ?? {}
   if (!Object.keys(types).length) errors.push('types must declare at least one type')
+  // The site's own admin pages, listed in the editor's menu.
+  for (const t of schema.tools ?? []) {
+    if (!t?.label || typeof t.path !== 'string' || !t.path.startsWith('/')) errors.push('tools: each needs a label and a path starting with /')
+  }
 
   const checkFields = (fields, where) => {
     if (!Array.isArray(fields)) return errors.push(`${where}: fields must be an array`)

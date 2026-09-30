@@ -49,8 +49,8 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   edited elsewhere between check and publish is reported and stays a draft. "Production" here is
   the published content every address of the site reads; releasing the site's code is not part of it.
 - **Types listed inside another (1.1.5+).** `menuUnder` on a type lists it inside that type's menu under its
-  own heading instead of as a card (StoryShaped: Reference Page
-  Layouts under Page layouts). Click-to-edit on a row nested in another list opens the rows around it.
+  own heading instead of as a card (StoryShaped: Library entries under Pages,
+  Reference Page Layouts under Page layouts). `tools` lists the site's own admin pages in the menu (SCHEMA.md). Click-to-edit on a row nested in another list opens the rows around it.
 - **Click-to-edit starts a missing singleton.** Edit on a part of the page whose one-of-a-kind
   document (a home page, a theme) does not exist yet creates it from the schema's defaults.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
@@ -63,7 +63,8 @@ Use cases the two schemas cover today:
 | SpiritSeeds | New event | Events, New event: date and time, location, rich description, photo, price, booking link |
 | SpiritSeeds | Banner | Banners: rich message, button, look, show-from and hide-after times |
 | StoryShaped | Library entry | Library: title, rich entry, position |
-| StoryShaped | A page | Pages: Home (slug home) or any other, made of components: Hero, Text section, Values grid, Daylight / blacklight photo, Portrait row, Artist story, Framed photo |
+| StoryShaped | A page | Pages: Home (slug home), Meet the Artist, Library, or any other, made of components: Card (the general one), Hero, Values grid, Daylight / blacklight photo, Product card |
+| StoryShaped | Inventory | Inventory in the menu (`tools`): the site's own hidden admin page |
 | StoryShaped | Glossary | Reference Page Layouts: the one at /glossary, its sections, terms, details and sources |
 
 ## Layout

@@ -109,3 +109,11 @@ version is rejected with the current document, so two tabs cannot silently overw
 Adding an optional field is safe: old documents simply lack it. Renaming a field, changing its kind or
 making it required changes existing documents, so it ships with a data migration in
 `api/migrations/site` and a `version` bump. `IF NOT EXISTS` is not a migration (platform plan §7).
+
+## Tools
+
+`"tools": [{ "label": "Inventory", "path": "/admin/inventory", "help": "…" }]` at the top of a site's
+schema lists the site's own admin pages in the editor's menu. They are not documents: choosing one
+shows that page of the site under the editor (the bridge's `navigate`). The page guards itself; the
+console only offers the way there.
+

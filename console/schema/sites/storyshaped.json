@@ -9,6 +9,13 @@
       "theme"
     ]
   },
+  "tools": [
+    {
+      "label": "Inventory",
+      "path": "/admin/inventory",
+      "help": "Stock items, counts, bills of materials; hidden from visitors"
+    }
+  ],
   "brand": {
     "name": "StoryShaped Studios",
     "logo": "/assets/StoryShapedStudiosLogo_GmailOptimized.png",
@@ -61,7 +68,8 @@
   "types": {
     "libraryArticle": {
       "label": "Library entry",
-      "plural": "Library",
+      "plural": "Library entries",
+      "menuUnder": "page",
       "titleField": "title",
       "slugFrom": "title",
       "fields": [
@@ -76,6 +84,27 @@
           "kind": "richtext",
           "label": "Entry",
           "required": true
+        },
+        {
+          "name": "sources",
+          "kind": "list",
+          "label": "Sources",
+          "itemLabel": "title",
+          "help": "Each shows as its title, with the site and address in small type beneath.",
+          "fields": [
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "Title",
+              "help": "What a reader sees, e.g. \"Victorian jewellery (Wikipedia)\". Blank: made from the address."
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Address",
+              "required": true
+            }
+          ]
         },
         {
           "name": "after",
@@ -105,12 +134,10 @@
           "label": "Sections",
           "of": [
             "hero",
-            "prose",
+            "card",
             "values",
             "photoFeature",
-            "portraits",
-            "artistStory",
-            "framedPhoto"
+            "productCard"
           ],
           "help": "The components this page is made of, in order. Arrange them side by side with its Page layout."
         }
@@ -935,10 +962,15 @@
         }
       ]
     },
-    "prose": {
-      "label": "Text section",
-      "className": "section prose-block",
+    "card": {
+      "label": "Card",
+      "className": "section",
       "fields": [
+        {
+          "name": "eyebrow",
+          "kind": "text",
+          "label": "Small heading"
+        },
         {
           "name": "heading",
           "kind": "text",
@@ -950,19 +982,57 @@
           "label": "Text"
         },
         {
-          "name": "link",
-          "kind": "group",
-          "label": "Link",
+          "name": "images",
+          "kind": "photos",
+          "label": "Images",
+          "maxItems": 6,
+          "help": "One shows large in a frame; two or more sit in a row."
+        },
+        {
+          "name": "links",
+          "kind": "list",
+          "label": "Links",
+          "itemLabel": "title",
+          "help": "Each shows as its title only, as a link.",
           "fields": [
             {
-              "name": "label",
+              "name": "title",
               "kind": "text",
-              "label": "Link text"
+              "label": "Title",
+              "required": true
             },
             {
               "name": "url",
               "kind": "url",
-              "label": "Link to"
+              "label": "Address",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "byline",
+          "kind": "text",
+          "label": "Signed",
+          "help": "e.g. Whitney Granger. Blank: no signature."
+        },
+        {
+          "name": "bylineNote",
+          "kind": "text",
+          "label": "Under the signature"
+        },
+        {
+          "name": "look",
+          "kind": "select",
+          "label": "Look",
+          "default": "text",
+          "options": [
+            {
+              "value": "text",
+              "label": "Text: heading and paragraphs, centred column"
+            },
+            {
+              "value": "story",
+              "label": "Story: a longer read, like Meet the Artist"
             }
           ]
         }
@@ -1018,85 +1088,22 @@
         }
       ]
     },
-    "portraits": {
-      "label": "Portrait row",
+    "productCard": {
+      "label": "Product card",
       "className": "section",
       "fields": [
         {
-          "name": "eyebrow",
+          "name": "listing",
+          "kind": "relation",
+          "label": "Listing",
+          "to": "listing",
+          "required": true,
+          "help": "Shows its title, first photo and price, from the Listing."
+        },
+        {
+          "name": "note",
           "kind": "text",
-          "label": "Small heading"
-        },
-        {
-          "name": "heading",
-          "kind": "text",
-          "label": "Heading"
-        },
-        {
-          "name": "photos",
-          "kind": "photos",
-          "label": "Photos",
-          "maxItems": 3,
-          "help": "Up to three across."
-        }
-      ]
-    },
-    "artistStory": {
-      "label": "Artist story",
-      "className": "section artist-body",
-      "fields": [
-        {
-          "name": "body",
-          "kind": "richtext",
-          "label": "Story"
-        },
-        {
-          "name": "signature",
-          "kind": "text",
-          "label": "Signed"
-        },
-        {
-          "name": "signatureTitle",
-          "kind": "text",
-          "label": "Under the signature"
-        },
-        {
-          "name": "links",
-          "kind": "list",
-          "label": "Press and links",
-          "itemLabel": "title",
-          "help": "Each shows as its title, with the site and address in small type beneath.",
-          "fields": [
-            {
-              "name": "title",
-              "kind": "text",
-              "label": "Title",
-              "help": "What a reader sees. Blank: made from the address."
-            },
-            {
-              "name": "url",
-              "kind": "url",
-              "label": "Address",
-              "required": true
-            }
-          ]
-        }
-      ]
-    },
-    "framedPhoto": {
-      "label": "Framed photo",
-      "className": "section",
-      "fields": [
-        {
-          "name": "image",
-          "kind": "image",
-          "label": "Photo",
-          "required": true
-        },
-        {
-          "name": "caption",
-          "kind": "text",
-          "label": "Caption"
+          "label": "Note under it"
         }
       ]
     }

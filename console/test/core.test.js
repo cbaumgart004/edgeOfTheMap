@@ -19,6 +19,13 @@ describe('site schemas', () => {
     expect(checkSchema(schema)).toEqual([])
   })
 
+  it('checks tools and menuUnder', () => {
+    const base = { site: 'x', version: 1, types: { page: { fields: [] }, entry: { fields: [], menuUnder: 'page' } } }
+    expect(checkSchema({ ...base, tools: [{ label: 'Inventory', path: '/admin/inventory' }] })).toEqual([])
+    expect(checkSchema({ ...base, tools: [{ label: 'Bad', path: 'admin' }] })).toEqual([expect.stringMatching(/tools/)])
+    expect(checkSchema({ ...base, types: { ...base.types, stray: { fields: [], menuUnder: 'nope' } } })).toEqual([expect.stringMatching(/menuUnder/)])
+  })
+
   it('rejects an unknown kind and a relation to a missing type', () => {
     const errors = checkSchema({ site: 'x', version: 1, types: { a: { fields: [
       { name: 'f', kind: 'colour' }, { name: 'r', kind: 'relation', to: 'nope' } ] } } })

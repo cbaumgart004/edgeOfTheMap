@@ -185,7 +185,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
-    onTypes={() => setView({ name: 'types' })} />
+    onTypes={() => setView({ name: 'types' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
   else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'list') body = (
     <DocList schema={schema} store={store} type={view.type} notify={notify}
@@ -330,7 +330,7 @@ function ToDeveloper({ schema, store, notify, refreshKey }) {
 // More than this many types on a phone become a dropdown instead of cards.
 const CARD_LIMIT = 6
 
-function Home({ schema, store, wide, open, onTypes }) {
+function Home({ schema, store, wide, open, onTypes, onTool }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -339,8 +339,20 @@ function Home({ schema, store, wide, open, onTypes }) {
   const types = Object.entries(schema.types).filter(([, t]) => !t.menuUnder)
   const under = (name) => Object.entries(schema.types).filter(([, t]) => t.menuUnder === name).map(([n]) => n)
   const countOf = (name) => [name, ...under(name)].reduce((n, t) => (counts[t] == null || n == null ? null : n + counts[t]), 0)
+  // The site's own admin pages the schema names (`tools`, e.g. StoryShaped's
+  // Inventory): hidden from visitors, reached from here. Opening one shows it
+  // on the page; on a phone the sheet drops to its banner so the page is seen.
+  const tools = (schema.tools ?? []).map((t) => (
+    <li key={t.path}>
+      <button type="button" className="eotm-card is-tool" onClick={() => onTool(t.path)}>
+        <strong>{t.label}</strong>
+        <span>{t.help ?? t.path}</span>
+      </button>
+    </li>
+  ))
   const extra = (
     <>
+      {tools}
       <li>
         <button type="button" className="eotm-card is-request" onClick={onTypes}>
           <strong>Types and names</strong>
