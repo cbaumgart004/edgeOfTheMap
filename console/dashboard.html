@@ -112,6 +112,14 @@
     .sigils.is-left { left: 22px; --fire-x: 36%; --fire-cq: 36cqw; }
     .sigils.is-right { right: 22px; --fire-x: 64%; --fire-cq: 64cqw; }
     .sigils > * { position: absolute; }
+    /* Phones and narrow windows: one scene fills the screen behind the card, its
+       fire centred, and the page ends with room above the fire so it is never
+       covered once scrolled to the foot. */
+    @media (max-width: 899px) {
+      body { padding-bottom: 300px; }
+      main { position: relative; z-index: 1; box-shadow: 0 10px 40px rgb(0 0 0 / .45); }
+      .sigils.is-left { display: block; inset: 0; width: auto; border: 0; border-radius: 0; z-index: 0; --fire-x: 50%; --fire-cq: 50cqw; }
+    }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
     .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }
@@ -203,6 +211,36 @@
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
     .card.is-done { opacity: .6; }
+    /* Tickets, worked like Azure DevOps items: a state chip, assignee, and a thread. */
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .tabs button { min-height: 36px; padding: 0 12px; font-size: 14px; background: var(--bg); color: var(--ink); border-color: var(--line); }
+    .tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .ticket-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+    .state::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
+    .state.is-new { --dot: #9ca3af; }
+    .state.is-active { --dot: #2563eb; }
+    .state.is-resolved { --dot: #16a34a; }
+    .state.is-closed { --dot: #6b7280; }
+    .ticket-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .ticket-controls label { margin: 0 0 4px; }
+    .ticket-controls select { min-height: 40px; padding: 6px 10px; font-size: 15px; }
+    .thread { gap: 6px; }
+    .thread li { padding: 8px 12px; border-left: 3px solid var(--line); background: var(--surface); border-radius: 0 8px 8px 0; font-size: 14px; }
+    .thread li p { margin: 2px 0 0; white-space: pre-wrap; }
+    .comment-form .row { margin-top: 8px; }
+    .comment-form label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
+    .comment-form input[type=checkbox] { width: 18px; min-height: 18px; }
+    /* Uptime monitors (UptimeRobot), one row each. */
+    .monitors { gap: 6px; }
+    .monitor { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
+    .monitor span { overflow-wrap: anywhere; }
+    .monitor .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+    .monitor.is-up .dot { background: #16a34a; }
+    .monitor.is-down .dot, .monitor.is-seems-down .dot { background: var(--danger); }
+    .monitor.is-down { border-color: var(--danger); }
+    #mine-list { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -278,6 +316,14 @@
           <div class="row"><button type="submit">Send request</button></div>
         </form>
       </details>
+      <details id="mine" hidden>
+        <summary>Your requests <span id="mine-count" class="meta"></span></summary>
+        <ul id="mine-list"></ul>
+        <div class="row">
+          <button type="button" id="me-push-on" class="link">Tell me on this device when they are answered</button>
+        </div>
+        <p id="me-push-note" class="meta"></p>
+      </details>
       <details id="change">
         <summary>Change password</summary>
         <form id="change-form">
@@ -296,13 +342,21 @@
 
     <section data-view="manage" hidden>
       <div class="row" style="margin-top:0"><button type="button" id="manage-back" class="link">← Your sites</button></div>
-      <h2>Requests <span id="m-req-count" class="meta"></span></h2>
+      <h2>Tickets <span id="m-req-count" class="meta"></span></h2>
+      <div class="tabs" role="group" aria-label="Show tickets">
+        <button type="button" data-tickets="open" aria-pressed="true">Open</button>
+        <button type="button" data-tickets="mine" aria-pressed="false">Assigned to me</button>
+        <button type="button" data-tickets="closed" aria-pressed="false">Closed</button>
+      </div>
       <ul id="m-requests"></ul>
       <div class="row">
         <button type="button" id="push-on">Turn on notifications on this device</button>
+        <button type="button" id="push-test-ticket" class="link" hidden>Test a new-ticket alert</button>
         <button type="button" id="push-test" class="link" hidden>Send a test</button>
       </div>
       <p id="push-note" class="meta"></p>
+      <h2>Monitors <span id="m-mon-count" class="meta"></span></h2>
+      <ul id="m-monitors" class="monitors"></ul>
       <h2>Sites</h2>
       <ul id="m-sites"></ul>
 

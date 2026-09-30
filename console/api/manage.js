@@ -5,7 +5,8 @@
 //
 // deps (from handler.js): control, releases(), createLogin({ email, password, name }),
 //   siteSchema(slug): the schema shipped in this package (schema/sites/<slug>.json)
-//   requests: api/requests.js (change requests and this operator's push subscriptions)
+//   requests: api/requests.js (tickets and this operator's push subscriptions)
+//   monitors(): api/monitors.js, the UptimeRobot monitors (absent: none configured)
 
 import { ServiceError } from '../core/service.js'
 import { checkSchema } from '../schema/schema.js'
@@ -184,11 +185,13 @@ export function createManage(deps, { onSiteChange }) {
     if (method === 'GET' && rest === '') return overview()
     if (method === 'POST' && rest === '/users') return addUser(body)
     if (method === 'GET' && rest === '/requests') return deps.requests.list()
-    const req = rest.match(/^\/requests\/([0-9a-f-]{36})$/i)
-    if (method === 'PUT' && req) { await deps.requests.setStatus(req[1], body.status); return { ok: true } }
+    const req = rest.match(/^\/requests\/([0-9a-f-]{36})(\/comments)?$/i)
+    if (method === 'PUT' && req && !req[2]) { await deps.requests.update(req[1], body, user); return { ok: true } }
+    if (method === 'POST' && req && req[2]) return deps.requests.comment(req[1], body, user)
+    if (method === 'GET' && rest === '/monitors') return deps.monitors ? deps.monitors() : { configured: false, monitors: [] }
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }
     if (method === 'DELETE' && rest === '/push') { await deps.requests.unsubscribe(user, body.endpoint); return { ok: true } }
-    if (method === 'POST' && rest === '/push/test') return deps.requests.test(user)
+    if (method === 'POST' && rest === '/push/test') return deps.requests.test(user, body.kind)
     if (method === 'POST' && rest === '/operators') {
       const found = await userByEmail(cleanEmail(body.email))
       if (!found) throw new ServiceError(404, 'No login uses that email. Add the user first.')

@@ -71,11 +71,12 @@ export function campfire(key) {
 }
 
 // Paints the trees and the pit into a mounted scene, again whenever the pane
-// changes size, and lights the fire. `side` is 'left' or 'right'.
+// changes size, and lights the fire. `side` is 'left' or 'right'. The fire's
+// place is the pane's --fire-x, which the phone layout centres.
 export function startScene(pane, key, side) {
-  const fireX = side === 'left' ? 0.36 : 0.64
+  const fireX = () => parseFloat(getComputedStyle(pane).getPropertyValue('--fire-x')) / 100 || (side === 'left' ? 0.36 : 0.64)
   const paintAll = () => {
-    paintTrees(pane.querySelector('canvas.trees'), key, side, fireX)
+    paintTrees(pane.querySelector('canvas.trees'), key, side, fireX())
     paintPit(pane.querySelector('canvas.pit-back'), key, 'back', PIT)
     paintPit(pane.querySelector('canvas.pit-mid'), key, 'mid', PIT)
     paintPit(pane.querySelector('canvas.pit-front'), key, 'front', PIT)

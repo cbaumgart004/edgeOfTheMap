@@ -28,6 +28,7 @@ import createDOMPurify from 'dompurify'
 import { createHandler } from './handler.js'
 import { migrate as runMigrations } from './migrate.js'
 import { register } from './register.js'
+import { createMonitors } from './monitors.js'
 import { createAuthProxy } from './auth-proxy.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
@@ -131,6 +132,11 @@ const http = createHandler({
     TTL: 24 * 60 * 60,
   }),
   generateVapid: () => webpush.generateVAPIDKeys(),
+  // Uptime monitors on the management page (monitors.js): UptimeRobot's
+  // read-only API key, a SecureString named by UPTIMEROBOT_KEY_PARAM.
+  monitors: process.env.UPTIMEROBOT_KEY_PARAM
+    ? createMonitors({ apiKey: () => secret(process.env.UPTIMEROBOT_KEY_PARAM), fetch })
+    : undefined,
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {
     const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {

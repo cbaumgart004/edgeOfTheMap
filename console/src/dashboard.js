@@ -84,6 +84,7 @@ async function showForSite() {
   } catch { /* the plain sign-in still works */ }
 }
 
+let myEmail = null
 async function loadSites() {
   const token = await auth.getToken()
   if (!token) return show('signin')
@@ -97,6 +98,7 @@ async function loadSites() {
   }
   if (pending) return handoff(pending.site, pending.back, pending.origin)
   $('#who').textContent = data.email ?? ''
+  myEmail = data.email ?? null
   $('#manage-open').hidden = !data.operator
   // admin.theedgeofthemap.com/?manage opens the management page directly.
   if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
@@ -106,6 +108,7 @@ async function loadSites() {
       (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}</li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
   $('#request').hidden = !data.sites.length
+  loadMine().catch(() => { $('#mine').hidden = true })
   $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   show('sites')
 }
@@ -266,22 +269,97 @@ async function loadManage({ quiet = false } = {}) {
     renderRequests(await api('GET', '/api/manage/requests'))
   } catch (err) {
     $('#m-req-count').textContent = ''
-    $('#m-requests').innerHTML = `<li class="empty">Requests could not load: ${esc(err.message)}</li>`
+    $('#m-requests').innerHTML = `<li class="empty">Tickets could not load: ${esc(err.message)}</li>`
   }
+  loadMonitors()
   pushStatus().catch(() => {})
   if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
 }
 
-// Change requests, open first (api/requests.js). Done ones fade and can reopen.
-function renderRequests(list) {
-  const open = list.filter((r) => r.status === 'open').length
-  $('#m-req-count').textContent = open ? `${open} open` : 'none open'
-  $('#m-requests').innerHTML = list.map((r) => `
-    <li class="card${r.status === 'done' ? ' is-done' : ''}">
-      <p class="meta">${esc(r.site_name)} · ${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(new Date(r.created_at).toLocaleString())}</p>
+// Tickets (api/requests.js), worked like Azure DevOps items: a state, an
+// operator assigned, and a thread whose comments can tell the requester.
+const STATES = [['new', 'New'], ['active', 'Active'], ['resolved', 'Resolved'], ['closed', 'Closed']]
+const stateLabel = (s) => (STATES.find(([v]) => v === s) ?? [s, s])[1]
+const when = (t) => new Date(t).toLocaleString()
+const thread = (comments, withNotified) => comments?.length
+  ? `<ul class="thread">${comments.map((c) => `<li><span class="meta">${esc(c.email ?? 'Edge of the Map')} · ${esc(when(c.created_at))}${withNotified && c.notified ? ' · requester told' : ''}</span><p>${esc(c.body)}</p></li>`).join('')}</ul>`
+  : ''
+let tickets = []
+let ticketView = 'open'
+// A re-render keeps any unsent comment.
+function renderRequests(list = tickets) {
+  tickets = list
+  const drafts = [...document.querySelectorAll('#m-requests textarea[name=body]')].map((t) => [t.closest('[data-ticket]').dataset.ticket, t.value])
+  const open = list.filter((r) => r.status !== 'closed')
+  $('#m-req-count').textContent = open.length ? `${open.filter((r) => r.status === 'new').length} new · ${open.length} open` : 'none open'
+  const shown = ticketView === 'closed' ? list.filter((r) => r.status === 'closed')
+    : ticketView === 'mine' ? open.filter((r) => myEmail && r.assigned_email === myEmail)
+    : open
+  const ops = state?.operators ?? []
+  $('#m-requests').innerHTML = shown.map((r) => `
+    <li class="card${r.status === 'closed' ? ' is-done' : ''}" data-ticket="${esc(r.id)}" id="ticket-${esc(r.id)}">
+      <div class="ticket-head"><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
+        <span class="meta">${esc(r.site_name)} · ${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(when(r.created_at))}</span></div>
       <p class="request">${esc(r.body)}</p>
-      <div><button type="button" class="link" data-req="${esc(r.id)}" data-status="${r.status === 'open' ? 'done' : 'open'}">${r.status === 'open' ? 'Mark done' : 'Reopen'}</button></div>
-    </li>`).join('') || '<li class="empty">No requests yet.</li>'
+      <div class="ticket-controls">
+        <div><label for="st-${esc(r.id)}">State</label><select id="st-${esc(r.id)}" data-field="status">${
+          STATES.map(([v, l]) => `<option value="${v}"${v === r.status ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div><label for="as-${esc(r.id)}">Assigned to</label><select id="as-${esc(r.id)}" data-field="assignedTo"><option value="">Unassigned</option>${
+          ops.map((o) => `<option value="${esc(o.user_id)}"${o.user_id === r.assigned_to ? ' selected' : ''}>${esc(o.email ?? o.user_id)}</option>`).join('')}</select></div>
+      </div>
+      ${thread(r.comments, true)}
+      <form class="comment-form" data-form="comment">
+        <label for="cm-${esc(r.id)}">Comment</label>
+        <textarea id="cm-${esc(r.id)}" name="body" rows="2" maxlength="4000" required></textarea>
+        <div class="row"><label class="check"><input type="checkbox" name="notify" ${r.email ? 'checked' : 'disabled'} /> Tell ${esc(r.email ?? 'the requester')}</label>
+          <button type="submit">Comment</button></div>
+      </form>
+    </li>`).join('') || `<li class="empty">${{ closed: 'No closed tickets.', mine: 'Nothing assigned to you.' }[ticketView] ?? 'No open tickets.'}</li>`
+  for (const [id, text] of drafts) {
+    const t = document.querySelector(`[data-ticket="${CSS.escape(id)}"] textarea[name=body]`)
+    if (t) t.value = text
+  }
+  // A notification opens /?manage#ticket-<id>: bring that one into view.
+  const target = location.hash.startsWith('#ticket-') && document.getElementById(location.hash.slice(1))
+  if (target) target.scrollIntoView({ block: 'center' })
+}
+
+// Uptime monitors (api/monitors.js): what UptimeRobot watches, down ones first.
+async function loadMonitors() {
+  try {
+    const r = await api('GET', '/api/manage/monitors')
+    if (!r.configured) {
+      $('#m-mon-count').textContent = ''
+      $('#m-monitors').innerHTML = '<li class="empty">Not connected: the console API has no UptimeRobot key (UPTIMEROBOT_KEY_PARAM).</li>'
+      return
+    }
+    const rank = { down: 0, 'seems down': 1, 'not checked yet': 2, up: 3, paused: 4 }
+    const list = [...r.monitors].sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name))
+    const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
+    $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up`
+    $('#m-monitors').innerHTML = list.map((m) => `<li class="monitor is-${esc(m.status.replace(/ /g, '-'))}">
+      <span class="dot" aria-hidden="true"></span>
+      <span><strong>${esc(m.name)}</strong><br><span class="meta">${esc(m.status)}${m.uptimeMonth != null ? ` · ${esc(m.uptimeMonth.toFixed(2))}% over 30 days` : ''}</span></span>
+      <a class="meta" href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open</a></li>`).join('') || '<li class="empty">No monitors.</li>'
+  } catch (err) {
+    $('#m-mon-count').textContent = ''
+    $('#m-monitors').innerHTML = `<li class="empty">Monitors could not load: ${esc(err.message)}</li>`
+  }
+}
+
+// The signed-in user's own requests and the replies to them.
+async function loadMine() {
+  const list = await api('GET', '/api/me/requests')
+  $('#mine').hidden = !list.length
+  $('#mine-count').textContent = list.length ? `(${list.filter((r) => r.status !== 'closed').length} open)` : ''
+  $('#mine-list').innerHTML = list.map((r) => `
+    <li class="card${r.status === 'closed' ? ' is-done' : ''}">
+      <div class="ticket-head"><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
+        <span class="meta">${esc(r.site_name)} · ${esc(when(r.created_at))}</span></div>
+      <p class="request">${esc(r.body)}</p>
+      ${thread(r.comments, false)}
+    </li>`).join('')
+  mePushStatus().catch(() => {})
 }
 
 // Runs a form's action with its submit button showing the outcome in place:
@@ -366,21 +444,44 @@ $('#m-sites').addEventListener('change', async (e) => {
   await loadManage({ quiet: true })
 })
 
-$('#m-requests').addEventListener('click', async (e) => {
-  const b = e.target.closest('button[data-req]')
-  if (!b) return
+// A ticket's state or assignee, changed in its card. A new state tells the
+// requester, when the ticket has someone to tell.
+$('#m-requests').addEventListener('change', async (e) => {
+  const field = e.target.dataset?.field
+  if (!field) return
+  const id = e.target.closest('[data-ticket]').dataset.ticket
+  const ticket = tickets.find((t) => t.id === id)
+  const tell = field === 'status' && Boolean(ticket?.email)
   try {
-    await api('PUT', `/api/manage/requests/${b.dataset.req}`, { status: b.dataset.status })
-    renderRequests(await api('GET', '/api/manage/requests'))
+    await api('PUT', `/api/manage/requests/${id}`, { [field]: e.target.value, notify: tell })
+    say(field === 'status' ? `Now ${stateLabel(e.target.value)}${tell ? `; ${ticket.email} is told` : ''}.` : 'Assigned.')
   } catch (err) {
     say(err.message, true)
   }
+  renderRequests(await api('GET', '/api/manage/requests').catch(() => tickets))
 })
+$('#m-requests').addEventListener('submit', run(async (e) => {
+  const form = e.target
+  const text = form.querySelector('textarea[name=body]')
+  const notify = form.querySelector('input[name=notify]').checked
+  await api('POST', `/api/manage/requests/${form.closest('[data-ticket]').dataset.ticket}/comments`, { body: text.value, notify })
+  text.value = ''
+  say(notify ? 'Commented; the requester is told.' : 'Commented.')
+  renderRequests(await api('GET', '/api/manage/requests'))
+}))
+for (const b of document.querySelectorAll('[data-tickets]')) {
+  b.addEventListener('click', () => {
+    ticketView = b.dataset.tickets
+    for (const o of document.querySelectorAll('[data-tickets]')) o.setAttribute('aria-pressed', String(o === b))
+    renderRequests()
+  })
+}
 
 $('#request-form').addEventListener('submit', run(async () => {
   await api('POST', '/api/requests', { site: $('#rq-site').value, body: $('#rq-body').value })
   $('#rq-body').value = ''
-  say('Sent to Edge of the Map. You will hear back by email.')
+  say('Sent to Edge of the Map. Replies appear under “Your requests”.')
+  await loadMine().catch(() => {})
 }))
 
 // ---------------------------------------------------------------- push
@@ -402,7 +503,8 @@ async function pushStatus() {
   const sub = await reg.pushManager.getSubscription()
   $('#push-on').textContent = sub ? 'Turn off notifications on this device' : 'Turn on notifications on this device'
   $('#push-test').hidden = !sub
-  $('#push-note').textContent = sub ? 'This device is told about every change request.' : ''
+  $('#push-test-ticket').hidden = !sub
+  $('#push-note').textContent = sub ? 'This device is told about every new ticket.' : ''
 }
 
 $('#push-on').addEventListener('click', run(async () => {
@@ -424,6 +526,43 @@ $('#push-test').addEventListener('click', run(async () => {
   const r = await api('POST', '/api/manage/push/test')
   say(`Test sent to ${r.sent} of ${r.of} of your devices.`)
 }))
+$('#push-test-ticket').addEventListener('click', run(async () => {
+  const r = await api('POST', '/api/manage/push/test', { kind: 'ticket' })
+  say(`A test new-ticket alert went to ${r.sent} of ${r.of} of your devices. Nothing was saved.`)
+}))
+
+// Anyone signed in: told on this device when their requests are answered.
+async function mePushStatus() {
+  if (!pushable) {
+    $('#me-push-on').hidden = true
+    $('#me-push-note').textContent = /iPhone|iPad/.test(navigator.userAgent)
+      ? 'To be told on this iPhone or iPad: Share → Add to Home Screen, then open it from the Home Screen.'
+      : ''
+    return
+  }
+  const sub = await (await navigator.serviceWorker.register('/sw.js')).pushManager.getSubscription()
+  $('#me-push-on').textContent = sub ? 'Stop telling me on this device' : 'Tell me on this device when they are answered'
+}
+$('#me-push-on').addEventListener('click', async () => {
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    const current = await reg.pushManager.getSubscription()
+    if (current) {
+      await api('DELETE', '/api/me/push', { endpoint: current.endpoint })
+      await current.unsubscribe()
+      say('This device will not be told.')
+    } else {
+      if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications are blocked for this site in the browser settings.')
+      const { key } = await (await fetch('/api/push/key')).json()
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) })
+      await api('POST', '/api/me/push', { subscription: sub.toJSON() })
+      say('This device will be told when your requests are answered.')
+    }
+  } catch (err) {
+    say(err.message, true)
+  }
+  await mePushStatus()
+})
 
 $('#mu-gen').addEventListener('click', () => {
   const words = new Uint32Array(3)

@@ -162,6 +162,21 @@ no login.
   still goes. The Web Push key pair is generated on first use and kept in `console_settings`, so
   there is nothing to provision; deleting that row signs every device out of notifications. On
   iPhone, push works only once the admin page is added to the Home Screen (iOS 16.4+).
+- **Tickets** (migration `009`): a request is worked like an Azure DevOps item. State New, Active,
+  Resolved or Closed; an operator assigned; a comment thread. A comment, or a state change on the
+  Manage page, tells the requester by email and push when "Tell" is ticked (a comment on a New
+  ticket makes it Active). Requesters see their own tickets and replies under "Your requests" on the
+  admin page, and can turn on push for them there (`/api/me/push`). A new ticket's push opens its
+  card (`/?manage#ticket-<id>`). "Test a new-ticket alert" pushes one to your own devices, saving
+  nothing. **Unverified:** email to a requester while SES is in the sandbox; it fails for any
+  unverified address and is logged, the push still goes.
+- **Monitors on the Manage page** (`api/monitors.js`): every UptimeRobot monitor with its status and
+  30-day uptime, read with UptimeRobot's **read-only** API key, a SecureString in SSM named by the
+  Lambda setting `UPTIMEROBOT_KEY_PARAM` (e.g. `/eotm/uptimerobot/read-key`; the role's
+  `ssm:GetParameter` on `/eotm/*` covers it). Without the setting the panel says it is not connected.
+  **Unverified:** UptimeRobot API v2 against a real key; tested against a fake of its documented shape.
+- **The campfire on phones:** below 900 px the left scene fills the screen behind the admin card,
+  fire centred (`dashboard.html`, `.sigils.is-left`).
 - **Admin page sign-in** reads "Admin Console, Powered by Edge of the Map", since clients sign in
   there to edit their own site. It shows the site being signed in to (`?handoff=<site>`, from the
   public `boot`) and each site's `brand.logo` in the list. "Can't sign in?" offers the reset link and

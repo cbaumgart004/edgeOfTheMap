@@ -64,6 +64,7 @@ function parseBody(event) {
 //                                                     media_bucket, where set, overrides it.
 //   sanitize(schema): (type, data) => data
 //   sendEmail({ to, subject, text }), sendPush(sub, payload, vapid), generateVapid()   see requests.js
+//   monitors(): see monitors.js (optional: absent means no UptimeRobot key is set)
 // }
 export function createHandler(deps) {
   const siteCache = new Map()
@@ -200,6 +201,23 @@ export function createHandler(deps) {
         if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
         const member = await authorize(event, site)
         return json(201, await requests.submit(site, member, body), { 'cache-control': 'no-store' })
+      }
+
+      // The signed-in user's own tickets, with the replies to them.
+      if (method === 'GET' && path === '/api/me/requests') {
+        const user = await verified(event)
+        return json(200, await requests.mine(user), { 'cache-control': 'private, no-store' })
+      }
+
+      // Anyone signed in on the admin page can be told about their tickets on
+      // this device; an editor token (bound to one site) cannot subscribe.
+      if (path === '/api/me/push' && (method === 'POST' || method === 'DELETE')) {
+        const user = await verified(event)
+        if (user.site) return json(403, { error: 'Sign in on the admin page.' }, { 'cache-control': 'no-store' })
+        const body = parseBody(event)
+        if (method === 'POST') await requests.subscribe(user, body.subscription)
+        else await requests.unsubscribe(user, body.endpoint)
+        return json(200, { ok: true }, { 'cache-control': 'no-store' })
       }
 
       // Web Push for operators on the admin page. The public key is public.
