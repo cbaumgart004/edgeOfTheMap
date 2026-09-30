@@ -263,6 +263,8 @@ async function loadManage({ quiet = false } = {}) {
       <form class="grid" data-form="site">
         <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
         <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+        <div style="grid-column: 1 / -1"><label>Site addresses (one per line; sign-in returns to the first unless it came from another)</label>
+          <textarea name="origins" rows="3" required>${esc(s.origins.join('\n'))}</textarea></div>
         <div><label>Own photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="blank: the shared one" /></div>
         <div><label>Own photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="shared" /></div>
         <div style="grid-column: 1 / -1"><label>Notes (operators only; no passwords or keys)</label>

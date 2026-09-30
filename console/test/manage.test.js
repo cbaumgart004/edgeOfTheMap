@@ -83,6 +83,16 @@ describe('management page API', () => {
     expect(w.updates[0].p).toEqual(['0.1.2', 'sha384-new', 'storyshaped'])
     expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { consoleVersion: '9.9.9' } })).status).toBe(400)
   })
+
+  it('sets the site addresses, first as the default, and refuses paths or http', async () => {
+    const w = world()
+    const r = await w.call('PUT', '/api/manage/sites/storyshaped', { body: { origins: 'https://ss.example\nhttps://preview.ss.example/\nhttps://ss.example' } })
+    expect(r.status).toBe(200)
+    expect(w.updates[0].p).toEqual([['https://ss.example', 'https://preview.ss.example'], 'storyshaped'])
+    for (const origins of ['', 'http://ss.example', 'https://ss.example/preview']) {
+      expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { origins } })).status).toBe(400)
+    }
+  })
 })
 
 describe('placement field', async () => {
