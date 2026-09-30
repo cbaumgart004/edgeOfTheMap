@@ -231,9 +231,11 @@ async function loadManage({ quiet = false } = {}) {
   const urlFields = profileFields.filter((f) => f.kind === 'url')
   // A save re-renders the cards; keep open whichever details were open.
   const openDetails = new Set([...document.querySelectorAll('details.company[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
+  const openSites = new Set([...document.querySelectorAll('details.site-fold[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
+  // Each site folds to its name, so a long list is quick to find a way through.
   $('#m-sites').innerHTML = state.sites.map((s) => `
-    <li class="card" data-slug="${esc(s.slug)}">
-      <h3>${esc(s.name)}</h3>
+    <li class="card" data-slug="${esc(s.slug)}"><details class="fold site-fold">
+      <summary><h3>${esc(s.name)}</h3> <span class="meta">${s.members.length} member${s.members.length === 1 ? '' : 's'} · editor ${esc(s.console_version)}${s.console_version === versions[0] ? '' : ' (behind)'}</span></summary>
       ${s.console_version === versions[0] ? '' : `<p class="behind">Editor ${esc(s.console_version)}; the newest is ${esc(versions[0])}. Choose it under Editor version and Save.</p>`}
       <p class="meta">${s.origins.map((o) => `<a href="${esc(o)}" target="_blank" rel="noopener">${esc(o.replace(/^https:\/\//, ''))}</a>`).join(' · ')}
         ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}${
@@ -273,7 +275,8 @@ async function loadManage({ quiet = false } = {}) {
         <div><label>Role</label><select name="role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
         <div><button type="submit">Add</button></div>
       </form>
-    </li>`).join('')
+    </details></li>`).join('')
+  for (const slug of openSites) document.querySelector(`[data-slug="${CSS.escape(slug)}"] details.site-fold`)?.setAttribute('open', '')
   for (const slug of openDetails) document.querySelector(`[data-slug="${CSS.escape(slug)}"] details.company`)?.setAttribute('open', '')
   $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
@@ -351,12 +354,15 @@ async function loadMonitors(pending) {
         <input id="mon-key" type="password" autocomplete="off" required placeholder="ur…" />
         <p class="meta">UptimeRobot → Integrations &amp; API → Main API keys → Read-Only API Key. It is checked, kept by the console API, and never shown again.</p>
         <div><button type="submit">Connect UptimeRobot</button></div></form></li>`
+      $('#monitors').open = true
       return
     }
     const rank = { down: 0, 'seems down': 1, 'not checked yet': 2, up: 3, paused: 4 }
     const list = [...r.monitors].sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name))
     const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
     $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up`
+    // Folded by default; a monitor that is down opens it.
+    if (down) $('#monitors').open = true
     monitorData = new Map(list.map((m) => [String(m.id), m]))
     $('#m-monitors').innerHTML = list.map(monitorRow).join('') +
       `<li class="meta"><a href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open UptimeRobot</a> · <button type="button" id="mon-disconnect" class="link">Disconnect</button></li>`
@@ -628,6 +634,20 @@ $('#request-form').addEventListener('submit', run(async () => {
 // added to the Home Screen and opened from there (iOS 16.4+).
 const pushable = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 const toKey = (b64) => Uint8Array.from(atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+// Opening the admin page reads every notification: clear the tray and the
+// badge on the app icon (sw.js sets it).
+async function markRead() {
+  if (document.visibilityState !== 'visible') return
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/')
+    for (const n of (await reg?.getNotifications()) ?? []) n.close()
+    await navigator.clearAppBadge?.()
+  } catch { /* no badge support: nothing to clear */ }
+}
+if ('serviceWorker' in navigator) {
+  markRead()
+  document.addEventListener('visibilitychange', markRead)
+}
 
 async function pushStatus() {
   if (!pushable) {

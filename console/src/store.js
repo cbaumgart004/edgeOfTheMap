@@ -38,6 +38,9 @@ export function httpStore({ apiBase, site, getToken }) {
     remove: (id, baseVersion) => call('DELETE', `/documents/${id}?baseVersion=${baseVersion}`),
     // "Request a change": emailed and pushed to Edge of the Map (api/requests.js).
     request: (input) => call('POST', '/requests', input),
+    // "To the Developer": what is not yet live, and pushing all of it (api/handler.js).
+    pending: () => call('GET', '/release'),
+    pushRelease: (input) => call('POST', '/release', input),
     // The owner's own types (schema/custom.js); answers { schema } merged.
     saveCustom: (custom) => call('PUT', '/custom-schema', { custom }),
     async upload(blob) {
@@ -73,6 +76,11 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
     unpublish: wrap((id, baseVersion) => svc.unpublish(id, { baseVersion })),
     remove: wrap((id, baseVersion) => svc.remove(id, { baseVersion })),
     listPublished: wrap((type) => svc.listPublished(type)),
+    pending: wrap(async () => ({ pending: await svc.pending() })),
+    pushRelease: wrap(async (input) => {
+      if (String(input?.request ?? '').trim()) throw new StoreError(400, 'Requests are sent from the real editor, not the demo.')
+      return { ...(await svc.publishAll()), pending: await svc.pending() }
+    }),
     // Local mode has no one to send to.
     request: async () => { throw new StoreError(400, 'Requests are sent from the real editor, not the demo.') },
     // Local mode keeps the owner's types for this page load only.

@@ -117,7 +117,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   const style = brandStyle(schema.brand, mode)
   const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
-    : view.name === 'request' ? 'Request a change' : view.name === 'types' ? 'Types and names' : schema.brand.name
+    : view.name === 'types' ? 'Types and names' : schema.brand.name
 
   const header = (
     <header className="eotm-head">
@@ -151,7 +151,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const openTarget = async ({ type, key, item }) => {
     if (!schema.types[type]) return
     try {
-      const doc = await findDoc(type, key)
+      let doc = await findDoc(type, key)
+      // A one-of-a-kind type (a home page, a theme) the owner has not started
+      // yet: start it, filled with the schema's defaults (the page as shipped).
+      if (!doc && schema.types[type].singleton) doc = await store.create({ type, data: {} })
       if (!doc) return notify('That part of the page is not in the editor yet.')
       setPeek(false)
       if (size === 'bar') setSize('half')
@@ -182,9 +185,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
-    onRequest={() => setView({ name: 'request' })} onTypes={() => setView({ name: 'types' })} />
+    onTypes={() => setView({ name: 'types' })} />
   else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
-  else if (view.name === 'request') body = <RequestChange store={store} notify={notify} onSent={() => setView({ name: 'home' })} />
   else if (view.name === 'list') body = (
     <DocList schema={schema} store={store} type={view.type} notify={notify}
       open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })} />)
@@ -199,6 +201,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <div className="eotm-root" data-eotm-mode={mode} style={style}>
       <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={wide}>
         {body}
+        {user && <ToDeveloper schema={schema} store={store} notify={notify} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
       <div ref={setOverlay} />
@@ -236,37 +239,98 @@ function SignIn({ auth, onSignedIn }) {
   )
 }
 
-// For anything the editor cannot do: it reaches Edge of the Map by email and
-// push, and waits on the management page until it is done.
-function RequestChange({ store, notify, onSent }) {
-  const [body, setBody] = useState('')
+// "To the Developer", at the foot of the editor: whether the site has changes
+// not yet live, and one place to push them and to ask Edge of the Map for
+// anything the editor cannot do. Push to Production checks every pending
+// document in the schema's release types first and publishes all of them or
+// none (core/service.js, publishAll).
+const DEV_ACTIONS = [
+  { value: 'push', label: 'Push to Production', help: 'Checks every change, then makes them all live. Nothing goes live if a check fails.' },
+  { value: 'push-request', label: 'Push and Request Changes', help: 'Makes your changes live, then sends your note to the developer.' },
+  { value: 'request', label: 'Request Changes', help: 'Sends your note to the developer. Nothing goes live.' },
+]
+
+function ToDeveloper({ schema, store, notify, refreshKey }) {
+  const [pending, setPending] = useState(null)
+  const [action, setAction] = useState('push')
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  return (
-    <form className="eotm-signin" onSubmit={async (e) => {
-      e.preventDefault()
-      setBusy(true)
-      try {
-        await store.request({ body, page: location.pathname })
-        notify('Sent to Edge of the Map. You will hear back by email.')
-        onSent()
-      } catch (err) {
-        notify(err.message)
-      } finally {
-        setBusy(false)
+  const load = useCallback(() => store.pending?.().then((r) => setPending(r.pending)).catch(() => setPending(null)), [store])
+  useEffect(() => { load() }, [load, refreshKey])
+
+  const needsNote = action !== 'push'
+  const count = pending?.length ?? 0
+  const status = pending === null ? 'Checking…' : count ? `${count} change${count === 1 ? '' : 's'} not yet pushed to production` : 'Everything is live'
+  const label = (d) => `${schema.types[d.type]?.label ?? d.type}: ${d.title}`
+
+  const send = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      if (action === 'request') {
+        await store.request({ body: note, page: location.pathname })
+        notify('Sent to the developer. You will hear back by email.')
+      } else {
+        const r = await store.pushRelease({ request: needsNote ? note : '', page: location.pathname })
+        setPending(r.pending)
+        const n = r.published.length
+        notify(r.failed.length ? `${n} pushed; ${r.failed.length} changed elsewhere meanwhile and stayed as drafts.`
+          : `${n ? `Pushed ${n} change${n === 1 ? '' : 's'}. It is live now.` : 'Nothing to push; everything is live.'}${r.request ? ' Your note went to the developer.' : ''}`)
       }
-    }}>
-      <p>Something the editor cannot do, or something that looks wrong? Describe it here. It goes to Edge of the Map with this page’s address ({location.pathname}).</p>
-      <label className="eotm-label" htmlFor="eotm-request">What would you like changed?</label>
-      <textarea id="eotm-request" className="eotm-input" rows={6} maxLength={4000} required value={body} onChange={(e) => setBody(e.target.value)} />
-      <button className="eotm-btn is-primary" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send request'}</button>
-    </form>
+      setNote('')
+    } catch (err) {
+      // A refused push names each change and what stopped it.
+      if (err.pending) setPending(err.pending)
+      notify(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <details className="eotm-dev">
+      <summary>
+        <strong>To the Developer</strong>
+        <span className={`eotm-chip ${count ? 'is-changed' : 'is-published'}`}>{status}</span>
+      </summary>
+      {count > 0 && (
+        <ul className="eotm-dev-list">
+          {pending.map((d) => (
+            <li key={d.id}>
+              <span>{label(d)}</span> <span className={`eotm-chip is-${d.status}`}>{STATUS_TEXT[d.status]}</span>
+              {[...d.errors, ...d.warnings].map((m) => <p key={m} className="eotm-error">{m}</p>)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={send}>
+        <fieldset className="eotm-dev-actions">
+          <legend className="eotm-label">What would you like to do?</legend>
+          {DEV_ACTIONS.map((a) => (
+            <label key={a.value} className="eotm-dev-action">
+              <input type="radio" name="eotm-dev-action" value={a.value} checked={action === a.value} onChange={() => setAction(a.value)} />
+              <span><strong>{a.label}</strong><small>{a.help}</small></span>
+            </label>
+          ))}
+        </fieldset>
+        {needsNote && (
+          <>
+            <label className="eotm-label" htmlFor="eotm-dev-note">What would you like changed? This page’s address ({location.pathname}) goes with it.</label>
+            <textarea id="eotm-dev-note" className="eotm-input" rows={5} maxLength={3800} required value={note} onChange={(e) => setNote(e.target.value)} />
+          </>
+        )}
+        <button className="eotm-btn is-primary" disabled={busy || (needsNote && !note.trim()) || (action === 'push' && !count)}>
+          {busy ? 'Working…' : DEV_ACTIONS.find((a) => a.value === action).label}
+        </button>
+      </form>
+    </details>
   )
 }
 
 // More than this many types on a phone become a dropdown instead of cards.
 const CARD_LIMIT = 6
 
-function Home({ schema, store, wide, open, onRequest, onTypes }) {
+function Home({ schema, store, wide, open, onTypes }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -278,12 +342,6 @@ function Home({ schema, store, wide, open, onRequest, onTypes }) {
         <button type="button" className="eotm-card is-request" onClick={onTypes}>
           <strong>Types and names</strong>
           <span>Design your own, rename the rest</span>
-        </button>
-      </li>
-      <li>
-        <button type="button" className="eotm-card is-request" onClick={onRequest}>
-          <strong>Request a change</strong>
-          <span>Anything the editor can’t do</span>
         </button>
       </li>
     </>

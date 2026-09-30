@@ -297,3 +297,18 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 /* A section just added from the palette, on the site page itself. */
 .eotm-just-added { outline: 3px solid var(--eotm-accent, #2b6cb0) !important; outline-offset: 4px; transition: outline-color 1.2s; }
+
+/* "To the Developer" at the foot of the editor (App.jsx, ToDeveloper). */
+.eotm-dev { margin: 24px 0 8px; border-top: 1px solid var(--eotm-line); padding-top: 12px; }
+.eotm-dev > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.eotm-dev > summary::-webkit-details-marker { display: none; }
+.eotm-dev > summary::before { content: '▸'; color: var(--eotm-muted); }
+.eotm-dev[open] > summary::before { content: '▾'; }
+.eotm-dev > summary strong { font-family: var(--eotm-heading); font-size: 17px; }
+.eotm-dev form { display: grid; gap: 10px; margin-top: 12px; }
+.eotm-dev-list { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; }
+.eotm-dev-actions { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.eotm-dev-action { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius, 8px); cursor: pointer; }
+.eotm-dev-action:has(input:checked) { border-color: var(--eotm-accent); }
+.eotm-dev-action span { display: grid; gap: 2px; }
+.eotm-dev-action small { color: var(--eotm-muted); font-size: 13px; }

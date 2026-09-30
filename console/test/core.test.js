@@ -165,3 +165,25 @@ describe('page-scoped suggestions and sizing', () => {
     expect(setItemField(data, 'c', 'label', (old) => `${old}!`).blocks[1].buttons[0].label).toBe('Book!')
   })
 })
+
+describe('push to production', () => {
+  it('lists what is not yet live in the release types, and publishes all or none', async () => {
+    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const good = await s.create({ type: 'page', data: { title: 'Policies' } })
+    const bad = await s.create({ type: 'page', data: { title: '' } })
+    await s.create({ type: 'libraryArticle', data: { title: 'Not a release type' } })
+
+    const pending = await s.pending()
+    expect(pending.map((d) => d.id).sort()).toEqual([good.id, bad.id].sort())
+    expect(pending.find((d) => d.id === bad.id).errors.length).toBeGreaterThan(0)
+
+    await expect(s.publishAll()).rejects.toMatchObject({ status: 422, pending: expect.any(Array) })
+    expect((await s.get(good.id)).status).toBe('draft')
+
+    await s.remove(bad.id, { baseVersion: bad.version })
+    const r = await s.publishAll()
+    expect(r.published.map((d) => d.id)).toEqual([good.id])
+    expect(r.failed).toEqual([])
+    expect(await s.pending()).toEqual([])
+  })
+})
