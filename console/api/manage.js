@@ -7,6 +7,7 @@
 //   siteSchema(slug): the schema shipped in this package (schema/sites/<slug>.json)
 //   requests: api/requests.js (tickets and this operator's push subscriptions)
 //   monitors: api/monitors.js, the UptimeRobot monitors and their key
+//   logs({ hours, errorsOnly }): api/logs.js, this API's own CloudWatch log (absent outside Lambda)
 
 import { ServiceError } from '../core/service.js'
 import { checkSchema } from '../schema/schema.js'
@@ -192,6 +193,10 @@ export function createManage(deps, { onSiteChange }) {
     if (method === 'GET' && rest === '/monitors') return deps.monitors ? deps.monitors.list() : { configured: false, monitors: [] }
     if (method === 'PUT' && rest === '/monitors/key' && deps.monitors) return deps.monitors.connect(body.key)
     if (method === 'DELETE' && rest === '/monitors/key' && deps.monitors) { await deps.monitors.disconnect(); return { ok: true } }
+    if (method === 'GET' && rest === '/logs') {
+      if (!deps.logs) throw new ServiceError(503, 'The API log is only readable when running in Lambda.')
+      return deps.logs({ hours: 24 })
+    }
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }
     if (method === 'DELETE' && rest === '/push') { await deps.requests.unsubscribe(user, body.endpoint); return { ok: true } }
     if (method === 'POST' && rest === '/push/test') return deps.requests.test(user, body.kind)

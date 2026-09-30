@@ -18,6 +18,7 @@ const API = 'https://api.uptimerobot.com/v2/getMonitors'
 const DASHBOARD = 'https://dashboard.uptimerobot.com/monitors'
 // UptimeRobot's status codes (API v2, getMonitors).
 const STATUS = { 0: 'paused', 1: 'not checked yet', 2: 'up', 8: 'seems down', 9: 'down' }
+const EVENT = { 1: 'down', 2: 'up', 98: 'started', 99: 'paused' }
 
 export function createMonitors(deps) {
   const q = (sql, params) => deps.control.query(sql, params)
@@ -29,19 +30,39 @@ export function createMonitors(deps) {
     return deps.fallbackKey ? deps.fallbackKey() : null
   }
 
-  async function fetchMonitors(key) {
+  // Each monitor with: uptime for each of the last 30 days (oldest first), its
+  // response times over the last 24 hours, and its last 20 events (down, up,
+  // paused, started) with UptimeRobot's reason.
+  async function fetchMonitors(key, now = Date.now()) {
+    const day = 86_400
+    const today = Math.floor(now / 1000 / day) * day // UTC midnight
+    const days = Array.from({ length: 30 }, (_, i) => today - (29 - i) * day)
+    const ranges = days.map((start) => `${start}_${Math.min(start + day, Math.floor(now / 1000))}`).join('-')
     const res = await deps.fetch(API, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded', 'cache-control': 'no-cache' },
-      body: new URLSearchParams({ api_key: key, format: 'json', custom_uptime_ratios: '1-30' }),
+      body: new URLSearchParams({
+        api_key: key, format: 'json', custom_uptime_ratios: '1-30', custom_uptime_ranges: ranges,
+        response_times: '1', response_times_start_date: String(Math.floor(now / 1000) - day), response_times_end_date: String(Math.floor(now / 1000)),
+        logs: '1', logs_limit: '20',
+      }),
     })
     const data = await res.json().catch(() => null)
     if (!res.ok || data?.stat !== 'ok') throw new ServiceError(502, `UptimeRobot did not accept the key (${data?.error?.message ?? res.status}).`)
+    const num = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v))
     return data.monitors.map((m) => {
-      const [day, month] = String(m.custom_uptime_ratio ?? '').split('-').map(Number)
+      const [uptimeDay, uptimeMonth] = String(m.custom_uptime_ratio ?? '').split('-').map(num)
+      const daily = String(m.custom_uptime_ranges ?? '').split('-').map(num)
       return {
-        id: m.id, name: m.friendly_name, url: m.url, status: STATUS[m.status] ?? 'unknown',
-        interval: m.interval, uptimeDay: Number.isFinite(day) ? day : null, uptimeMonth: Number.isFinite(month) ? month : null,
+        id: m.id, name: m.friendly_name, url: m.url, status: STATUS[m.status] ?? 'unknown', interval: m.interval,
+        uptimeDay: uptimeDay ?? null, uptimeMonth: uptimeMonth ?? null,
+        days: days.map((start, i) => ({ date: new Date(start * 1000).toISOString().slice(0, 10), uptime: daily[i] ?? null })),
+        responseAvg: num(m.average_response_time),
+        responses: (m.response_times ?? []).map((r) => ({ at: r.datetime * 1000, ms: r.value })).sort((a, b) => a.at - b.at),
+        events: (m.logs ?? []).map((l) => ({
+          type: EVENT[l.type] ?? 'event', at: l.datetime * 1000, seconds: l.duration ?? null,
+          reason: [l.reason?.code, l.reason?.detail].filter(Boolean).join(' '),
+        })),
       }
     })
   }

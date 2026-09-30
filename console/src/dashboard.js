@@ -357,15 +357,118 @@ async function loadMonitors(pending) {
     const list = [...r.monitors].sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name))
     const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
     $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up`
-    $('#m-monitors').innerHTML = list.map((m) => `<li class="monitor is-${esc(m.status.replace(/ /g, '-'))}">
-      <span class="dot" aria-hidden="true"></span>
-      <span><strong>${esc(m.name)}</strong><br><span class="meta">${esc(m.status)}${m.uptimeMonth != null ? ` · ${esc(m.uptimeMonth.toFixed(2))}% over 30 days` : ''}</span></span>
-      <a class="meta" href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open</a></li>`).join('') + '<li><button type="button" id="mon-disconnect" class="link">Disconnect UptimeRobot</button></li>'
+    monitorData = new Map(list.map((m) => [String(m.id), m]))
+    $('#m-monitors').innerHTML = list.map(monitorRow).join('') +
+      `<li class="meta"><a href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open UptimeRobot</a> · <button type="button" id="mon-disconnect" class="link">Disconnect</button></li>`
   } catch (err) {
     $('#m-mon-count').textContent = ''
     $('#m-monitors').innerHTML = `<li class="empty">Monitors could not load: ${esc(err.message)}</li>`
   }
 }
+
+// One monitor: state as icon and word (never colour alone), a strip of the
+// last 30 days' uptime, a line of the last 24 hours' response times, and its
+// events. Status colours are the reserved good / warning / critical steps.
+const STATE_ICON = { up: '✓', down: '▼', 'seems down': '▼', paused: '❚❚', 'not checked yet': '…' }
+const EVENT_ICON = { down: '▼', up: '✓', paused: '❚❚', started: '▶' }
+let monitorData = new Map()
+const dayClass = (u) => (u == null ? 'none' : u >= 100 ? 'good' : u >= 99 ? 'warning' : 'critical')
+const pct = (u) => (u == null ? 'no data' : `${u >= 99.995 ? '100' : u.toFixed(2)}%`)
+const since = (s) => (s == null ? '' : s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : s < 86400 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`)
+const clock = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+function sparkline(m) {
+  const pts = m.responses ?? []
+  if (pts.length < 2) return '<span class="meta">no response times</span>'
+  const W = 160; const H = 36; const pad = 3
+  const t0 = pts[0].at; const t1 = pts[pts.length - 1].at
+  const max = Math.max(...pts.map((p) => p.ms)) * 1.1
+  const xy = pts.map((p) => [pad + ((p.at - t0) / (t1 - t0 || 1)) * (W - pad * 2), H - pad - (p.ms / max) * (H - pad * 2)])
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" data-mon="${esc(m.id)}" role="img" aria-label="Response time, last 24 hours, average ${esc(m.responseAvg ?? '?')} ms">
+    <line class="base" x1="${pad}" x2="${W - pad}" y1="${H - pad}" y2="${H - pad}" />
+    <polyline points="${xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}" />
+    <line class="cross" x1="0" x2="0" y1="0" y2="${H}" style="display:none" /><circle class="hit" r="4" style="display:none" /></svg>`
+}
+
+function monitorRow(m) {
+  const state = m.status.replace(/ /g, '-')
+  const paused = m.status === 'paused'
+  return `<li class="monitor is-${esc(state)}">
+    <div class="mon-name"><span class="mon-state" aria-hidden="true">${STATE_ICON[m.status] ?? '?'}</span>
+      <span><strong>${esc(m.name)}</strong><br><span class="meta">${esc(m.status)}${paused ? '' : ` · ${esc(pct(m.uptimeMonth))} over 30 days`}</span></span></div>
+    <div class="mon-days" data-mon="${esc(m.id)}" role="list" aria-label="Uptime per day, last 30 days">${(m.days ?? []).map((d, i) =>
+      `<i role="listitem" class="is-${paused ? 'none' : dayClass(d.uptime)}" data-day="${i}" aria-label="${esc(d.date)}: ${esc(pct(d.uptime))}"></i>`).join('')}</div>
+    <div class="mon-rt">${sparkline(m)}<span class="meta">${m.responseAvg != null ? `avg ${esc(Math.round(m.responseAvg))} ms` : ''}</span></div>
+    ${m.events?.length ? `<details class="mon-events"><summary>Events (${m.events.length})</summary><ul>${m.events.map((e) =>
+      `<li class="ev is-${esc(e.type)}"><span aria-hidden="true">${EVENT_ICON[e.type] ?? '•'}</span> <strong>${esc(e.type[0].toUpperCase() + e.type.slice(1))}</strong>
+        <span class="meta">${esc(when(e.at))}${e.seconds ? ` · lasted ${esc(since(e.seconds))}` : ''}${e.reason ? ` · ${esc(e.reason)}` : ''}</span></li>`).join('')}</ul></details>` : ''}
+  </li>`
+}
+
+// One tooltip for the strips and lines, placed by the pointer.
+const tip = Object.assign(document.createElement('div'), { className: 'viz-tip', hidden: true })
+tip.setAttribute('role', 'tooltip')
+document.body.append(tip)
+function showTip(e, html) {
+  tip.innerHTML = html
+  tip.hidden = false
+  const r = tip.getBoundingClientRect()
+  tip.style.left = `${Math.min(innerWidth - r.width - 8, Math.max(8, e.clientX - r.width / 2))}px`
+  tip.style.top = `${Math.max(8, e.clientY - r.height - 14)}px`
+}
+$('#m-monitors').addEventListener('pointermove', (e) => {
+  const cell = e.target.closest('.mon-days i')
+  if (cell) {
+    const m = monitorData.get(cell.parentElement.dataset.mon)
+    const d = m?.days?.[Number(cell.dataset.day)]
+    if (d) return showTip(e, `<strong>${esc(new Date(`${d.date}T12:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' }))}</strong><br>${esc(pct(d.uptime))} up`)
+  }
+  const svg = e.target.closest('svg.spark')
+  if (svg) {
+    const m = monitorData.get(svg.dataset.mon)
+    const pts = m?.responses ?? []
+    const box = svg.getBoundingClientRect()
+    const x = ((e.clientX - box.left) / box.width) * 160
+    const t0 = pts[0].at; const t1 = pts[pts.length - 1].at
+    const at = t0 + ((x - 3) / 154) * (t1 - t0)
+    const p = pts.reduce((a, b) => (Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a))
+    const max = Math.max(...pts.map((q) => q.ms)) * 1.1
+    const px = 3 + ((p.at - t0) / (t1 - t0 || 1)) * 154
+    const py = 33 - (p.ms / max) * 30
+    const cross = svg.querySelector('.cross'); const hit = svg.querySelector('.hit')
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.display = ''
+    hit.setAttribute('cx', px); hit.setAttribute('cy', py); hit.style.display = ''
+    return showTip(e, `<strong>${esc(p.ms)} ms</strong><br>${esc(clock(p.at))}`)
+  }
+  tip.hidden = true
+})
+$('#m-monitors').addEventListener('pointerleave', () => {
+  tip.hidden = true
+  for (const el of document.querySelectorAll('svg.spark .cross, svg.spark .hit')) el.style.display = 'none'
+})
+
+// This API's own log (api/logs.js), read when opened: last 24 hours, newest first.
+let apiLog = []
+function renderLog() {
+  const errorsOnly = $('#log-errors').checked
+  const lines = errorsOnly ? apiLog.filter((l) => l.level !== 'INFO' && l.level !== 'DEBUG') : apiLog
+  $('#log-lines').innerHTML = lines.map((l) => `<li class="log is-${esc(l.level.toLowerCase())}"><span class="meta">${esc(when(l.at))}</span> <strong>${esc(l.level)}</strong> <code>${esc(l.text)}</code></li>`).join('')
+    || `<li class="empty">${errorsOnly ? 'No errors or warnings' : 'Nothing logged'} in the last 24 hours.</li>`
+}
+async function loadLog() {
+  $('#log-lines').innerHTML = '<li class="empty">Loading…</li>'
+  try {
+    const r = await api('GET', '/api/manage/logs')
+    apiLog = r.lines
+    $('#log-count').textContent = `(${r.lines.filter((l) => l.level === 'ERROR' || l.level === 'FATAL').length} errors)`
+    renderLog()
+  } catch (err) {
+    $('#log-lines').innerHTML = `<li class="empty">${esc(err.message)}</li>`
+  }
+}
+$('#api-log').addEventListener('toggle', () => { if ($('#api-log').open) loadLog() })
+$('#log-refresh').addEventListener('click', loadLog)
+$('#log-errors').addEventListener('change', renderLog)
 
 // The signed-in user's own requests and the replies to them.
 async function loadMine() {

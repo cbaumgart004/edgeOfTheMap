@@ -20,6 +20,7 @@ import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
+import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs'
 import webpush from 'web-push'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createRemoteJWKSet, jwtVerify, SignJWT, decodeProtectedHeader } from 'jose'
@@ -31,6 +32,7 @@ import { createHandler } from './handler.js'
 import { migrate as runMigrations } from './migrate.js'
 import { register } from './register.js'
 import { createMonitors } from './monitors.js'
+import { createLogs } from './logs.js'
 import { createAuthProxy } from './auth-proxy.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
@@ -38,6 +40,7 @@ const ssm = new SSMClient({})
 const s3 = new S3Client({ region: process.env.MEDIA_REGION ?? 'us-east-1' })
 const purify = createDOMPurify(new JSDOM('').window)
 const ses = new SESv2Client({})
+const cwLogs = new CloudWatchLogsClient({})
 const notifyFrom = process.env.NOTIFY_FROM
 
 const secrets = new Map()
@@ -169,6 +172,13 @@ const http = createHandler({
     fetch,
     fallbackKey: process.env.UPTIMEROBOT_KEY_PARAM ? () => secret(process.env.UPTIMEROBOT_KEY_PARAM) : undefined,
   }),
+  // This function's own CloudWatch log on the management page (logs.js).
+  logs: process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? createLogs({
+      logGroup: process.env.AWS_LAMBDA_LOG_GROUP_NAME ?? `/aws/lambda/${process.env.AWS_LAMBDA_FUNCTION_NAME}`,
+      filterLogEvents: (input) => cwLogs.send(new FilterLogEventsCommand(input)),
+    })
+    : undefined,
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {
     const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {

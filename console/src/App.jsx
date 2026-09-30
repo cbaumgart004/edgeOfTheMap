@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, titleOf, setItemField } from '../schema/schema.js'
+import { checkDocument, warnDocument, titleOf, setItemField } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList } from './Fields.jsx'
 import Targets from './Targets.jsx'
@@ -457,7 +457,7 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       <div className="eotm-status">
         <span className={`eotm-chip is-${doc.status}`}>{STATUS_TEXT[doc.status]}</span>
         <div className="eotm-row">
-          {doc.status !== 'published' && <button type="button" className="eotm-btn is-primary" onClick={() => act((d) => store.publish(id, d.version), 'Published. It is live now.')}>Publish</button>}
+          {doc.status !== 'published' && <PublishButton warnings={warnDocument(schema, doc.type, doc.data)} onPublish={() => act((d) => store.publish(id, d.version), 'Published. It is live now.')} />}
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
       </div>
@@ -465,6 +465,24 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       <div className="eotm-danger">
         <button type="button" className="eotm-btn is-quiet" onClick={async () => { try { onOpen(await store.duplicate(id)) } catch (e) { notify(e.message) } }}>Duplicate</button>
         <DeleteButton label={type.label} onConfirm={() => act((d) => store.remove(id, d.version), 'Deleted.')} />
+      </div>
+    </div>
+  )
+}
+
+// Publish, or, when the document has something worth a second look (a Listing
+// with no blacklight photo), say what and ask first. Never a browser confirm().
+function PublishButton({ warnings, onPublish }) {
+  const [asking, setAsking] = useState(false)
+  if (!asking || !warnings.length) {
+    return <button type="button" className="eotm-btn is-primary" onClick={() => (warnings.length ? setAsking(true) : onPublish())}>Publish</button>
+  }
+  return (
+    <div className="eotm-warn" role="alertdialog" aria-label="Publish anyway?">
+      {warnings.map((w) => <p key={w}>{w}</p>)}
+      <div className="eotm-row">
+        <button type="button" className="eotm-btn" onClick={() => setAsking(false)}>Keep editing</button>
+        <button type="button" className="eotm-btn is-primary" onClick={() => { setAsking(false); onPublish() }}>Publish anyway</button>
       </div>
     </div>
   )

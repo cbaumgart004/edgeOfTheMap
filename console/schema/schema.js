@@ -50,6 +50,17 @@ export function checkSchema(schema) {
         errors.push(`${at}: wide is true or false, on an image or photos field`)
       }
       if (f.kind === 'photos' && f.indexes && !Array.isArray(f.indexes)) errors.push(`${at}: indexes must be a list`)
+      if ('warnMissingIndex' in f && (f.kind !== 'photos' || !Array.isArray(f.indexes) || typeof f.warnMissingIndex !== 'boolean')) {
+        errors.push(`${at}: warnMissingIndex is true or false, on a photos field with indexes`)
+      }
+      if ('maxItems' in f && (!['photos', 'list'].includes(f.kind) || !(Number.isInteger(f.maxItems) && f.maxItems > 0))) {
+        errors.push(`${at}: maxItems is a whole number, on a photos or list field`)
+      }
+      if ('pattern' in f) {
+        let ok = f.kind === 'text' && typeof f.pattern === 'string'
+        try { if (ok) new RegExp(f.pattern, 'u') } catch { ok = false }
+        if (!ok) errors.push(`${at}: pattern is a regular expression, on a text field`)
+      }
       if (f.suggest && (f.kind !== 'text' || !blocks[f.suggest.block] || !f.suggest.field)) {
         errors.push(`${at}: suggest needs a text field and { block, field } naming a block and one of its fields`)
       }
@@ -168,6 +179,7 @@ function checkValue(field, value, at, schema, errors, opts) {
     case 'text': case 'textarea': case 'richtext':
       if (typeof value !== 'string') errors.push(`${at}: must be text`)
       else if (field.maxLength && value.length > field.maxLength) errors.push(`${at}: longer than ${field.maxLength}`)
+      else if (field.pattern && !new RegExp(`^(?:${field.pattern})$`, 'u').test(value)) errors.push(`${at}: ${field.patternHelp ?? 'not in the allowed form'}`)
       // A name that must match a section on the same page (a button tied to a
       // Service by its heading). Checked on publish only, so autosave never
       // fails halfway through typing it.
@@ -227,6 +239,7 @@ function checkValue(field, value, at, schema, errors, opts) {
       break
     case 'photos':
       if (!Array.isArray(value)) { errors.push(`${at}: must be a list`); break }
+      if (field.maxItems && value.length > field.maxItems) errors.push(`${at}: at most ${field.maxItems}`)
       value.forEach((p, i) => {
         checkImage(p, `${at}[${i}]`, errors)
         if (field.indexes && !field.indexes.includes(p?.index)) {
@@ -245,6 +258,7 @@ function checkValue(field, value, at, schema, errors, opts) {
       break
     case 'list':
       if (!Array.isArray(value)) { errors.push(`${at}: must be a list`); break }
+      if (field.maxItems && value.length > field.maxItems) errors.push(`${at}: at most ${field.maxItems}`)
       value.forEach((item, i) => checkFields(field.fields, item ?? {}, `${at}[${i}]`, schema, errors, opts))
       break
     case 'blocks':
@@ -259,6 +273,20 @@ function checkValue(field, value, at, schema, errors, opts) {
 
 function checkFields(fields, data, at, schema, errors, opts) {
   for (const f of fields) checkValue(f, data?.[f.name], at ? `${at}.${f.name}` : f.name, schema, errors, opts)
+}
+
+// Things worth confirming before publishing, which do not stop it: a photos
+// field with `warnMissingIndex` that has photos but none under one index (a
+// Listing with no blacklight shot, whose toggle then tints the daylight ones).
+export function warnDocument(schema, typeName, data) {
+  const warnings = []
+  for (const f of schema.types?.[typeName]?.fields ?? []) {
+    const photos = data?.[f.name]
+    if (f.kind !== 'photos' || !f.warnMissingIndex || !Array.isArray(photos) || !photos.length) continue
+    const missing = f.indexes.filter((ix) => !photos.some((p) => p?.index === ix))
+    if (missing.length) warnings.push(`${f.label ?? f.name}: no ${missing.join(' or ')} photo.${f.missingIndexHelp ? ` ${f.missingIndexHelp}` : ''}`)
+  }
+  return warnings
 }
 
 // Problems with a document's data against its type; empty means valid. A draft

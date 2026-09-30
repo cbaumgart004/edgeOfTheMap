@@ -148,6 +148,8 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 .eotm-conflict { background: color-mix(in srgb, var(--eotm-danger) 12%, var(--eotm-surface)); border: 1px solid var(--eotm-danger); border-radius: var(--eotm-radius); padding: 12px; margin-bottom: 16px; }
 .eotm-conflict p { margin-bottom: 10px; }
+.eotm-warn { flex-basis: 100%; background: color-mix(in srgb, var(--eotm-accent) 12%, var(--eotm-surface)); border: 1px solid var(--eotm-accent); border-radius: var(--eotm-radius); padding: 12px; }
+.eotm-warn p { margin-bottom: 10px; }
 
 .eotm-repeater > ol { display: block; }
 .eotm-item { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); margin-bottom: 8px; background: var(--eotm-bg); }

@@ -244,15 +244,50 @@
     .comment-form .row { margin-top: 8px; }
     .comment-form label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
     .comment-form input[type=checkbox] { width: 18px; min-height: 18px; }
-    /* Uptime monitors (UptimeRobot), one row each. */
-    .monitors { gap: 6px; }
-    .monitor { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px;
-      border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
-    .monitor span { overflow-wrap: anywhere; }
-    .monitor .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
-    .monitor.is-up .dot { background: #16a34a; }
-    .monitor.is-down .dot, .monitor.is-seems-down .dot { background: var(--danger); }
-    .monitor.is-down { border-color: var(--danger); }
+    /* Uptime monitors (UptimeRobot): state as icon and word, a 30-day strip, a
+       24-hour response line. Status steps are reserved: good, warning, critical. */
+    :root { --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; --none: #c9c3b8; }
+    @media (prefers-color-scheme: dark) { :root { --none: #3a3450; } }
+    .monitors { gap: 8px; }
+    .monitor { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 170px; gap: 8px 16px; align-items: center;
+      padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
+    .monitor.is-down, .monitor.is-seems-down { border-color: var(--critical); }
+    .mon-name { display: flex; gap: 10px; align-items: flex-start; min-width: 0; overflow-wrap: anywhere; }
+    .mon-state { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: #fff; background: var(--none); }
+    .is-up .mon-state { background: var(--good); }
+    .is-down .mon-state, .is-seems-down .mon-state { background: var(--critical); }
+    .mon-days { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; height: 24px; }
+    .mon-days i { border-radius: 2px; background: var(--none); }
+    .mon-days i.is-good { background: var(--good); }
+    .mon-days i.is-warning { background: var(--warning); }
+    .mon-days i.is-critical { background: var(--critical); }
+    .mon-days i:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+    .mon-rt { display: grid; gap: 2px; justify-items: end; }
+    .spark { width: 160px; height: 36px; overflow: visible; cursor: crosshair; }
+    .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .spark .base { stroke: var(--line); stroke-width: 1; }
+    .spark .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
+    .spark .hit { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+    .mon-events { grid-column: 1 / -1; }
+    .mon-events summary { font-size: 13px; }
+    .mon-events ul { gap: 4px; margin-top: 6px; }
+    .ev { font-size: 13px; }
+    .ev.is-down > span:first-child { color: var(--critical); }
+    .ev.is-up > span:first-child { color: var(--good); }
+    .viz-tip { position: fixed; z-index: 20; pointer-events: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; line-height: 1.35;
+      background: var(--ink); color: var(--bg); box-shadow: 0 4px 16px rgb(0 0 0 / .25); }
+    @media (max-width: 700px) {
+      .monitor { grid-template-columns: minmax(0, 1fr); }
+      .mon-rt { justify-items: start; grid-template-columns: 160px auto; align-items: center; gap: 10px; }
+    }
+    /* The API's own log. */
+    .log-card { margin-top: 10px; }
+    .log-card label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
+    .log-card input[type=checkbox] { width: 18px; min-height: 18px; }
+    .log-lines { gap: 4px; margin-top: 8px; max-height: 420px; overflow: auto; }
+    .log { font-size: 13px; overflow-wrap: anywhere; }
+    .log code { font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+    .log.is-error strong, .log.is-fatal strong { color: var(--danger); }
     #mine-list { margin-top: 10px; }
   </style>
 </head>
@@ -370,6 +405,12 @@
       <p id="push-note" class="meta"></p>
       <h2>Monitors <span id="m-mon-count" class="meta"></span></h2>
       <ul id="m-monitors" class="monitors"></ul>
+      <details id="api-log" class="card log-card">
+        <summary>API log, last 24 hours <span id="log-count" class="meta"></span></summary>
+        <div class="row" style="margin-top:8px"><label class="check"><input type="checkbox" id="log-errors" checked /> Errors and warnings only</label>
+          <button type="button" id="log-refresh" class="link">Refresh</button></div>
+        <ul id="log-lines" class="log-lines"></ul>
+      </details>
       <h2>Sites</h2>
       <ul id="m-sites"></ul>
 

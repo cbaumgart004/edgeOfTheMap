@@ -175,6 +175,16 @@ no login.
   (Integrations & API, Main API keys); the API checks it against UptimeRobot, keeps it in
   `console_settings` beside the Web Push keys, and never returns it. The main (full-access) key is
   refused. `UPTIMEROBOT_KEY_PARAM`, if set, names a key in SSM to use when none was pasted.
+  Each monitor shows its state as icon and word, a strip of the last 30 days' uptime (green 100%,
+  amber 99% or more, red below), a line of the last 24 hours' response times with a hover readout,
+  and its last 20 events (down, up, paused) with UptimeRobot's reason. Verified against the live
+  account 2026-09-29 for status and 30-day uptime; the daily strip, response times and events are
+  **unverified** until the next deploy reads them.
+- **API log on the Manage page** (`api/logs.js`): this Lambda's own CloudWatch log for the last 24
+  hours, newest first, errors and warnings by default, without Lambda's START/END/REPORT lines. Needs
+  one grant on the execution role (`eotm-console-api-role-3asduby6`): `logs:FilterLogEvents` on
+  `arn:aws:logs:us-east-1:<account id>:log-group:/aws/lambda/eotm-console-api:*`. Without it the panel
+  names the missing permission.
   **Unverified:** UptimeRobot API v2 against a real key; tested against a fake of its documented shape.
 - **The campfire on phones:** below 900 px the left scene fills the screen behind the admin card,
   fire centred (`dashboard.html`, `.sigils.is-left`).
