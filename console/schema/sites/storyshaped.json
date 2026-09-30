@@ -7,7 +7,8 @@
       "pageLayout",
       "referencePage",
       "theme",
-      "siteSettings"
+      "siteSettings",
+      "menu"
     ]
   },
   "tools": [
@@ -634,64 +635,6 @@
           "help": "The name at the top of every page but Home, and in the footer and copyright."
         },
         {
-          "name": "navLinks",
-          "kind": "list",
-          "label": "Menu",
-          "itemLabel": "label",
-          "help": "The links along the top, in order. The page a visitor is on leaves its own link out.",
-          "default": [
-            {
-              "_id": "nav-1",
-              "label": "Home",
-              "url": "/",
-              "soon": false
-            },
-            {
-              "_id": "nav-2",
-              "label": "Library",
-              "url": "/library",
-              "soon": false
-            },
-            {
-              "_id": "nav-3",
-              "label": "Glossary",
-              "url": "/glossary",
-              "soon": false
-            },
-            {
-              "_id": "nav-4",
-              "label": "Images",
-              "url": "/images",
-              "soon": true
-            },
-            {
-              "_id": "nav-5",
-              "label": "Meet the Artist",
-              "url": "/meet-the-artist",
-              "soon": false
-            }
-          ],
-          "fields": [
-            {
-              "name": "label",
-              "kind": "text",
-              "label": "Label",
-              "required": true
-            },
-            {
-              "name": "url",
-              "kind": "url",
-              "label": "Goes to",
-              "required": true
-            },
-            {
-              "name": "soon",
-              "kind": "boolean",
-              "label": "Coming soon (shown dimmed, not a link)"
-            }
-          ]
-        },
-        {
           "name": "socials",
           "kind": "list",
           "label": "Social and shop links",
@@ -771,6 +714,20 @@
           ]
         },
         {
+          "name": "copyrightOwner",
+          "kind": "text",
+          "label": "Copyright owner",
+          "default": "StoryShaped Studios",
+          "help": "Who owns the site’s words and photos, for the footer: © <year> <owner>."
+        },
+        {
+          "name": "copyrightNotice",
+          "kind": "text",
+          "label": "After the copyright",
+          "default": "All rights reserved.",
+          "help": "e.g. All rights reserved. Blank: nothing after the owner."
+        },
+        {
           "name": "daylightLabel",
           "kind": "text",
           "label": "Toggle label, daylight",
@@ -781,6 +738,84 @@
           "kind": "text",
           "label": "Toggle label, blacklight",
           "default": "Blacklight"
+        }
+      ]
+    },
+    "menu": {
+      "label": "Menu",
+      "plural": "Menu",
+      "singleton": true,
+      "previewPath": "/meet-the-artist",
+      "fields": [
+        {
+          "name": "items",
+          "kind": "list",
+          "label": "Menu items",
+          "itemLabel": "label",
+          "default": [
+            {
+              "_id": "nav-1",
+              "page": null,
+              "label": "Home",
+              "url": "/",
+              "soon": false
+            },
+            {
+              "_id": "nav-2",
+              "page": null,
+              "label": "Library",
+              "url": "/library",
+              "soon": false
+            },
+            {
+              "_id": "nav-3",
+              "page": null,
+              "label": "Glossary",
+              "url": "/glossary",
+              "soon": false
+            },
+            {
+              "_id": "nav-4",
+              "page": null,
+              "label": "Images",
+              "url": "/images",
+              "soon": true
+            },
+            {
+              "_id": "nav-5",
+              "page": null,
+              "label": "Meet the Artist",
+              "url": "/meet-the-artist",
+              "soon": false
+            }
+          ],
+          "help": "The links along the top of every page, in this order (move with ↑ ↓). An item that names a Page is hidden from visitors until that Page is published. The page a visitor is on leaves its own link out.",
+          "fields": [
+            {
+              "name": "page",
+              "kind": "relation",
+              "label": "Page",
+              "to": "page",
+              "help": "Pick a Page, or give an address below instead."
+            },
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Label",
+              "help": "Blank: the Page’s title."
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Or an address",
+              "help": "For somewhere that is not a Page, such as /glossary."
+            },
+            {
+              "name": "soon",
+              "kind": "boolean",
+              "label": "Show as coming soon (dimmed, not a link)"
+            }
+          ]
         }
       ]
     },
