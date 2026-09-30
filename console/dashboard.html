@@ -116,10 +116,23 @@
        fire centred, and the page ends with room above the fire so it is never
        covered once scrolled to the foot. */
     @media (max-width: 899px) {
-      body { padding-bottom: 300px; }
-      main { position: relative; z-index: 1; box-shadow: 0 10px 40px rgb(0 0 0 / .45); }
+      /* The card sits at the top, compact, so the fire at the foot of the screen shows under it. */
+      body { place-items: start center; padding: 12px 20px max(300px, 38dvh); }
+      main, main.is-wide { position: relative; z-index: 1; max-width: 440px; padding: 18px 16px;
+        background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px);
+        box-shadow: 0 10px 40px rgb(0 0 0 / .45); }
+      .brand { margin: -18px -16px 12px; padding: 12px 12px 6px; }
+      .brand img { width: min(100%, 210px); }
+      .rune-rule { font-size: 13px; }
+      h1 { font-size: 24px; }
+      .sub { margin-bottom: 12px; }
+      label { margin: 10px 0 4px; }
+      .row { margin-top: 14px; }
       .sigils.is-left { display: block; inset: 0; width: auto; border: 0; border-radius: 0; z-index: 0; --fire-x: 50%; --fire-cq: 50cqw; }
     }
+    /* A scene's painted parts fade in once painted, rather than appearing piece by piece. */
+    .sigils canvas.trees, .sigils .pit > canvas { transition: opacity .6s ease; }
+    .sigils:not(.is-painted) canvas.trees, .sigils:not(.is-painted) .pit > canvas { opacity: 0; }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
     .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }

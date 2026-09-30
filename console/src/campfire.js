@@ -75,11 +75,20 @@ export function campfire(key) {
 // place is the pane's --fire-x, which the phone layout centres.
 export function startScene(pane, key, side) {
   const fireX = () => parseFloat(getComputedStyle(pane).getPropertyValue('--fire-x')) / 100 || (side === 'left' ? 0.36 : 0.64)
+  // The pit is drawn pixel by pixel, the costly part; it keeps its size when
+  // only the pane's height changes, so it is repainted only when it resizes.
+  let pitSize = ''
   const paintAll = () => {
     paintTrees(pane.querySelector('canvas.trees'), key, side, fireX())
-    paintPit(pane.querySelector('canvas.pit-back'), key, 'back', PIT)
-    paintPit(pane.querySelector('canvas.pit-mid'), key, 'mid', PIT)
-    paintPit(pane.querySelector('canvas.pit-front'), key, 'front', PIT)
+    const pit = pane.querySelector('.pit').getBoundingClientRect()
+    const size = `${Math.round(pit.width)}x${Math.round(pit.height)}`
+    if (size !== pitSize) {
+      pitSize = size
+      paintPit(pane.querySelector('canvas.pit-back'), key, 'back', PIT)
+      paintPit(pane.querySelector('canvas.pit-mid'), key, 'mid', PIT)
+      paintPit(pane.querySelector('canvas.pit-front'), key, 'front', PIT)
+    }
+    pane.classList.add('is-painted')
   }
   let timer = null
   let last = ''

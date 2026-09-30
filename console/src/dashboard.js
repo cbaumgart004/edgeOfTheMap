@@ -11,6 +11,10 @@ const auth = neonAuth({ base: '/_edit/auth' })
 const $ = (sel) => document.querySelector(sel)
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
+// Straight to the management page: take its wide layout before the first paint,
+// so the side scenes are sized and painted once, not again when it loads.
+if (new URLSearchParams(location.search).has('manage')) document.querySelector('main').classList.add('is-wide')
+
 function show(id) {
   for (const el of document.querySelectorAll('[data-view]')) el.hidden = el.dataset.view !== id
   document.querySelector('main').classList.toggle('is-wide', id === 'manage')
@@ -88,6 +92,8 @@ let myEmail = null
 async function loadSites() {
   const token = await auth.getToken()
   if (!token) return show('signin')
+  // ?manage: ask for the management page's three parts alongside, not after.
+  if (new URLSearchParams(location.search).has('manage')) prefetch ??= fetchManage()
   const res = await fetch('/api/me/sites', { headers: { authorization: `Bearer ${token}` } })
   if (res.status === 401) return show('signin')
   const data = await res.json()
@@ -205,9 +211,19 @@ $('#forgot').addEventListener('click', async () => {
 // Management page (operators): every site, its editor version, photo storage and members.
 let state = null
 // quiet: a refresh after a save, which must not clear the save's message.
+// The page's three requests at once; each is awaited where it is drawn. A
+// failure is handled there, so none is left unhandled here.
+let prefetch = null
+function fetchManage() {
+  const parts = { overview: api('GET', '/api/manage'), requests: api('GET', '/api/manage/requests'), monitors: api('GET', '/api/manage/monitors') }
+  for (const p of Object.values(parts)) p.catch(() => {})
+  return parts
+}
 async function loadManage({ quiet = false } = {}) {
   if (!quiet) say('Loading…')
-  state = await api('GET', '/api/manage')
+  const parts = prefetch ?? fetchManage()
+  prefetch = null
+  state = await parts.overview
   if (!quiet) say('')
   const versions = state.releases.map((r) => r.version).reverse()
   // An API older than the page sends no profileFields; show no company details rather than break.
@@ -266,12 +282,12 @@ async function loadManage({ quiet = false } = {}) {
   // Requests are one part of the page: failing to load them (say, a migration
   // not yet run) must not hide the sites, versions and logins above.
   try {
-    renderRequests(await api('GET', '/api/manage/requests'))
+    renderRequests(await parts.requests)
   } catch (err) {
     $('#m-req-count').textContent = ''
     $('#m-requests').innerHTML = `<li class="empty">Tickets could not load: ${esc(err.message)}</li>`
   }
-  loadMonitors()
+  loadMonitors(parts.monitors)
   pushStatus().catch(() => {})
   if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
 }
@@ -325,9 +341,9 @@ function renderRequests(list = tickets) {
 }
 
 // Uptime monitors (api/monitors.js): what UptimeRobot watches, down ones first.
-async function loadMonitors() {
+async function loadMonitors(pending) {
   try {
-    const r = await api('GET', '/api/manage/monitors')
+    const r = await (pending ?? api('GET', '/api/manage/monitors'))
     if (!r.configured) {
       $('#m-mon-count').textContent = ''
       $('#m-monitors').innerHTML = `<li><form id="mon-connect" class="card">

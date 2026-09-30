@@ -191,6 +191,21 @@ no login.
   container opens a project (control or a site) it applies that project's pending migrations under
   a Postgres advisory lock (`api/lambda.js`, `poolFor`). A failure is logged and retried by the next
   container. The Test-tab invoke `{"eotmMigrate": true}` still migrates every project at once.
+- **Deploying the API from GitHub** (`.github/workflows/console-api.yml`): a push to `console` that
+  touches what `api.zip` carries runs the tests, builds the zip, uploads it to `eotm-console-api` and
+  calls StoryShaped's `boot`, so a fresh container applies any migrations. No AWS keys live in
+  GitHub; it signs in through OIDC. One-time setup, in AWS (us-east-1, the Lambda's account):
+  1. IAM → Identity providers → Add provider: OpenID Connect, URL
+     `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
+  2. IAM → Roles → Create role → Web identity: that provider, audience `sts.amazonaws.com`,
+     GitHub organization `cbaumgart004`, repository `edgeOfTheMap`, branch `console`. Name it
+     `eotm-console-deploy`.
+  3. Give it one inline policy: `lambda:UpdateFunctionCode` and `lambda:GetFunction` on
+     `arn:aws:lambda:us-east-1:<account id>:function:eotm-console-api`, nothing else.
+  4. GitHub → the repo → Settings → Secrets and variables → Actions → **Variables** →
+     `AWS_DEPLOY_ROLE_ARN` = the role's ARN (an ARN is not a secret). Until it is set the deploy job
+     is skipped and only the tests run.
+  **Unverified:** the workflow has not run yet.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a
   customer to it is an update of their `sites` row; no customer site rebuilds.
   A release that adds a field kind needs the API redeployed **before** a schema using it is reloaded
