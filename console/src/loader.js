@@ -69,12 +69,16 @@ async function open() {
 bridge.open = open
 
 // Single sign-on: the admin page sends the owner here with #eotm-token=<editor
-// token>. Keep it for this tab only, take it out of the address bar (and so out
-// of history and anything copied from it), and open the editor.
+// token>. Keep it in this browser until it runs out (8 hours, one site), so a
+// second tab opens the editor already signed in; take it out of the address bar
+// (and so out of history and anything copied from it), and open the editor.
+// It is also written to this tab's sessionStorage, where editors before 1.1.5
+// look for it.
 function takeHandoff() {
   const m = location.hash.match(/(?:^#|&)eotm-token=([\w.-]+)/)
   if (!m || !cfg.site) return false
   try {
+    localStorage.setItem(`eotm:token:${cfg.site}`, m[1])
     sessionStorage.setItem(`eotm:token:${cfg.site}`, m[1])
     sessionStorage.setItem('eotm:edit', '1')
   } catch { /* private mode: the owner signs in on the page instead */ }

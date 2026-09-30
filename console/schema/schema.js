@@ -73,6 +73,8 @@ export function checkSchema(schema) {
   }
 
   for (const [name, t] of Object.entries(types)) {
+    // Listed inside another type's menu (a Reference Page Layout under Page layouts).
+    if (t.menuUnder != null && (!types[t.menuUnder] || t.menuUnder === name || types[t.menuUnder].menuUnder)) errors.push(`${name}: menuUnder must name another top-level type`)
     if (!NAME.test(name)) errors.push(`type "${name}" is not a plain name`)
     checkFields(t.fields, `types.${name}`)
     const names = (t.fields ?? []).map((f) => f.name)

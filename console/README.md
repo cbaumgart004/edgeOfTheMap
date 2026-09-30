@@ -48,6 +48,9 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   "Request a change" card. The publishes run one at a time, not in one transaction: a document
   edited elsewhere between check and publish is reported and stays a draft. "Production" here is
   the published content every address of the site reads; releasing the site's code is not part of it.
+- **Types listed inside another (1.1.5+).** `menuUnder` on a type lists it inside that type's menu under its
+  own heading instead of as a card (StoryShaped: Home page and Meet the Artist page under Pages, Reference Page
+  Layouts under Page layouts). Click-to-edit on a row nested in another list opens the rows around it.
 - **Click-to-edit starts a missing singleton.** Edit on a part of the page whose one-of-a-kind
   document (a home page, a theme) does not exist yet creates it from the schema's defaults.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
@@ -138,7 +141,9 @@ no login.
   Auth's shared sender, observed 2026-09-28); a custom email provider in Neon Auth is the fix.
 - **Single sign-on (console 0.1.2+):** a site link on the admin page trades the admin session's Neon
   JWT for an editor token (`POST /api/handoff`, HS256, 8 hours, bound to one site) and opens the site
-  with `#eotm-token=`; the loader keeps it in `sessionStorage` and strips it from the URL. The editor's
+  with `#eotm-token=`; the loader keeps it in `localStorage` until it runs out (so every tab in that browser opens
+  the editor signed in; also in `sessionStorage` for editors before 1.1.5) and strips it from the URL. Signing out
+  in the editor removes both. The editor's
   sign-in button returns to `admin.theedgeofthemap.com/?handoff=<site>&return=<path>`. The signing key
   is derived from the control connection string in `api/lambda.js`, so rotating that password signs
   every editor out. An editor token cannot mint another. The site-domain sign-in above still works.

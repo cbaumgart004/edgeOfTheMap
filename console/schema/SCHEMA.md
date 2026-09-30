@@ -27,6 +27,7 @@ says what each key means.
       "titleField": "title",             // shown in lists
       "slugFrom": "title",               // slug generated from this field on create
       "singleton": false,                // true: exactly one document (site settings, a banner)
+      "menuUnder": "pageLayout",         // optional: listed inside that type's menu, not on its own
       "fields": [ { "name": "title", "kind": "text", "required": true } ]
     }
   },

@@ -87,9 +87,10 @@ describe('console in a page', () => {
     const root = createRoot(host)
     await act(async () => root.render(<App schema={story} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    // StoryShaped has more than six types, so a phone shows them as a dropdown.
+    // More than six top-level types show as a dropdown on a phone, else cards.
     const pick = host.querySelector('#eotm-type-pick')
     await act(async () => {
+      if (!pick) return byText(host, 'button.eotm-card', 'Page layouts').click()
       pick.value = 'pageLayout'
       pick.dispatchEvent(new Event('change', { bubbles: true }))
     })

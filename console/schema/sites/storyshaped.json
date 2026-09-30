@@ -4,6 +4,7 @@
   "release": {
     "types": [
       "home",
+      "artistPage",
       "page",
       "pageLayout",
       "referencePage",
@@ -90,6 +91,7 @@
     "home": {
       "label": "Home page",
       "plural": "Home page",
+      "menuUnder": "page",
       "singleton": true,
       "previewPath": "/",
       "fields": [
@@ -308,6 +310,90 @@
         }
       ]
     },
+    "artistPage": {
+      "label": "Meet the Artist page",
+      "plural": "Meet the Artist page",
+      "menuUnder": "page",
+      "singleton": true,
+      "previewPath": "/meet-the-artist",
+      "fields": [
+        {
+          "name": "eyebrow",
+          "kind": "text",
+          "label": "Small heading",
+          "default": "The Hands Behind the Glow"
+        },
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading",
+          "default": "Meet the Artist"
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Portraits",
+          "maxItems": 3,
+          "help": "Up to three across the top. Empty: the three shipped portraits."
+        },
+        {
+          "name": "body",
+          "kind": "richtext",
+          "label": "Story",
+          "default": "<p>I specialize in handmade <b>uranium glass</b> jewelry as well as the repair and restoration of antique and vintage uranium glass jewelry pieces. I am passionate about uranium glass and its wildly fascinating history. My knowledge is the result of thousands of hours of research, travel, and identification over the past 5 years. I am totally dedicated to furthering the knowledge and appreciation of this unusual type of jewelry.</p><p>I came to Colorado several years ago and love my new home more every day, although many miles away from the cornfields of central Illinois where I grew up. I received a degree in Psychology with a minor in English Literature, and I worked for 10 years alongside adults with intellectual and developmental disabilities in residential settings. I also ran an international non-profit agency dedicated to assisting countries working toward the deinstitutionalization of their disabled citizens.</p><p>In 2020 with the onset of the pandemic, my search for a career change intersected with being quarantined. I had always loved jewelry, and this was the perfect opportunity to try my hand at it. Today I am the largest uranium glass bead supplier in the US. I am world-renowned as an expert on all things uranium glass jewelry. I specialize in sourcing old art deco cabochons, faceted glass gems, old glass beads, and vintage and antique jewelry items. I travel the world to find these historic pieces. I incorporate contemporary glass components from the Czech Republic as well.</p><p>I am also a rare book collector, a musician and multi-instrumentalist, the wife of a clever and magical woodland elf, and the devoted subject of two feline overlords.</p><p>It is a true honor to promote the love and appreciation I have for uranium glass among jewelry collectors and I am proud to preserve and further the concept of an <b>‘Eternal Glow’</b>.</p>"
+        },
+        {
+          "name": "signature",
+          "kind": "text",
+          "label": "Signed",
+          "default": "Whitney Granger"
+        },
+        {
+          "name": "signatureTitle",
+          "kind": "text",
+          "label": "Under the signature",
+          "default": "Creator and Designer of StoryShaped Studios"
+        },
+        {
+          "name": "links",
+          "kind": "list",
+          "label": "Press and links",
+          "itemLabel": "title",
+          "help": "Each shows as its title, with the site and address in small type beneath.",
+          "default": [
+            {
+              "_id": "link-1",
+              "title": "My interview with House Beautiful magazine",
+              "url": "https://www.housebeautiful.com/design-inspiration/a45459335/uranium-glass-collecting-radioactive-glassware/"
+            },
+            {
+              "_id": "link-2",
+              "title": "My interview with The Denver Post",
+              "url": "https://www.denverpost.com/2023/10/26/uranium-glass-jewelry-halloween-colorado-collector-for-sale/"
+            }
+          ],
+          "fields": [
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "Title"
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Address",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "cabinet",
+          "kind": "image",
+          "label": "Photo at the foot",
+          "help": "Empty: the glowing cabinet."
+        }
+      ]
+    },
     "page": {
       "label": "Page",
       "plural": "Pages",
@@ -364,6 +450,7 @@
     "referencePage": {
       "label": "Reference Page Layout",
       "plural": "Reference Page Layouts",
+      "menuUnder": "pageLayout",
       "titleField": "title",
       "slugFrom": "title",
       "fields": [
@@ -421,7 +508,7 @@
                 },
                 {
                   "name": "definition",
-                  "kind": "textarea",
+                  "kind": "richtext",
                   "label": "Definition",
                   "required": true
                 },

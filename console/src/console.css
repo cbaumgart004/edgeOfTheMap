@@ -25,8 +25,11 @@
 
 /* ------------------------------------------------------------ sheet */
 
+/* The panel stacks above the on-page outlines and handles (Targets, Arrange,
+   z-index 1), which are drawn after it inside .eotm-root and would otherwise
+   paint over it; the toast is above both. */
 .eotm-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
   display: flex; flex-direction: column;
   background: var(--eotm-surface); color: var(--eotm-ink);
   border-top: 1px solid var(--eotm-line);
@@ -196,7 +199,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom));
   background: var(--eotm-ink); color: var(--eotm-surface); padding: 10px 16px; border-radius: 999px; font-size: 14px;
-  max-width: calc(100vw - 32px); z-index: 1;
+  max-width: calc(100vw - 32px); z-index: 3;
 }
 
 /* ------------------------------------------------------------ layout */
@@ -209,7 +212,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 /* Arrange: boxes drawn over the page's own blocks. Only the handles take
    pointers, so the page still scrolls under a finger everywhere else. */
-.eotm-arrange { position: fixed; inset: 0; pointer-events: none; }
+.eotm-arrange { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
 .eotm-box { position: fixed; border: 2px dashed var(--eotm-accent); border-radius: 6px;
   background: color-mix(in srgb, var(--eotm-accent) 7%, transparent); }
 .eotm-box.is-dragging { opacity: 0.7; z-index: 1; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
@@ -234,7 +237,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 /* Click-to-edit (Targets.jsx): an outline on the element under the pointer and
    one Edit button; only the button takes pointers. */
-.eotm-target { position: fixed; inset: 0; pointer-events: none; }
+.eotm-target { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
 .eotm-target-box { position: fixed; border: 2px solid var(--eotm-accent); border-radius: 6px; }
 .eotm-target-bar { position: fixed; display: flex; gap: 6px; pointer-events: none; }
 .eotm-target-edit { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px;
@@ -312,3 +315,6 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-dev-action:has(input:checked) { border-color: var(--eotm-accent); }
 .eotm-dev-action span { display: grid; gap: 2px; }
 .eotm-dev-action small { color: var(--eotm-muted); font-size: 13px; }
+
+/* A type listed inside another's menu (menuUnder), under its own heading. */
+.eotm-list-head { display: block; margin: 20px 0 8px; font: 600 16px var(--eotm-heading); }

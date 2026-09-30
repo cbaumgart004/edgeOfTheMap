@@ -320,15 +320,23 @@ function Relation({ id, field, value, onChange, ctx }) {
     </select>)
 }
 
+// Whether a row holds the picked row somewhere inside it (a Glossary term
+// inside its section), so the rows around it open on the way down.
+const holds = (item, id) => Boolean(id) && JSON.stringify(item).includes(`"_id":"${id}"`)
+
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
 function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, add, sections }) {
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
   // here already expanded and scrolled into view.
-  const [open, setOpen] = useState(() => new Set(items.some((x) => x._id === ctx.focus) ? [ctx.focus] : []))
+  const focused = () => items.find((x) => x._id === ctx.focus || holds(x, ctx.focus))
+  const [open, setOpen] = useState(() => new Set(focused() ? [focused()._id] : []))
   useEffect(() => {
-    if (!ctx.focus || !items.some((x) => x._id === ctx.focus)) return
-    setOpen((s) => new Set(s).add(ctx.focus))
-    requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
+    const hit = focused()
+    if (!hit) return
+    setOpen((s) => new Set(s).add(hit._id))
+    // Scroll only at the row itself; a row holding it opens and the list
+    // inside it scrolls.
+    if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
   }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
   const toggle = (key) => setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
   const update = (i, v) => onChange(items.map((x, j) => (j === i ? v : x)))

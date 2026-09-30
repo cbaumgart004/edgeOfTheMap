@@ -335,7 +335,10 @@ function Home({ schema, store, wide, open, onTypes }) {
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
   }, [schema, store])
-  const types = Object.entries(schema.types)
+  // A type listed under another (menuUnder) is reached through that one's list.
+  const types = Object.entries(schema.types).filter(([, t]) => !t.menuUnder)
+  const under = (name) => Object.entries(schema.types).filter(([, t]) => t.menuUnder === name).map(([n]) => n)
+  const countOf = (name) => [name, ...under(name)].reduce((n, t) => (counts[t] == null || n == null ? null : n + counts[t]), 0)
   const extra = (
     <>
       <li>
@@ -352,7 +355,7 @@ function Home({ schema, store, wide, open, onTypes }) {
         <label className="eotm-label" htmlFor="eotm-type-pick">What would you like to edit?</label>
         <select id="eotm-type-pick" className="eotm-input" value="" onChange={(e) => e.target.value && open(e.target.value)}>
           <option value="">Choose…</option>
-          {types.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{counts[name] != null ? ` (${counts[name]})` : ''}</option>)}
+          {types.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{countOf(name) != null ? ` (${countOf(name)})` : ''}</option>)}
         </select>
         <ul className="eotm-types">{extra}</ul>
       </div>
@@ -364,7 +367,7 @@ function Home({ schema, store, wide, open, onTypes }) {
         <li key={name}>
           <button type="button" className="eotm-card" onClick={() => open(name)}>
             <strong>{t.plural ?? t.label}</strong>
-            <span>{counts[name] ?? '…'}</span>
+            <span>{countOf(name) ?? '…'}</span>
           </button>
         </li>
       ))}
@@ -373,8 +376,9 @@ function Home({ schema, store, wide, open, onTypes }) {
   )
 }
 
-function DocList({ schema, store, type, open, notify }) {
+function DocList({ schema, store, type, open, notify, nested = false }) {
   const t = schema.types[type]
+  const children = nested ? [] : Object.entries(schema.types).filter(([, c]) => c.menuUnder === type).map(([n]) => n)
   const [docs, setDocs] = useState(null)
   const [q, setQ] = useState('')
   useEffect(() => { store.list(type).then(setDocs).catch((e) => notify(e.message)) }, [store, type, notify])
@@ -387,6 +391,7 @@ function DocList({ schema, store, type, open, notify }) {
   }
   return (
     <div className="eotm-list">
+      {nested && <h3 className="eotm-list-head">{t.plural ?? t.label}</h3>}
       <div className="eotm-row">
         <input className="eotm-input" type="search" placeholder={`Search ${(t.plural ?? t.label).toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} />
         {!(t.singleton && docs?.length) && <button type="button" className="eotm-btn is-primary" onClick={create}>New {t.label.toLowerCase()}</button>}
@@ -404,6 +409,7 @@ function DocList({ schema, store, type, open, notify }) {
           ))}
         </ul>
       )}
+      {children.map((c) => <DocList key={c} schema={schema} store={store} type={c} open={open} notify={notify} nested />)}
     </div>
   )
 }

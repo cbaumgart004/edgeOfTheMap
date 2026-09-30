@@ -91,7 +91,8 @@ export const editorTokenKey = (site) => `eotm:token:${site}`
 export function editorAuth({ apiBase, site, fallback }) {
   function stored() {
     let token = null
-    try { token = sessionStorage.getItem(editorTokenKey(site)) } catch { /* private mode */ }
+    // The browser's copy (loader.js keeps it until it runs out), else this tab's.
+    try { token = localStorage.getItem(editorTokenKey(site)) ?? sessionStorage.getItem(editorTokenKey(site)) } catch { /* private mode */ }
     if (!token) return null
     try {
       const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
@@ -116,7 +117,10 @@ export function editorAuth({ apiBase, site, fallback }) {
       location.assign(`${apiBase.replace(/\/$/, '')}/?handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}&origin=${encodeURIComponent(location.origin)}`)
     },
     async signOut() {
-      try { sessionStorage.removeItem(editorTokenKey(site)) } catch { /* private mode */ }
+      try {
+        localStorage.removeItem(editorTokenKey(site))
+        sessionStorage.removeItem(editorTokenKey(site))
+      } catch { /* private mode */ }
       await fallback.signOut()
     },
   }

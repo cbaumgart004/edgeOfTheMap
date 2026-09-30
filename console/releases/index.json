@@ -73,5 +73,10 @@
     "version": "1.1.4",
     "integrity": "sha384-r+QnqD//uZSIG0LJWXs0iLOCbUA/EAnh+q9edbBnjA3pz/mE1dW3uiZqgTbVoNHt",
     "releasedAt": "2026-09-30"
+  },
+  {
+    "version": "1.1.5",
+    "integrity": "sha384-cdWIeRrdqpk8q7u9VCSMxTAx38SSSR7zdJWwBxgps+rg9YFQ3jt2zLjH1DmKWNi2",
+    "releasedAt": "2026-09-30"
   }
 ]
