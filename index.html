@@ -2,6 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Short addresses for a client's editor: /<site> goes to the admin page's
+         sign-in for that site, which opens the site with its editor on. Before
+         anything else loads, so there is no flash of this site first. -->
+    <script>
+      (function () {
+        var sites = { '/storyshaped': 'storyshaped' }
+        var site = sites[location.pathname.replace(/\/+$/, '').toLowerCase()]
+        if (site) location.replace('https://admin.theedgeofthemap.com/?handoff=' + site + '&return=%2F')
+      })()
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Edge of the Map — Narration, Software &amp; Woodwork</title>
