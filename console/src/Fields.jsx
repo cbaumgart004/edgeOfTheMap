@@ -97,6 +97,13 @@ function Field({ field, value, onChange, ctx, path }) {
     case 'relation':
       return wrap(<Relation id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
     case 'group':
+      // `collapsible: true`: folds to its heading, closed unless `open: true`.
+      if (field.collapsible) return (
+        <details className="eotm-group is-fold" open={field.open}>
+          <summary>{label}</summary>
+          {field.help && <p className="eotm-help">{field.help}</p>}
+          <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} />
+        </details>)
       return (
         <fieldset className="eotm-group">
           <legend>{label}</legend>

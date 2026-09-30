@@ -403,7 +403,6 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   }
   return (
     <div className="eotm-list">
-      {nested && <h3 className="eotm-list-head">{t.plural ?? t.label}</h3>}
       <div className="eotm-row">
         <input className="eotm-input" type="search" placeholder={`Search ${(t.plural ?? t.label).toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} />
         {!(t.singleton && docs?.length) && <button type="button" className="eotm-btn is-primary" onClick={create}>New {t.label.toLowerCase()}</button>}
@@ -421,7 +420,12 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
           ))}
         </ul>
       )}
-      {children.map((c) => <DocList key={c} schema={schema} store={store} type={c} open={open} notify={notify} nested />)}
+      {children.map((c) => (
+        <details key={c} className="eotm-fold">
+          <summary>{schema.types[c].plural ?? schema.types[c].label}</summary>
+          <DocList schema={schema} store={store} type={c} open={open} notify={notify} nested />
+        </details>
+      ))}
     </div>
   )
 }

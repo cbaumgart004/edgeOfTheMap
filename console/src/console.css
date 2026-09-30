@@ -316,10 +316,17 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-dev-action span { display: grid; gap: 2px; }
 .eotm-dev-action small { color: var(--eotm-muted); font-size: 13px; }
 
-/* A type listed inside another's menu (menuUnder), under its own heading. */
-.eotm-list-head { display: block; margin: 20px 0 8px; font: 600 16px var(--eotm-heading); }
 
 /* A number field shown as a slider (schema `slider: true`), its value beside it. */
 .eotm-slider { display: flex; align-items: center; gap: 10px; }
 .eotm-slider input[type="range"] { all: revert; flex: 1; min-width: 0; accent-color: var(--eotm-accent); }
 .eotm-slider output { min-width: 5.5em; text-align: right; font-variant-numeric: tabular-nums; color: var(--eotm-muted); }
+
+/* Folding: a type listed inside another's menu (menuUnder), and a collapsible
+   group (a Theme's Blacklight and Light). Closed by default. */
+.eotm-root details.eotm-fold, .eotm-root details.is-fold { display: block; margin: 14px 0 0; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); padding: 0 12px; }
+.eotm-root details.eotm-fold > summary, .eotm-root details.is-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font: 600 16px var(--eotm-heading); list-style: none; }
+.eotm-root details.eotm-fold > summary::-webkit-details-marker, .eotm-root details.is-fold > summary::-webkit-details-marker { display: none; }
+.eotm-root details.eotm-fold > summary::before, .eotm-root details.is-fold > summary::before { content: 'B8'; color: var(--eotm-muted); }
+.eotm-root details[open].eotm-fold > summary::before, .eotm-root details[open].is-fold > summary::before { content: 'BE'; }
+.eotm-root details.eotm-fold[open], .eotm-root details.is-fold[open] { padding-bottom: 12px; }
