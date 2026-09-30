@@ -45,7 +45,11 @@ function say(msg, isError = false) {
 // with it in the URL fragment, which is never sent to a server. `back` is a path
 // on that site; the site's address itself comes from the API, so this cannot be
 // pointed at another domain.
+// The site this login last opened, for defaults such as the request form's.
+const LAST_SITE = 'eotm:last-site'
+
 async function handoff(site, back = '/', origin) {
+  try { localStorage.setItem(LAST_SITE, site) } catch { /* private mode */ }
   say('Opening the editor…')
   const token = await auth.getToken()
   if (!token) return show('signin')
@@ -116,6 +120,11 @@ async function loadSites() {
   $('#request').hidden = !data.sites.length
   loadMine().catch(() => { $('#mine').hidden = true })
   $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
+  // A request is about one customer's site: preselect the one this login came
+  // from or last opened, so it is not filed against the first in the list.
+  const lastSite = (() => { try { return localStorage.getItem(LAST_SITE) } catch { return null } })()
+  const preferred = [pending?.site, lastSite].find((s) => s && data.sites.some((x) => x.slug === s))
+  if (preferred) $('#rq-site').value = preferred
   show('sites')
 }
 

@@ -125,7 +125,14 @@ function Field({ field, value, onChange, ctx, path }) {
             return t ? `${def?.label}: ${t}` : def?.label ?? b._type
           }}
           fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []}
-          add={field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) }))} />)
+          add={[
+            ...field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) })),
+            // The owner's saved templates for these section types: a copy with fresh ids.
+            ...(ctx.schema.templates ?? []).filter((t) => field.of.includes(t.block._type)).map((t, i) => ({
+              key: `template-${i}`, label: `${t.name} (template)`, def: ctx.schema.blocks[t.block._type],
+              make: () => duplicateData({ ...t.block, _id: newBlock(ctx.schema, t.block._type)._id }),
+            })),
+          ]} />)
     default:
       return wrap(<p className="eotm-help">Unsupported field kind “{field.kind}”.</p>)
   }
@@ -368,6 +375,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
     setOpen((s) => new Set(s).add(copy._id))
   }
   const [picked, setPicked] = useState('')
+  const [naming, setNaming] = useState(null) // the section being saved as a template
   const insert = (make) => {
     const item = make()
     onChange([...items, item])
@@ -404,9 +412,21 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
                   <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
                   <button type="button" className="eotm-icon" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
                   <button type="button" className="eotm-icon" onClick={() => duplicate(i)} aria-label="Duplicate">⧉</button>
+                  {sections && ctx.saveTemplate && <button type="button" className="eotm-icon" onClick={() => setNaming(naming === key ? null : key)} aria-label="Save as template" title="Save as template">☆</button>}
                   <button type="button" className="eotm-icon" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
                 </div>
               </div>
+              {naming === key && (
+                <form className="eotm-row eotm-template-name" onSubmit={async (e) => {
+                  e.preventDefault()
+                  const name = e.currentTarget.elements.name.value.trim()
+                  if (!name) return
+                  try { await ctx.saveTemplate(name, item); setNaming(null) } catch (err) { ctx.notify(err.message) }
+                }}>
+                  <input name="name" className="eotm-input" placeholder="Template name" maxLength={60} autoFocus aria-label="Template name" />
+                  <button className="eotm-btn is-primary">Save template</button>
+                </form>
+              )}
               {isOpen && (
                 <div className="eotm-item-body">
                   <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} />

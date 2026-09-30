@@ -194,3 +194,20 @@ describe('push to production', () => {
     expect(await s.pending()).toEqual([])
   })
 })
+
+describe('discarding unpublished changes', () => {
+  it('puts a changed document back to what is live, and refuses one never published', async () => {
+    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const page = await s.create({ type: 'page', data: { title: 'Policies' } })
+    const live = await s.publish(page.id, { baseVersion: page.version })
+    const edited = await s.save(page.id, { baseVersion: live.version, data: { ...live.data, title: 'Policies, edited' } })
+    expect(edited.status).toBe('changed')
+    const back = await s.discard(page.id, { baseVersion: edited.version })
+    expect(back.status).toBe('published')
+    expect(back.data.title).toBe('Policies')
+    const draft = await s.create({ type: 'page', data: { title: 'New' } })
+    await expect(s.discard(draft.id, { baseVersion: draft.version })).rejects.toMatchObject({ status: 409 })
+    const all = await s.discardAll()
+    expect(all.kept.map((d) => d.id)).toEqual([draft.id])
+  })
+})

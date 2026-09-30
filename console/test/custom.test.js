@@ -119,4 +119,12 @@ describe('renaming built-in types and fields', () => {
     expect(checkCustom(base, { labels: { blocks: { service: { label: '' } } } })[0]).toMatch(/1 to 60/)
     expect(checkCustom(base, { labels: { blocks: { service: { fields: [] } } } })[0]).toMatch(/only label and plural/)
   })
+
+  it('keeps section templates, offered only for section types that exist', () => {
+    const base = JSON.parse(readFileSync(new URL('../schema/sites/storyshaped.json', import.meta.url), 'utf8'))
+    const custom = { templates: [{ name: 'Quote', block: { _type: 'card', heading: 'A quote', look: 'story' } }] }
+    expect(checkCustom(base, custom)).toEqual([])
+    expect(mergeCustom(base, custom).templates.map((t) => t.name)).toEqual(['Quote'])
+    expect(checkCustom(base, { templates: [{ name: 'Bad', block: { _type: 'nope' } }] })).toEqual([expect.stringMatching(/no such section type/)])
+  })
 })

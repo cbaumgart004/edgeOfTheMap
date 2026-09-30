@@ -113,6 +113,19 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const notify = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 4000) }, [])
 
   useEffect(() => { auth.current().then(setUser) }, [auth])
+  // Unpublished changes (To the Developer's count), and what closing does with them.
+  const [unpublished, setUnpublished] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+  const unsaved = view.saveState === 'pending' || view.saveState === 'saving'
+  // Leaving the page with changes not yet live, or not yet saved: the browser
+  // asks first (its own wording; a page cannot choose it).
+  useEffect(() => {
+    if (!unpublished && !unsaved) return undefined
+    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    addEventListener('beforeunload', warn)
+    return () => removeEventListener('beforeunload', warn)
+  }, [unpublished, unsaved])
+  const close = () => (unpublished ? setLeaving(true) : onClose())
   useEffect(() => () => bridge.clear(), [bridge])
 
   const style = brandStyle(schema.brand, mode)
@@ -140,11 +153,21 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         {peek ? 'Edit' : 'Preview'}
       </button>
       {!wide && <button type="button" className="eotm-icon" aria-label={size === 'full' ? 'Shrink editor' : 'Expand editor'} onClick={() => setSize(size === 'full' ? 'half' : 'full')}>{size === 'full' ? '▾' : '▴'}</button>}
-      <button type="button" className="eotm-icon" aria-label="Close editor" onClick={onClose}>✕</button>
+      <button type="button" className="eotm-icon" aria-label="Close editor" onClick={close}>✕</button>
     </header>
   )
 
-  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek }
+  // "Save as template" on a section: kept in the site's own schema (custom
+  // templates), offered when adding a section of that type.
+  const saveTemplate = async (name, block) => {
+    const custom = schema.custom ?? {}
+    const { _id, ...rest } = block // eslint-disable-line no-unused-vars
+    const templates = [...(custom.templates ?? []), { name, block: rest }]
+    const { schema: next } = await store.saveCustom({ ...custom, templates })
+    setSchema(next)
+    notify(`Saved as the template \u201c${name}\u201d. It is offered when you add a section.`)
+  }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate }
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
@@ -170,6 +193,23 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const editorApi = useRef(null)
   const pendingSize = useRef(null)
   const opening = useRef(null)
+  // Typing on the page (Targets): the document takes each change without the
+  // page being redrawn under the cursor; when the owner leaves the text, the
+  // page is brought up to date. Opens the document first if it is not open.
+  const textTarget = async ({ type, key, item, field, value, done }) => {
+    if (!schema.types[type]) return
+    const api = editorApi.current
+    if (api && (api.id === key || api.slug === key)) {
+      if (done) return api.flushPage()
+      return api.setField(item, field, value, null, { quiet: true })
+    }
+    if (done) return
+    pendingSize.current = { key, item, field, value, imageIndex: null }
+    if (opening.current === key) return
+    opening.current = key
+    await openTarget({ type, key, item })
+    opening.current = null
+  }
   const resizeTarget = async ({ type, key, item, field, value, imageIndex = null }) => {
     if (!schema.types[type]) return
     const api = editorApi.current
@@ -182,7 +222,21 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   }
 
   let body
-  if (user === undefined) body = <p className="eotm-empty">Loading…</p>
+  if (leaving) body = (
+    <div className="eotm-warn" role="alertdialog" aria-label="Changes not yet live">
+      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} saved but not yet live. What should happen to {unpublished === 1 ? 'it' : 'them'}?</p>
+      <div className="eotm-row">
+        <button type="button" className="eotm-btn is-primary" onClick={async () => {
+          try { const r = await store.pushRelease({}); if (r.pending.length) { notify('Some changes need attention first; see To the Developer.'); setLeaving(false); return } onClose() } catch (e) { notify(e.message); setLeaving(false) }
+        }}>Push to Production</button>
+        <button type="button" className="eotm-btn" onClick={onClose}>Keep as drafts</button>
+        <button type="button" className="eotm-btn is-danger" onClick={async () => {
+          try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); onClose() } catch (e) { notify(e.message); setLeaving(false) }
+        }}>Discard changes</button>
+        <button type="button" className="eotm-btn is-quiet" onClick={() => setLeaving(false)}>Keep editing</button>
+      </div>
+    </div>)
+  else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
     onTypes={() => setView({ name: 'types' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
@@ -201,11 +255,11 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <div className="eotm-root" data-eotm-mode={mode} style={style}>
       <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={wide}>
         {body}
-        {user && <ToDeveloper schema={schema} store={store} notify={notify} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
+        {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
       <div ref={setOverlay} />
-      {user && overlay && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} />, overlay)}
+      {user && overlay && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
   )
 }
@@ -250,12 +304,13 @@ const DEV_ACTIONS = [
   { value: 'request', label: 'Request Changes', help: 'Sends your note to the developer. Nothing goes live.' },
 ]
 
-function ToDeveloper({ schema, store, notify, refreshKey }) {
+function ToDeveloper({ schema, store, notify, refreshKey, onCount }) {
   const [pending, setPending] = useState(null)
   const [action, setAction] = useState('push')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const load = useCallback(() => store.pending?.().then((r) => setPending(r.pending)).catch(() => setPending(null)), [store])
+  useEffect(() => { onCount?.(pending?.length ?? 0) }, [pending, onCount])
   useEffect(() => { load() }, [load, refreshKey])
 
   const needsNote = action !== 'push'
@@ -439,6 +494,11 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
   const saving = useRef(false)
   const docRef = useRef(null)
   docRef.current = doc
+  // Undo: earlier versions of the data, newest last. Typing within a moment
+  // of the last change joins it, so one Undo takes back a word, not a letter.
+  const history = useRef([])
+  const lastChange = useRef(0)
+  const [canUndo, setCanUndo] = useState(false)
 
   useEffect(() => {
     store.get(id).then((d) => {
@@ -474,12 +534,20 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
 
   // Against docRef, not the render's `doc`: a drag on the page calls this many
   // times between renders, and each call must build on the one before.
-  const change = (data) => {
+  // `quiet`: the change came from typing on the page itself, which already
+  // shows it; the page is told once the owner leaves the text (flushPage).
+  const change = (data, { quiet = false, undoing = false } = {}) => {
     const cur = docRef.current
+    if (!undoing) {
+      if (Date.now() - lastChange.current > 700) history.current.push(cur.data)
+      if (history.current.length > 100) history.current.shift()
+      lastChange.current = Date.now()
+    }
+    setCanUndo(history.current.length > 0)
     const next = { ...cur, data }
     docRef.current = next
     setDoc(next)
-    bridge.push(next) // the page re-renders now; the save follows
+    if (!quiet) bridge.push(next) // the page re-renders now; the save follows
     pending.current = { data, slug: undefined, base: pending.current?.base ?? cur.version }
     onState({ saveState: 'pending', title: titleOf(schema, next) })
     clearTimeout(timer.current)
@@ -491,15 +559,17 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
   const loaded = !!doc
   useEffect(() => {
     if (!loaded) return undefined
-    const setField = (item, field, value, imageIndex = null) => {
+    const setField = (item, field, value, imageIndex = null, { quiet = false } = {}) => {
       const cur = docRef.current
       // An image inside rich text keeps its size in the HTML, as width="n%".
       const write = imageIndex == null ? value : (html) => imageWidthIn(html, imageIndex, value)
       const data = setItemField(cur.data, item, field, write)
-      if (data !== cur.data) change(data)
+      if (data !== cur.data) change(data, { quiet })
     }
+    // After typing on the page: let the page catch up with the document.
+    const flushPage = () => bridge.push(docRef.current)
     const d = docRef.current
-    editorApi.current = { id: d.id, slug: d.slug, setField }
+    editorApi.current = { id: d.id, slug: d.slug, setField, flushPage }
     const p = pendingSize.current
     if (p && (p.key === d.id || p.key === d.slug)) { pendingSize.current = null; setField(p.item, p.field, p.value, p.imageIndex) }
     return () => { if (editorApi.current?.id === d.id) editorApi.current = null }
@@ -517,6 +587,28 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       else { if (e.errors) setServerErrors(e.errors); notify(e.message) }
     }
   }
+
+  const undo = () => {
+    const prev = history.current.pop()
+    if (prev === undefined) return
+    change(prev, { undoing: true })
+  }
+  const saveNow = async () => {
+    clearTimeout(timer.current)
+    await flush()
+  }
+  // Ctrl/Cmd+Z outside a text box (where the browser's own undo applies).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+      const t = e.target
+      if (t instanceof Element && (t.closest('input, textarea, select, [contenteditable="true"]'))) return
+      e.preventDefault()
+      undo()
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!doc) return <p className="eotm-empty">Loading…</p>
   const type = schema.types[doc.type]
@@ -537,6 +629,9 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       <div className="eotm-status">
         <span className={`eotm-chip is-${doc.status}`}>{STATUS_TEXT[doc.status]}</span>
         <div className="eotm-row">
+          <button type="button" className="eotm-btn is-quiet" disabled={!canUndo} onClick={undo} title="Undo (Ctrl+Z)">Undo</button>
+          <button type="button" className="eotm-btn is-quiet" onClick={saveNow} title="Save now (it also saves by itself as you go)">Save</button>
+          {doc.status === 'changed' && <DiscardButton onConfirm={() => act((d) => store.discard(id, d.version), 'Back to what is live.')} />}
           {doc.status !== 'published' && <PublishButton warnings={warnDocument(schema, doc.type, doc.data)} onPublish={() => act((d) => store.publish(id, d.version), 'Published. It is live now.')} />}
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
@@ -565,6 +660,17 @@ function PublishButton({ warnings, onPublish }) {
         <button type="button" className="eotm-btn is-primary" onClick={() => { setAsking(false); onPublish() }}>Publish anyway</button>
       </div>
     </div>
+  )
+}
+
+// Throw away the unpublished edits; two taps, like Delete.
+function DiscardButton({ onConfirm }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => { if (armed) { const t = setTimeout(() => setArmed(false), 4000); return () => clearTimeout(t) } }, [armed])
+  return (
+    <button type="button" className={`eotm-btn ${armed ? 'is-danger' : 'is-quiet'}`} onClick={() => (armed ? onConfirm() : setArmed(true))}>
+      {armed ? 'Tap again to discard your changes' : 'Discard changes'}
+    </button>
   )
 }
 

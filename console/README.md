@@ -55,6 +55,20 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   document (a home page, a theme) does not exist yet creates it from the schema's defaults.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
   "Use their version" or "Keep mine" instead of silently overwriting.
+- **Editing on the page and in the pane, mirrored (1.1.9+).** Double-clicking marked text (`data-eotm-text`,
+  `data-eotm-richtext`) makes it editable where it stands; each keystroke reaches the pane, and the pane already
+  redraws the page. Leaving the text (or Escape) hands the page back.
+- **Undo, Save, Discard (1.1.9+).** Undo (and Ctrl/Cmd+Z outside a text box) steps back through the document's
+  changes, a word at a time; Save saves at once (it also saves by itself); Discard changes puts a live document
+  back to what is live (`POST …/documents/<id>/discard`).
+- **Section templates (1.1.9+).** ☆ on a section saves its content under a name in the site's own schema
+  (`custom.templates`, owners only); it is offered in "add a section" as "<name> (template)".
+- **Leaving with changes not yet live (1.1.9+).** Closing the editor asks: Push to Production, Keep as drafts,
+  Discard changes (`POST …/release/discard`: edited documents go back to what is live; never-published drafts are
+  kept), or Keep editing. Closing the tab with such changes, or with a save still pending, gets the browser's
+  own warning.
+- **Requests name their site.** The admin page's request form preselects the site this login came from or
+  last opened.
 
 Use cases the two schemas cover today:
 

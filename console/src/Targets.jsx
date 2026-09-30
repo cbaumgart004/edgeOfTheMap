@@ -20,6 +20,17 @@ import React, { useEffect, useRef, useState } from 'react'
 // Sizes snap to twelfths of the parent (the layout's 12 columns) or move
 // freely in 1% steps; the owner's choice is kept in this browser.
 //
+// Text the owner can change where it stands:
+//
+//   data-eotm-text="<field>"               a text field, edited as plain text
+//   data-eotm-richtext="<field>"           a rich text field, edited as HTML
+//   data-eotm-in="<_id>"                   optional: the row the field belongs to
+//                                          (a value inside a Values grid), when
+//                                          it is not the marked element's item
+//
+// Double-clicking one makes it editable in place; every keystroke reaches the
+// editor's pane (onText), and leaving it (or Escape) hands the page back.
+//
 // Pointing at (or tapping) a marked element outlines it and shows an Edit
 // button and its size handles. The page's own links keep working: only the
 // console's buttons and handles take the pointer.
@@ -62,7 +73,38 @@ function sizersIn(el) {
   return out
 }
 
-export default function Targets({ onOpen, onResize }) {
+const TEXT = '[data-eotm-text], [data-eotm-richtext]'
+
+// Editing in place: plain text for a text field, HTML for rich text.
+function startTyping(node, onText) {
+  const owner = node.closest(MARK)
+  if (!owner || node.isContentEditable) return
+  const base = targetOf(owner)
+  const rich = !node.hasAttribute('data-eotm-text')
+  const field = rich ? node.dataset.eotmRichtext : node.dataset.eotmText
+  const target = { ...base, item: node.dataset.eotmIn || base.item, field }
+  node.contentEditable = rich ? 'true' : 'plaintext-only'
+  node.classList.add('eotm-typing')
+  node.focus()
+  const read = () => (rich ? node.innerHTML : node.textContent)
+  const onInput = () => onText({ ...target, value: read() })
+  const stop = () => {
+    node.removeEventListener('input', onInput)
+    node.removeEventListener('blur', stop)
+    node.removeEventListener('keydown', onKey)
+    node.contentEditable = 'false'
+    node.classList.remove('eotm-typing')
+    onText({ ...target, value: read(), done: true })
+  }
+  const onKey = (e) => {
+    if (e.key === 'Escape' || (e.key === 'Enter' && !rich)) { e.preventDefault(); node.blur() }
+  }
+  node.addEventListener('input', onInput)
+  node.addEventListener('blur', stop)
+  node.addEventListener('keydown', onKey)
+}
+
+export default function Targets({ onOpen, onResize, onText }) {
   const [el, setEl] = useState(null)
   const [, setFrame] = useState(0)
   const [drag, setDrag] = useState(null) // { node, value, parent }
@@ -77,11 +119,22 @@ export default function Targets({ onOpen, onResize }) {
       const hit = t.closest(MARK)
       if (hit) setEl(hit)
     }
+    // Double-click marked text to type on the page itself.
+    const type = (e) => {
+      const t = e.target
+      if (!onText || !(t instanceof Element) || t.closest('.eotm-root')) return
+      const node = t.closest(TEXT)
+      if (!node || !node.closest(MARK)) return
+      e.preventDefault()
+      startTyping(node, onText)
+    }
     document.addEventListener('pointerover', find, true)
     document.addEventListener('pointerdown', find, true)
+    document.addEventListener('dblclick', type, true)
     return () => {
       document.removeEventListener('pointerover', find, true)
       document.removeEventListener('pointerdown', find, true)
+      document.removeEventListener('dblclick', type, true)
     }
   }, [])
 
@@ -161,6 +214,7 @@ export default function Targets({ onOpen, onResize }) {
           </svg>
           {label ? `Edit ${label}` : 'Edit'}
         </button>
+        {onText && el.querySelector(TEXT) && <span className="eotm-target-hint">or double-click text to type here</span>}
         {sizers.length > 0 && (
           <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}
             title={snap ? 'Sizes snap to a 12-column grid. Click for free sizing.' : 'Free sizing in 1% steps. Click to snap to a 12-column grid.'}>

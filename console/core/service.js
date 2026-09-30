@@ -129,6 +129,32 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
       return saved
     },
 
+    // Throw away the unpublished edits: the draft goes back to what is live. A
+    // document never published has nothing to go back to and is refused.
+    async discard(id, { baseVersion }, user) {
+      const doc = await load(id)
+      checkBase(doc, baseVersion)
+      if (!doc.publishedData) throw new ServiceError(409, 'This was never published, so there is nothing to go back to. Delete it instead.')
+      const next = { ...doc, data: doc.publishedData, status: 'published', version: doc.version + 1, updatedAt: now(), updatedBy: user?.id ?? null }
+      const saved = await repo.update(next, baseVersion)
+      if (!saved) throw new ConflictError(await load(id))
+      await repo.addRevision(saved, user)
+      return saved
+    },
+
+    // Every pending document with unpublished edits back to what is live; ones
+    // never published are left as drafts and named.
+    async discardAll(user) {
+      const discarded = []
+      const kept = []
+      for (const d of await this.pending()) {
+        if (d.status !== 'changed') { kept.push({ id: d.id, type: d.type, title: d.title }); continue }
+        await this.discard(d.id, { baseVersion: d.version }, user)
+        discarded.push({ id: d.id, type: d.type, title: d.title })
+      }
+      return { discarded, kept }
+    },
+
     async unpublish(id, { baseVersion }, user) {
       const doc = await load(id)
       checkBase(doc, baseVersion)

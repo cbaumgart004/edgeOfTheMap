@@ -321,6 +321,8 @@ ${pushed}`, page: body.page })
         }
         return json(200, { ...result, pending: await svc.pending() }, headers)
       }
+      // Leaving with unpublished changes: put every edited document back to what is live.
+      if (method === 'POST' && rest === '/release/discard') return json(200, { ...(await svc.discardAll(user)), pending: await svc.pending() }, headers)
 
       if (method === 'GET' && rest === '/documents') return json(200, await svc.list(query.type), headers)
       if (method === 'POST' && rest === '/documents') return json(201, await svc.create(body, user), headers)
@@ -339,7 +341,7 @@ ${pushed}`, page: body.page })
         return json(200, { uploadUrl, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
       }
 
-      const doc = rest.match(/^\/documents\/([0-9a-f-]{36})(\/(duplicate|publish|unpublish))?$/i)
+      const doc = rest.match(/^\/documents\/([0-9a-f-]{36})(\/(duplicate|publish|unpublish|discard))?$/i)
       if (doc) {
         const [, id, , action] = doc
         if (method === 'GET' && !action) return json(200, await svc.get(id), headers)
@@ -348,6 +350,7 @@ ${pushed}`, page: body.page })
         if (method === 'POST' && action === 'duplicate') return json(201, await svc.duplicate(id, user), headers)
         if (method === 'POST' && action === 'publish') return json(200, await svc.publish(id, body, user), headers)
         if (method === 'POST' && action === 'unpublish') return json(200, await svc.unpublish(id, body, user), headers)
+        if (method === 'POST' && action === 'discard') return json(200, await svc.discard(id, body, user), headers)
       }
       return json(404, { error: 'Not found.' }, headers)
     } catch (err) {

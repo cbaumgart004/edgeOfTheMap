@@ -41,6 +41,8 @@ export function httpStore({ apiBase, site, getToken }) {
     // "To the Developer": what is not yet live, and pushing all of it (api/handler.js).
     pending: () => call('GET', '/release'),
     pushRelease: (input) => call('POST', '/release', input),
+    discard: (id, baseVersion) => call('POST', `/documents/${id}/discard`, { baseVersion }),
+    discardAll: () => call('POST', '/release/discard'),
     // The owner's own types (schema/custom.js); answers { schema } merged.
     saveCustom: (custom) => call('PUT', '/custom-schema', { custom }),
     async upload(blob) {
@@ -77,6 +79,8 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
     remove: wrap((id, baseVersion) => svc.remove(id, { baseVersion })),
     listPublished: wrap((type) => svc.listPublished(type)),
     pending: wrap(async () => ({ pending: await svc.pending() })),
+    discard: wrap((id, baseVersion) => svc.discard(id, { baseVersion })),
+    discardAll: wrap(async () => ({ ...(await svc.discardAll()), pending: await svc.pending() })),
     pushRelease: wrap(async (input) => {
       if (String(input?.request ?? '').trim()) throw new StoreError(400, 'Requests are sent from the real editor, not the demo.')
       return { ...(await svc.publishAll()), pending: await svc.pending() }

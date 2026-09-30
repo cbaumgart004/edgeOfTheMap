@@ -53,12 +53,15 @@ function renameFields(fields, prefix, names) {
 // The shipped schema with the owner's types added and names applied. Custom
 // sections join the palette of every blocks field of every type. The owner's
 // own definitions ride along as `custom`, for the editor that changes them.
+const MAX_TEMPLATES = 50
+
 export function mergeCustom(base, custom) {
   const blocks = custom?.blocks ?? {}
   const types = custom?.types ?? {}
   const labels = custom?.labels ?? {}
+  const templates = Array.isArray(custom?.templates) ? custom.templates : []
   const renamed = Object.keys(labels.types ?? {}).length + Object.keys(labels.blocks ?? {}).length + Object.keys(labels.fields ?? {}).length
-  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed) return base
+  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed && !templates.length) return base
   const extra = Object.keys(blocks)
   const withPalette = (fields) => (fields ?? []).map((f) => (f.kind === 'blocks' ? { ...f, of: [...new Set([...f.of, ...extra])] } : f))
   const names = labels.fields ?? {}
@@ -77,6 +80,9 @@ export function mergeCustom(base, custom) {
   for (const [name, b] of Object.entries(base.blocks ?? {})) merged.blocks[name] = apply(b, name, 'blocks')
   for (const [name, b] of Object.entries(blocks)) merged.blocks[name] = { ...b, custom: true }
   for (const [name, t] of Object.entries(types)) merged.types[name] = { ...t, custom: true }
+  // Section templates the owner saved ("Save as template"): a name and a
+  // section's content, offered when adding a section of that type.
+  merged.templates = templates.filter((t) => merged.blocks[t?.block?._type])
   return merged
 }
 
@@ -135,6 +141,16 @@ export function checkCustom(base, custom) {
     checkFields(t?.fields, `types.${name}`, CUSTOM_KINDS)
   }
   checkLabels(base, custom.labels, errors)
+  if (custom.templates != null) {
+    if (!Array.isArray(custom.templates)) errors.push('templates must be a list')
+    else {
+      if (custom.templates.length > MAX_TEMPLATES) errors.push(`at most ${MAX_TEMPLATES} templates`)
+      for (const t of custom.templates) {
+        if (typeof t?.name !== 'string' || !t.name.trim() || t.name.length > MAX_LABEL) errors.push(`templates: a name of 1 to ${MAX_LABEL} characters`)
+        else if (!base.blocks?.[t.block?._type] && !blocks[t.block?._type]) errors.push(`templates.${t.name}: no such section type`)
+      }
+    }
+  }
   if (!errors.length) errors.push(...checkSchema(mergeCustom(base, custom)))
   return errors
 }

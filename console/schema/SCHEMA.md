@@ -89,7 +89,9 @@ content and the site's code do not, so a rename never needs a migration.
 | `data-eotm-label` | either | names the Edit button |
 | `data-eotm-size="<field>"`, `data-eotm-min`, `data-eotm-max` | an element whose width is that number field, in % of its parent | a drag handle; snaps to twelfths or moves freely (the owner's toggle) |
 | `data-eotm-edge="left"`, `data-eotm-centered` | a sizable element | the handle on the left edge; a centred element's edge moves half as far |
-| `data-eotm-richtext="<field>"` | a rich text container | a handle on each image in it, stored as `width="n%"` |
+| `data-eotm-richtext="<field>"` | a rich text container | a handle on each image in it, stored as `width="n%"`; double-click to type in it on the page (1.1.9+) |
+| `data-eotm-text="<field>"` | an element showing a text field | double-click to type in it on the page; each keystroke reaches the pane (1.1.9+) |
+| `data-eotm-in="<_id>"` | beside either of the two above | the row the field belongs to, when not the marked element's item (a value inside a Values grid) |
 | `data-eotm-layout`, `data-eotm-block`, `data-eotm-span` | a page arranged by a `layout` field | Arrange's move and resize boxes |
 
 ## Documents
