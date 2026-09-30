@@ -6,7 +6,8 @@
       "page",
       "pageLayout",
       "referencePage",
-      "theme"
+      "theme",
+      "siteSettings"
     ]
   },
   "tools": [
@@ -539,6 +540,170 @@
               "help": "Visitors who ask their device for less motion always see it steady."
             }
           ]
+        }
+      ]
+    },
+    "siteSettings": {
+      "label": "Site header and footer",
+      "plural": "Site header and footer",
+      "singleton": true,
+      "previewPath": "/meet-the-artist",
+      "fields": [
+        {
+          "name": "siteName",
+          "kind": "text",
+          "label": "Site name",
+          "default": "StoryShaped Studios",
+          "help": "The name at the top of every page but Home, and in the footer and copyright."
+        },
+        {
+          "name": "navLinks",
+          "kind": "list",
+          "label": "Menu",
+          "itemLabel": "label",
+          "help": "The links along the top, in order. The page a visitor is on leaves its own link out.",
+          "default": [
+            {
+              "_id": "nav-1",
+              "label": "Home",
+              "url": "/",
+              "soon": false
+            },
+            {
+              "_id": "nav-2",
+              "label": "Library",
+              "url": "/library",
+              "soon": false
+            },
+            {
+              "_id": "nav-3",
+              "label": "Glossary",
+              "url": "/glossary",
+              "soon": false
+            },
+            {
+              "_id": "nav-4",
+              "label": "Images",
+              "url": "/images",
+              "soon": true
+            },
+            {
+              "_id": "nav-5",
+              "label": "Meet the Artist",
+              "url": "/meet-the-artist",
+              "soon": false
+            }
+          ],
+          "fields": [
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Label",
+              "required": true
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Goes to",
+              "required": true
+            },
+            {
+              "name": "soon",
+              "kind": "boolean",
+              "label": "Coming soon (shown dimmed, not a link)"
+            }
+          ]
+        },
+        {
+          "name": "socials",
+          "kind": "list",
+          "label": "Social and shop links",
+          "itemLabel": "label",
+          "default": [
+            {
+              "_id": "social-1",
+              "label": "Etsy",
+              "url": "https://www.etsy.com/shop/storyshapedstudios/?etsrc=sdt",
+              "icon": "etsy",
+              "inBand": false
+            },
+            {
+              "_id": "social-2",
+              "label": "eBay",
+              "url": "https://www.ebay.com/str/storyshapedstudios",
+              "icon": "ebay",
+              "inBand": false
+            },
+            {
+              "_id": "social-3",
+              "label": "Facebook",
+              "url": "https://www.facebook.com/storyshapedstudios/",
+              "icon": "facebook",
+              "inBand": true
+            },
+            {
+              "_id": "social-4",
+              "label": "Instagram",
+              "url": "https://www.instagram.com/storyshaped_studios/?hl=en",
+              "icon": "instagram",
+              "inBand": true
+            }
+          ],
+          "fields": [
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Name",
+              "required": true
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Address",
+              "required": true
+            },
+            {
+              "name": "icon",
+              "kind": "select",
+              "label": "Icon",
+              "required": true,
+              "options": [
+                {
+                  "value": "etsy",
+                  "label": "Etsy"
+                },
+                {
+                  "value": "ebay",
+                  "label": "eBay"
+                },
+                {
+                  "value": "facebook",
+                  "label": "Facebook"
+                },
+                {
+                  "value": "instagram",
+                  "label": "Instagram"
+                }
+              ]
+            },
+            {
+              "name": "inBand",
+              "kind": "boolean",
+              "label": "Also in the band under the menu"
+            }
+          ]
+        },
+        {
+          "name": "daylightLabel",
+          "kind": "text",
+          "label": "Toggle label, daylight",
+          "default": "Daylight"
+        },
+        {
+          "name": "blacklightLabel",
+          "kind": "text",
+          "label": "Toggle label, blacklight",
+          "default": "Blacklight"
         }
       ]
     },

@@ -65,6 +65,7 @@ Use cases the two schemas cover today:
 | StoryShaped | Library entry | Library: title, rich entry, position |
 | StoryShaped | A page | Pages: Home (slug home), Meet the Artist, Library, or any other, made of components: Card (the general one), Hero, Values grid, Daylight / blacklight photo, Product card |
 | StoryShaped | Inventory | Inventory in the menu (`tools`): the site's own hidden admin page |
+| StoryShaped | Header and footer | Site header and footer: site name, menu, social and shop links, toggle labels; Theme: fonts and colours per mode |
 | StoryShaped | Glossary | Reference Page Layouts: the one at /glossary, its sections, terms, details and sources |
 
 ## Layout
