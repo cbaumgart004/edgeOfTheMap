@@ -200,7 +200,8 @@ no login.
   2. IAM → Roles → Create role → Web identity: that provider, audience `sts.amazonaws.com`,
      GitHub organization `cbaumgart004`, repository `edgeOfTheMap`, branch `console`. Name it
      `eotm-console-deploy`.
-  3. Give it one inline policy: `lambda:UpdateFunctionCode` and `lambda:GetFunction` on
+  3. Give it one inline policy: `lambda:UpdateFunctionCode`, `lambda:GetFunction` and
+     `lambda:GetFunctionConfiguration` (the "wait until updated" check) on
      `arn:aws:lambda:us-east-1:<account id>:function:eotm-console-api`, nothing else.
   4. GitHub → the repo → Settings → Secrets and variables → Actions → **Variables** →
      `AWS_DEPLOY_ROLE_ARN` = the role's ARN (an ARN is not a secret). Until it is set the deploy job
