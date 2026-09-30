@@ -171,9 +171,10 @@ no login.
   nothing. **Unverified:** email to a requester while SES is in the sandbox; it fails for any
   unverified address and is logged, the push still goes.
 - **Monitors on the Manage page** (`api/monitors.js`): every UptimeRobot monitor with its status and
-  30-day uptime, read with UptimeRobot's **read-only** API key, a SecureString in SSM named by the
-  Lambda setting `UPTIMEROBOT_KEY_PARAM` (e.g. `/eotm/uptimerobot/read-key`; the role's
-  `ssm:GetParameter` on `/eotm/*` covers it). Without the setting the panel says it is not connected.
+  30-day uptime. Connect it once on the Manage page by pasting UptimeRobot's **Read-Only API Key**
+  (Integrations & API, Main API keys); the API checks it against UptimeRobot, keeps it in
+  `console_settings` beside the Web Push keys, and never returns it. The main (full-access) key is
+  refused. `UPTIMEROBOT_KEY_PARAM`, if set, names a key in SSM to use when none was pasted.
   **Unverified:** UptimeRobot API v2 against a real key; tested against a fake of its documented shape.
 - **The campfire on phones:** below 900 px the left scene fills the screen behind the admin card,
   fire centred (`dashboard.html`, `.sigils.is-left`).
@@ -186,9 +187,10 @@ no login.
 - **Uptime:** watched from outside AWS (UptimeRobot), so an AWS outage cannot silence its own alarm.
   Monitored: each site's production and preview address, `admin.theedgeofthemap.com/loader.js`, and
   `admin.theedgeofthemap.com/api/sites/storyshaped/boot` (the API and control database together).
-- **Migrations** run inside AWS: a Test-tab invoke of the Lambda with
-  `{"eotmMigrate": true, "siteParams": ["/eotm/sites/<site>/database"]}`. Applied: control `001_sites.sql`,
-  StoryShaped `001_documents.sql`.
+- **Migrations apply themselves.** Uploading `api.zip` is the whole API deploy: the first time a
+  container opens a project (control or a site) it applies that project's pending migrations under
+  a Postgres advisory lock (`api/lambda.js`, `poolFor`). A failure is logged and retried by the next
+  container. The Test-tab invoke `{"eotmMigrate": true}` still migrates every project at once.
 - **Releasing:** bump `version` in `package.json`, `npm run release`, commit `releases/`. Moving a
   customer to it is an update of their `sites` row; no customer site rebuilds.
   A release that adds a field kind needs the API redeployed **before** a schema using it is reloaded

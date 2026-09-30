@@ -6,7 +6,7 @@
 // deps (from handler.js): control, releases(), createLogin({ email, password, name }),
 //   siteSchema(slug): the schema shipped in this package (schema/sites/<slug>.json)
 //   requests: api/requests.js (tickets and this operator's push subscriptions)
-//   monitors(): api/monitors.js, the UptimeRobot monitors (absent: none configured)
+//   monitors: api/monitors.js, the UptimeRobot monitors and their key
 
 import { ServiceError } from '../core/service.js'
 import { checkSchema } from '../schema/schema.js'
@@ -188,7 +188,9 @@ export function createManage(deps, { onSiteChange }) {
     const req = rest.match(/^\/requests\/([0-9a-f-]{36})(\/comments)?$/i)
     if (method === 'PUT' && req && !req[2]) { await deps.requests.update(req[1], body, user); return { ok: true } }
     if (method === 'POST' && req && req[2]) return deps.requests.comment(req[1], body, user)
-    if (method === 'GET' && rest === '/monitors') return deps.monitors ? deps.monitors() : { configured: false, monitors: [] }
+    if (method === 'GET' && rest === '/monitors') return deps.monitors ? deps.monitors.list() : { configured: false, monitors: [] }
+    if (method === 'PUT' && rest === '/monitors/key' && deps.monitors) return deps.monitors.connect(body.key)
+    if (method === 'DELETE' && rest === '/monitors/key' && deps.monitors) { await deps.monitors.disconnect(); return { ok: true } }
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }
     if (method === 'DELETE' && rest === '/push') { await deps.requests.unsubscribe(user, body.endpoint); return { ok: true } }
     if (method === 'POST' && rest === '/push/test') return deps.requests.test(user, body.kind)

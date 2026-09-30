@@ -330,7 +330,11 @@ async function loadMonitors() {
     const r = await api('GET', '/api/manage/monitors')
     if (!r.configured) {
       $('#m-mon-count').textContent = ''
-      $('#m-monitors').innerHTML = '<li class="empty">Not connected: the console API has no UptimeRobot key (UPTIMEROBOT_KEY_PARAM).</li>'
+      $('#m-monitors').innerHTML = `<li><form id="mon-connect" class="card">
+        <label for="mon-key">UptimeRobot Read-Only API Key</label>
+        <input id="mon-key" type="password" autocomplete="off" required placeholder="ur…" />
+        <p class="meta">UptimeRobot → Integrations &amp; API → Main API keys → Read-Only API Key. It is checked, kept by the console API, and never shown again.</p>
+        <div><button type="submit">Connect UptimeRobot</button></div></form></li>`
       return
     }
     const rank = { down: 0, 'seems down': 1, 'not checked yet': 2, up: 3, paused: 4 }
@@ -340,7 +344,7 @@ async function loadMonitors() {
     $('#m-monitors').innerHTML = list.map((m) => `<li class="monitor is-${esc(m.status.replace(/ /g, '-'))}">
       <span class="dot" aria-hidden="true"></span>
       <span><strong>${esc(m.name)}</strong><br><span class="meta">${esc(m.status)}${m.uptimeMonth != null ? ` · ${esc(m.uptimeMonth.toFixed(2))}% over 30 days` : ''}</span></span>
-      <a class="meta" href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open</a></li>`).join('') || '<li class="empty">No monitors.</li>'
+      <a class="meta" href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open</a></li>`).join('') + '<li><button type="button" id="mon-disconnect" class="link">Disconnect UptimeRobot</button></li>'
   } catch (err) {
     $('#m-mon-count').textContent = ''
     $('#m-monitors').innerHTML = `<li class="empty">Monitors could not load: ${esc(err.message)}</li>`
@@ -469,6 +473,21 @@ $('#m-requests').addEventListener('submit', run(async (e) => {
   say(notify ? 'Commented; the requester is told.' : 'Commented.')
   renderRequests(await api('GET', '/api/manage/requests'))
 }))
+$('#m-monitors').addEventListener('submit', run(async () => {
+  await api('PUT', '/api/manage/monitors/key', { key: $('#mon-key').value })
+  say('UptimeRobot connected.')
+  await loadMonitors()
+}))
+$('#m-monitors').addEventListener('click', async (e) => {
+  if (e.target.id !== 'mon-disconnect') return
+  try {
+    await api('DELETE', '/api/manage/monitors/key')
+    say('UptimeRobot disconnected.')
+  } catch (err) {
+    say(err.message, true)
+  }
+  await loadMonitors()
+})
 for (const b of document.querySelectorAll('[data-tickets]')) {
   b.addEventListener('click', () => {
     ticketView = b.dataset.tickets

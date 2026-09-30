@@ -64,7 +64,7 @@ function parseBody(event) {
 //                                                     media_bucket, where set, overrides it.
 //   sanitize(schema): (type, data) => data
 //   sendEmail({ to, subject, text }), sendPush(sub, payload, vapid), generateVapid()   see requests.js
-//   monitors(): see monitors.js (optional: absent means no UptimeRobot key is set)
+//   monitors: { list, connect, disconnect }, see monitors.js
 // }
 export function createHandler(deps) {
   const siteCache = new Map()

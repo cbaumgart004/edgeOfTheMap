@@ -8,6 +8,8 @@
 //   MEDIA_REGION            region of the photo buckets (default us-east-1)
 //   NOTIFY_FROM             verified SES sender for change-request email, e.g.
 //                           notifications@theedgeofthemap.com; unset = no email (push still goes)
+//   UPTIMEROBOT_KEY_PARAM   optional: SSM name of UptimeRobot's read-only key; normally the key is
+//                           pasted on the Manage page instead (monitors.js)
 //
 // Each site's connection string is the SSM parameter named in sites.connection_param
 // (ADR-0007), so adding a customer needs no redeploy. A connection_param of
@@ -59,10 +61,38 @@ async function connectionFor(param) {
 
 // One small pool per project per container. Neon scales to zero; the first query
 // after idle waits for it to wake.
+//
+// Uploading a new api.zip is the whole deploy: the first time a container opens
+// a project it applies that project's pending migrations (control or site),
+// under an advisory lock so two cold containers cannot race. Already applied
+// is one query. A failed migration is logged and retried by the next
+// container; it never stops the API answering.
 const pools = new Map()
+const MIGRATE_LOCK = 727_001
 async function poolFor(param) {
-  if (!pools.has(param)) pools.set(param, new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000 }))
-  return pools.get(param)
+  if (!pools.has(param)) {
+    pools.set(param, (async () => {
+      const pool = new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000 })
+      const client = await pool.connect()
+      try {
+        await client.query('SELECT pg_advisory_lock($1)', [MIGRATE_LOCK])
+        const applied = await runMigrations(client, param === process.env.CONTROL_DATABASE_PARAM ? 'control' : 'site')
+        if (applied.length) console.log('[migrate]', param, 'applied', applied.join(', '))
+      } catch (err) {
+        console.error('[migrate]', param, 'failed:', err.message)
+      } finally {
+        await client.query('SELECT pg_advisory_unlock($1)', [MIGRATE_LOCK]).catch(() => {})
+        client.release()
+      }
+      return pool
+    })())
+  }
+  try {
+    return await pools.get(param)
+  } catch (err) {
+    pools.delete(param) // e.g. SSM or the database unreachable: try again next request
+    throw err
+  }
 }
 
 const authUrl = process.env.NEON_AUTH_URL
@@ -132,11 +162,13 @@ const http = createHandler({
     TTL: 24 * 60 * 60,
   }),
   generateVapid: () => webpush.generateVAPIDKeys(),
-  // Uptime monitors on the management page (monitors.js): UptimeRobot's
-  // read-only API key, a SecureString named by UPTIMEROBOT_KEY_PARAM.
-  monitors: process.env.UPTIMEROBOT_KEY_PARAM
-    ? createMonitors({ apiKey: () => secret(process.env.UPTIMEROBOT_KEY_PARAM), fetch })
-    : undefined,
+  // Uptime monitors on the management page (monitors.js). The read-only key is
+  // pasted on the Manage page; UPTIMEROBOT_KEY_PARAM, if set, names one in SSM instead.
+  monitors: createMonitors({
+    control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
+    fetch,
+    fallbackKey: process.env.UPTIMEROBOT_KEY_PARAM ? () => secret(process.env.UPTIMEROBOT_KEY_PARAM) : undefined,
+  }),
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {
     const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {
@@ -149,8 +181,9 @@ const http = createHandler({
 })
 
 // Function URL requests carry requestContext.http. A direct invoke (the Lambda
-// console's Test tab, IAM-authorized only) with {"eotmMigrate": true} runs the
-// migrations instead, so connection strings never leave SSM. A URL request
+// console's Test tab, IAM-authorized only) with {"eotmMigrate": true} runs every
+// project's migrations at once, so connection strings never leave SSM. It is
+// no longer a deploy step: poolFor applies them as each project is first used. A URL request
 // cannot reach this: its body is not the event.
 const authProxy = authUrl ? createAuthProxy({ authUrl }) : null
 
