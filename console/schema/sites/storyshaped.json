@@ -3,8 +3,6 @@
   "version": 1,
   "release": {
     "types": [
-      "home",
-      "artistPage",
       "page",
       "pageLayout",
       "referencePage",
@@ -88,312 +86,6 @@
       ],
       "previewPath": "/library/{slug}"
     },
-    "home": {
-      "label": "Home page",
-      "plural": "Home page",
-      "menuUnder": "page",
-      "singleton": true,
-      "previewPath": "/",
-      "fields": [
-        {
-          "name": "hero",
-          "kind": "group",
-          "label": "Hero",
-          "fields": [
-            {
-              "name": "tagline",
-              "kind": "text",
-              "label": "Tagline",
-              "default": "The World’s Largest Resource for Uranium Glass Jewelry"
-            },
-            {
-              "name": "primary",
-              "kind": "group",
-              "label": "First button",
-              "fields": [
-                {
-                  "name": "label",
-                  "kind": "text",
-                  "label": "Button text",
-                  "default": "Learn about Uranium Glass"
-                },
-                {
-                  "name": "url",
-                  "kind": "url",
-                  "label": "Goes to",
-                  "default": "/library"
-                }
-              ]
-            },
-            {
-              "name": "secondary",
-              "kind": "group",
-              "label": "Second button",
-              "fields": [
-                {
-                  "name": "label",
-                  "kind": "text",
-                  "label": "Button text",
-                  "default": "Shop the Collection"
-                },
-                {
-                  "name": "url",
-                  "kind": "url",
-                  "label": "Goes to",
-                  "default": "/shop"
-                }
-              ]
-            },
-            {
-              "name": "photos",
-              "kind": "photos",
-              "label": "Photo",
-              "indexes": [
-                "Light",
-                "Dark"
-              ],
-              "maxItems": 2,
-              "help": "One daylight (Light) and one blacklight (Dark) shot of the same piece. Empty: the floral-drop necklace."
-            },
-            {
-              "name": "credit",
-              "kind": "textarea",
-              "label": "Credit line",
-              "default": "Created by Whitney Granger, internationally recognized uranium glass jewelry artist and historian"
-            }
-          ]
-        },
-        {
-          "name": "believe",
-          "kind": "group",
-          "label": "What We Believe",
-          "fields": [
-            {
-              "name": "heading",
-              "kind": "text",
-              "label": "Heading",
-              "default": "What We Believe"
-            },
-            {
-              "name": "items",
-              "kind": "list",
-              "label": "Values",
-              "itemLabel": "title",
-              "default": [
-                {
-                  "_id": "value-1",
-                  "title": "Preserving History",
-                  "text": "Every piece of uranium glass carries a story. We are committed to the stewardship of an extraordinary artistic heritage, preserving it for those who will discover it next."
-                },
-                {
-                  "_id": "value-2",
-                  "title": "Education Through Research",
-                  "text": "Knowledge should be shared. Through ongoing research, historical documentation, and educational resources, we strive to be the world’s most trusted source for uranium glass jewelry."
-                },
-                {
-                  "_id": "value-3",
-                  "title": "Honoring the Material",
-                  "text": "Remarkable materials deserve exceptional craftsmanship. Every piece is thoughtfully designed and handcrafted to become tomorrow’s heirloom."
-                },
-                {
-                  "_id": "value-4",
-                  "title": "Restoration & Renewal",
-                  "text": "Some stories aren’t finished yet. Through careful repair and restoration, we breathe new life into vintage and antique uranium glass jewelry, honoring the hands that created it so it can continue to be loved across generations."
-                },
-                {
-                  "_id": "value-5",
-                  "title": "Authenticity",
-                  "text": "We believe every piece deserves an honest story. From age and origin to materials and craftsmanship, we are committed to representing every piece with accuracy and integrity."
-                },
-                {
-                  "_id": "value-6",
-                  "title": "Curiosity & Discovery",
-                  "text": "Whether it’s an overlooked antique necklace, a forgotten Czech bead, or a rare cabochon, we believe the thrill of discovery is part of the journey. We are always searching for remarkable pieces and the stories they carry."
-                },
-                {
-                  "_id": "value-7",
-                  "title": "Caring for Every Collector",
-                  "text": "Whether you’re purchasing your first glowing pendant or your hundredth antique bead, we want every interaction to be welcoming, educational, and genuinely enjoyable."
-                }
-              ],
-              "fields": [
-                {
-                  "name": "title",
-                  "kind": "text",
-                  "label": "Value",
-                  "required": true
-                },
-                {
-                  "name": "text",
-                  "kind": "textarea",
-                  "label": "Text"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "story",
-          "kind": "group",
-          "label": "Our Story",
-          "fields": [
-            {
-              "name": "heading",
-              "kind": "text",
-              "label": "Heading",
-              "default": "Our Story"
-            },
-            {
-              "name": "body",
-              "kind": "richtext",
-              "label": "Text",
-              "default": "<p>Long before StoryShaped Studios existed, artisans were crafting jewelry from uranium glass. Whitney discovered that forgotten history in 2018 through a Neiger Brothers necklace, and it was love at first sight. Thousands of hours of research, an international community of collectors, and a passion for preserving these remarkable artifacts eventually led her to teach herself jewelry making during the 2020 pandemic. What began as a personal fascination grew into the world’s leading authority on uranium glass jewelry and beads. Today, StoryShaped Studios preserves the history of uranium glass jewelry while creating heirloom-quality pieces that carry that story forward.</p>"
-            },
-            {
-              "name": "link",
-              "kind": "group",
-              "label": "Link",
-              "fields": [
-                {
-                  "name": "label",
-                  "kind": "text",
-                  "label": "Button text",
-                  "default": "More on Whitney’s personal journey"
-                },
-                {
-                  "name": "url",
-                  "kind": "url",
-                  "label": "Goes to",
-                  "default": "/meet-the-artist"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "jewelry",
-          "kind": "group",
-          "label": "Our Jewelry",
-          "fields": [
-            {
-              "name": "heading",
-              "kind": "text",
-              "label": "Heading",
-              "default": "Our Jewelry"
-            },
-            {
-              "name": "body",
-              "kind": "richtext",
-              "label": "Text",
-              "default": "<p>Every StoryShaped Studios piece begins with genuine uranium glass, from rare antique treasures to newly crafted Czech glass. Whether creating an original design or carefully restoring a historic piece, our work is guided by a deep respect for the history, artistry, and enduring beauty of uranium glass.</p>"
-            }
-          ]
-        },
-        {
-          "name": "makers",
-          "kind": "group",
-          "label": "A Space for Makers",
-          "fields": [
-            {
-              "name": "heading",
-              "kind": "text",
-              "label": "Heading",
-              "default": "A Space for Makers"
-            },
-            {
-              "name": "body",
-              "kind": "richtext",
-              "label": "Text",
-              "default": "<p>StoryShaped Studios is the largest retailer of uranium glass beads in the world, with over 200 unique bead designs both vintage and newly made. All of our beads are the highest quality Czech glass.</p><p>We also specialize in uranium glass cabochons, pendants, and faceted gems.</p>"
-            }
-          ]
-        }
-      ]
-    },
-    "artistPage": {
-      "label": "Meet the Artist page",
-      "plural": "Meet the Artist page",
-      "menuUnder": "page",
-      "singleton": true,
-      "previewPath": "/meet-the-artist",
-      "fields": [
-        {
-          "name": "eyebrow",
-          "kind": "text",
-          "label": "Small heading",
-          "default": "The Hands Behind the Glow"
-        },
-        {
-          "name": "heading",
-          "kind": "text",
-          "label": "Heading",
-          "default": "Meet the Artist"
-        },
-        {
-          "name": "photos",
-          "kind": "photos",
-          "label": "Portraits",
-          "maxItems": 3,
-          "help": "Up to three across the top. Empty: the three shipped portraits."
-        },
-        {
-          "name": "body",
-          "kind": "richtext",
-          "label": "Story",
-          "default": "<p>I specialize in handmade <b>uranium glass</b> jewelry as well as the repair and restoration of antique and vintage uranium glass jewelry pieces. I am passionate about uranium glass and its wildly fascinating history. My knowledge is the result of thousands of hours of research, travel, and identification over the past 5 years. I am totally dedicated to furthering the knowledge and appreciation of this unusual type of jewelry.</p><p>I came to Colorado several years ago and love my new home more every day, although many miles away from the cornfields of central Illinois where I grew up. I received a degree in Psychology with a minor in English Literature, and I worked for 10 years alongside adults with intellectual and developmental disabilities in residential settings. I also ran an international non-profit agency dedicated to assisting countries working toward the deinstitutionalization of their disabled citizens.</p><p>In 2020 with the onset of the pandemic, my search for a career change intersected with being quarantined. I had always loved jewelry, and this was the perfect opportunity to try my hand at it. Today I am the largest uranium glass bead supplier in the US. I am world-renowned as an expert on all things uranium glass jewelry. I specialize in sourcing old art deco cabochons, faceted glass gems, old glass beads, and vintage and antique jewelry items. I travel the world to find these historic pieces. I incorporate contemporary glass components from the Czech Republic as well.</p><p>I am also a rare book collector, a musician and multi-instrumentalist, the wife of a clever and magical woodland elf, and the devoted subject of two feline overlords.</p><p>It is a true honor to promote the love and appreciation I have for uranium glass among jewelry collectors and I am proud to preserve and further the concept of an <b>‘Eternal Glow’</b>.</p>"
-        },
-        {
-          "name": "signature",
-          "kind": "text",
-          "label": "Signed",
-          "default": "Whitney Granger"
-        },
-        {
-          "name": "signatureTitle",
-          "kind": "text",
-          "label": "Under the signature",
-          "default": "Creator and Designer of StoryShaped Studios"
-        },
-        {
-          "name": "links",
-          "kind": "list",
-          "label": "Press and links",
-          "itemLabel": "title",
-          "help": "Each shows as its title, with the site and address in small type beneath.",
-          "default": [
-            {
-              "_id": "link-1",
-              "title": "My interview with House Beautiful magazine",
-              "url": "https://www.housebeautiful.com/design-inspiration/a45459335/uranium-glass-collecting-radioactive-glassware/"
-            },
-            {
-              "_id": "link-2",
-              "title": "My interview with The Denver Post",
-              "url": "https://www.denverpost.com/2023/10/26/uranium-glass-jewelry-halloween-colorado-collector-for-sale/"
-            }
-          ],
-          "fields": [
-            {
-              "name": "title",
-              "kind": "text",
-              "label": "Title"
-            },
-            {
-              "name": "url",
-              "kind": "url",
-              "label": "Address",
-              "required": true
-            }
-          ]
-        },
-        {
-          "name": "cabinet",
-          "kind": "image",
-          "label": "Photo at the foot",
-          "help": "Empty: the glowing cabinet."
-        }
-      ]
-    },
     "page": {
       "label": "Page",
       "plural": "Pages",
@@ -404,17 +96,23 @@
           "name": "title",
           "kind": "text",
           "label": "Title",
-          "required": true
+          "required": true,
+          "help": "Home is the page whose address is \"home\"; it shows at the site’s front door."
         },
         {
           "name": "sections",
           "kind": "blocks",
           "label": "Sections",
           "of": [
+            "hero",
             "prose",
             "values",
-            "photoFeature"
-          ]
+            "photoFeature",
+            "portraits",
+            "artistStory",
+            "framedPhoto"
+          ],
+          "help": "The components this page is made of, in order. Arrange them side by side with its Page layout."
         }
       ],
       "previewPath": "/{slug}"
@@ -1184,6 +882,59 @@
     }
   },
   "blocks": {
+    "hero": {
+      "label": "Hero",
+      "className": "hero",
+      "fields": [
+        {
+          "name": "logo",
+          "kind": "image",
+          "label": "Logo",
+          "help": "Empty: the neon StoryShaped Studios logo."
+        },
+        {
+          "name": "tagline",
+          "kind": "text",
+          "label": "Tagline"
+        },
+        {
+          "name": "buttons",
+          "kind": "list",
+          "label": "Buttons",
+          "itemLabel": "label",
+          "maxItems": 2,
+          "help": "The first is the bright one.",
+          "fields": [
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Button text"
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Goes to"
+            }
+          ]
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photo",
+          "indexes": [
+            "Light",
+            "Dark"
+          ],
+          "maxItems": 2,
+          "help": "One daylight (Light) and one blacklight (Dark) shot of the same piece. Empty: the floral-drop necklace."
+        },
+        {
+          "name": "credit",
+          "kind": "textarea",
+          "label": "Credit line"
+        }
+      ]
+    },
     "prose": {
       "label": "Text section",
       "className": "section prose-block",
@@ -1259,6 +1010,88 @@
             "Light",
             "Dark"
           ]
+        },
+        {
+          "name": "caption",
+          "kind": "text",
+          "label": "Caption"
+        }
+      ]
+    },
+    "portraits": {
+      "label": "Portrait row",
+      "className": "section",
+      "fields": [
+        {
+          "name": "eyebrow",
+          "kind": "text",
+          "label": "Small heading"
+        },
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading"
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photos",
+          "maxItems": 3,
+          "help": "Up to three across."
+        }
+      ]
+    },
+    "artistStory": {
+      "label": "Artist story",
+      "className": "section artist-body",
+      "fields": [
+        {
+          "name": "body",
+          "kind": "richtext",
+          "label": "Story"
+        },
+        {
+          "name": "signature",
+          "kind": "text",
+          "label": "Signed"
+        },
+        {
+          "name": "signatureTitle",
+          "kind": "text",
+          "label": "Under the signature"
+        },
+        {
+          "name": "links",
+          "kind": "list",
+          "label": "Press and links",
+          "itemLabel": "title",
+          "help": "Each shows as its title, with the site and address in small type beneath.",
+          "fields": [
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "Title",
+              "help": "What a reader sees. Blank: made from the address."
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Address",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    "framedPhoto": {
+      "label": "Framed photo",
+      "className": "section",
+      "fields": [
+        {
+          "name": "image",
+          "kind": "image",
+          "label": "Photo",
+          "required": true
         },
         {
           "name": "caption",
