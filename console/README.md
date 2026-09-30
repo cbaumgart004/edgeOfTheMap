@@ -39,6 +39,17 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
 - **Their own types (0.1.8+).** An owner designs sections and collections with their own fields
   ("Your own types"); a custom section is placed on pages like a built-in one (SCHEMA.md). More
   than six types on a phone become a dropdown, on the home view and in a section palette.
+- **To the Developer (1.1.4+).** A folding panel at the foot of the editor shows whether the site has
+  changes not yet live ("3 changes not yet pushed to production", or "Everything is live") and offers
+  **Push to Production**, **Push and Request Changes** and **Request Changes**. A push checks every
+  pending document of the schema's `release.types` (StoryShaped: page, pageLayout, theme; all types
+  when unset) against Publish's rules and warnings, and publishes all of them or none
+  (`core/service.js`, `publishAll`; `GET`/`POST /api/sites/<site>/release`). It replaces the
+  "Request a change" card. The publishes run one at a time, not in one transaction: a document
+  edited elsewhere between check and publish is reported and stays a draft. "Production" here is
+  the published content every address of the site reads; releasing the site's code is not part of it.
+- **Click-to-edit starts a missing singleton.** Edit on a part of the page whose one-of-a-kind
+  document (a home page, a theme) does not exist yet creates it from the schema's defaults.
 - **Two tabs, one document:** a save based on an old version is refused, and the owner chooses
   "Use their version" or "Keep mine" instead of silently overwriting.
 
@@ -49,6 +60,8 @@ Use cases the two schemas cover today:
 | SpiritSeeds | New event | Events, New event: date and time, location, rich description, photo, price, booking link |
 | SpiritSeeds | Banner | Banners: rich message, button, look, show-from and hide-after times |
 | StoryShaped | Library entry | Library: title, rich entry, position |
+| StoryShaped | Home copy | Home page: hero tagline, buttons, photo and credit; What We Believe; Our Story; Our Jewelry; A Space for Makers |
+| StoryShaped | Glossary | Reference Page Layouts: the one at /glossary, its sections, terms, details and sources |
 
 ## Layout
 
@@ -162,6 +175,9 @@ no login.
   still goes. The Web Push key pair is generated on first use and kept in `console_settings`, so
   there is nothing to provision; deleting that row signs every device out of notifications. On
   iPhone, push works only once the admin page is added to the Home Screen (iOS 16.4+).
+  The app icon carries a badge counting the notifications still in the tray (`public-admin/sw.js`);
+  opening the admin page clears the tray and the badge (`markRead` in `src/dashboard.js`).
+  **Unverified** on a phone.
 - **Tickets** (migration `009`): a request is worked like an Azure DevOps item. State New, Active,
   Resolved or Closed; an operator assigned; a comment thread. A comment, or a state change on the
   Manage page, tells the requester by email and push when "Tell" is ticked (a comment on a New
@@ -170,6 +186,8 @@ no login.
   card (`/?manage#ticket-<id>`). "Test a new-ticket alert" pushes one to your own devices, saving
   nothing. **Unverified:** email to a requester while SES is in the sandbox; it fails for any
   unverified address and is logged, the push still goes.
+- **Folding on the Manage page:** Monitors and each site's card fold to one line (the site's name,
+  member count and editor version). Monitors opens by itself when one is down or none is connected.
 - **Monitors on the Manage page** (`api/monitors.js`): every UptimeRobot monitor with its status and
   30-day uptime. Connect it once on the Manage page by pasting UptimeRobot's **Read-Only API Key**
   (Integrations & API, Main API keys); the API checks it against UptimeRobot, keeps it in

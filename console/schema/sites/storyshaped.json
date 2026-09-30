@@ -1,6 +1,15 @@
 {
   "site": "storyshaped",
   "version": 1,
+  "release": {
+    "types": [
+      "home",
+      "page",
+      "pageLayout",
+      "referencePage",
+      "theme"
+    ]
+  },
   "brand": {
     "name": "StoryShaped Studios",
     "logo": "/assets/StoryShapedStudiosLogo_GmailOptimized.png",
@@ -78,6 +87,227 @@
       ],
       "previewPath": "/library/{slug}"
     },
+    "home": {
+      "label": "Home page",
+      "plural": "Home page",
+      "singleton": true,
+      "previewPath": "/",
+      "fields": [
+        {
+          "name": "hero",
+          "kind": "group",
+          "label": "Hero",
+          "fields": [
+            {
+              "name": "tagline",
+              "kind": "text",
+              "label": "Tagline",
+              "default": "The World’s Largest Resource for Uranium Glass Jewelry"
+            },
+            {
+              "name": "primary",
+              "kind": "group",
+              "label": "First button",
+              "fields": [
+                {
+                  "name": "label",
+                  "kind": "text",
+                  "label": "Button text",
+                  "default": "Learn about Uranium Glass"
+                },
+                {
+                  "name": "url",
+                  "kind": "url",
+                  "label": "Goes to",
+                  "default": "/library"
+                }
+              ]
+            },
+            {
+              "name": "secondary",
+              "kind": "group",
+              "label": "Second button",
+              "fields": [
+                {
+                  "name": "label",
+                  "kind": "text",
+                  "label": "Button text",
+                  "default": "Shop the Collection"
+                },
+                {
+                  "name": "url",
+                  "kind": "url",
+                  "label": "Goes to",
+                  "default": "/shop"
+                }
+              ]
+            },
+            {
+              "name": "photos",
+              "kind": "photos",
+              "label": "Photo",
+              "indexes": [
+                "Light",
+                "Dark"
+              ],
+              "maxItems": 2,
+              "help": "One daylight (Light) and one blacklight (Dark) shot of the same piece. Empty: the floral-drop necklace."
+            },
+            {
+              "name": "credit",
+              "kind": "textarea",
+              "label": "Credit line",
+              "default": "Created by Whitney Granger, internationally recognized uranium glass jewelry artist and historian"
+            }
+          ]
+        },
+        {
+          "name": "believe",
+          "kind": "group",
+          "label": "What We Believe",
+          "fields": [
+            {
+              "name": "heading",
+              "kind": "text",
+              "label": "Heading",
+              "default": "What We Believe"
+            },
+            {
+              "name": "items",
+              "kind": "list",
+              "label": "Values",
+              "itemLabel": "title",
+              "default": [
+                {
+                  "_id": "value-1",
+                  "title": "Preserving History",
+                  "text": "Every piece of uranium glass carries a story. We are committed to the stewardship of an extraordinary artistic heritage, preserving it for those who will discover it next."
+                },
+                {
+                  "_id": "value-2",
+                  "title": "Education Through Research",
+                  "text": "Knowledge should be shared. Through ongoing research, historical documentation, and educational resources, we strive to be the world’s most trusted source for uranium glass jewelry."
+                },
+                {
+                  "_id": "value-3",
+                  "title": "Honoring the Material",
+                  "text": "Remarkable materials deserve exceptional craftsmanship. Every piece is thoughtfully designed and handcrafted to become tomorrow’s heirloom."
+                },
+                {
+                  "_id": "value-4",
+                  "title": "Restoration & Renewal",
+                  "text": "Some stories aren’t finished yet. Through careful repair and restoration, we breathe new life into vintage and antique uranium glass jewelry, honoring the hands that created it so it can continue to be loved across generations."
+                },
+                {
+                  "_id": "value-5",
+                  "title": "Authenticity",
+                  "text": "We believe every piece deserves an honest story. From age and origin to materials and craftsmanship, we are committed to representing every piece with accuracy and integrity."
+                },
+                {
+                  "_id": "value-6",
+                  "title": "Curiosity & Discovery",
+                  "text": "Whether it’s an overlooked antique necklace, a forgotten Czech bead, or a rare cabochon, we believe the thrill of discovery is part of the journey. We are always searching for remarkable pieces and the stories they carry."
+                },
+                {
+                  "_id": "value-7",
+                  "title": "Caring for Every Collector",
+                  "text": "Whether you’re purchasing your first glowing pendant or your hundredth antique bead, we want every interaction to be welcoming, educational, and genuinely enjoyable."
+                }
+              ],
+              "fields": [
+                {
+                  "name": "title",
+                  "kind": "text",
+                  "label": "Value",
+                  "required": true
+                },
+                {
+                  "name": "text",
+                  "kind": "textarea",
+                  "label": "Text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "story",
+          "kind": "group",
+          "label": "Our Story",
+          "fields": [
+            {
+              "name": "heading",
+              "kind": "text",
+              "label": "Heading",
+              "default": "Our Story"
+            },
+            {
+              "name": "body",
+              "kind": "richtext",
+              "label": "Text",
+              "default": "<p>Long before StoryShaped Studios existed, artisans were crafting jewelry from uranium glass. Whitney discovered that forgotten history in 2018 through a Neiger Brothers necklace, and it was love at first sight. Thousands of hours of research, an international community of collectors, and a passion for preserving these remarkable artifacts eventually led her to teach herself jewelry making during the 2020 pandemic. What began as a personal fascination grew into the world’s leading authority on uranium glass jewelry and beads. Today, StoryShaped Studios preserves the history of uranium glass jewelry while creating heirloom-quality pieces that carry that story forward.</p>"
+            },
+            {
+              "name": "link",
+              "kind": "group",
+              "label": "Link",
+              "fields": [
+                {
+                  "name": "label",
+                  "kind": "text",
+                  "label": "Button text",
+                  "default": "More on Whitney’s personal journey"
+                },
+                {
+                  "name": "url",
+                  "kind": "url",
+                  "label": "Goes to",
+                  "default": "/meet-the-artist"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "jewelry",
+          "kind": "group",
+          "label": "Our Jewelry",
+          "fields": [
+            {
+              "name": "heading",
+              "kind": "text",
+              "label": "Heading",
+              "default": "Our Jewelry"
+            },
+            {
+              "name": "body",
+              "kind": "richtext",
+              "label": "Text",
+              "default": "<p>Every StoryShaped Studios piece begins with genuine uranium glass, from rare antique treasures to newly crafted Czech glass. Whether creating an original design or carefully restoring a historic piece, our work is guided by a deep respect for the history, artistry, and enduring beauty of uranium glass.</p>"
+            }
+          ]
+        },
+        {
+          "name": "makers",
+          "kind": "group",
+          "label": "A Space for Makers",
+          "fields": [
+            {
+              "name": "heading",
+              "kind": "text",
+              "label": "Heading",
+              "default": "A Space for Makers"
+            },
+            {
+              "name": "body",
+              "kind": "richtext",
+              "label": "Text",
+              "default": "<p>StoryShaped Studios is the largest retailer of uranium glass beads in the world, with over 200 unique bead designs both vintage and newly made. All of our beads are the highest quality Czech glass.</p><p>We also specialize in uranium glass cabochons, pendants, and faceted gems.</p>"
+            }
+          ]
+        }
+      ]
+    },
     "page": {
       "label": "Page",
       "plural": "Pages",
@@ -127,6 +357,147 @@
           "kind": "layout",
           "label": "Arrangement",
           "help": "Drag the blocks on the page, or order and size them here."
+        }
+      ],
+      "previewPath": "{path}"
+    },
+    "referencePage": {
+      "label": "Reference Page Layout",
+      "plural": "Reference Page Layouts",
+      "titleField": "title",
+      "slugFrom": "title",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "default": "Glossary of Terms"
+        },
+        {
+          "name": "path",
+          "kind": "url",
+          "label": "Address",
+          "required": true,
+          "default": "/glossary",
+          "help": "The page this fills: /glossary for the Glossary."
+        },
+        {
+          "name": "eyebrow",
+          "kind": "text",
+          "label": "Small heading above the title",
+          "default": "Reference"
+        },
+        {
+          "name": "intro",
+          "kind": "textarea",
+          "label": "Introduction",
+          "help": "Under the title. The term count and a link to the Library follow it."
+        },
+        {
+          "name": "sections",
+          "kind": "list",
+          "label": "Sections",
+          "itemLabel": "heading",
+          "help": "Each is a category with its own jump button.",
+          "fields": [
+            {
+              "name": "heading",
+              "kind": "text",
+              "label": "Category",
+              "required": true
+            },
+            {
+              "name": "terms",
+              "kind": "list",
+              "label": "Terms",
+              "itemLabel": "term",
+              "fields": [
+                {
+                  "name": "term",
+                  "kind": "text",
+                  "label": "Term",
+                  "required": true
+                },
+                {
+                  "name": "definition",
+                  "kind": "textarea",
+                  "label": "Definition",
+                  "required": true
+                },
+                {
+                  "name": "details",
+                  "kind": "list",
+                  "label": "Details",
+                  "itemLabel": "label",
+                  "help": "Labelled sub-definitions, e.g. rhinestone grades.",
+                  "fields": [
+                    {
+                      "name": "label",
+                      "kind": "text",
+                      "label": "Label"
+                    },
+                    {
+                      "name": "text",
+                      "kind": "textarea",
+                      "label": "Text",
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "name": "sources",
+                  "kind": "list",
+                  "label": "Sources",
+                  "itemLabel": "title",
+                  "help": "Each shows as its title, with the site and address in small type beneath.",
+                  "fields": [
+                    {
+                      "name": "title",
+                      "kind": "text",
+                      "label": "Title",
+                      "help": "What a reader sees, e.g. \"Victorian jewellery (Wikipedia)\". Blank: made from the address."
+                    },
+                    {
+                      "name": "url",
+                      "kind": "url",
+                      "label": "Address",
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "libraryIndex",
+          "kind": "list",
+          "label": "Library index",
+          "itemLabel": "group",
+          "help": "Groups of Library entries, by their exact titles.",
+          "fields": [
+            {
+              "name": "group",
+              "kind": "text",
+              "label": "Group",
+              "required": true
+            },
+            {
+              "name": "entries",
+              "kind": "list",
+              "label": "Entries",
+              "itemLabel": "title",
+              "fields": [
+                {
+                  "name": "title",
+                  "kind": "text",
+                  "label": "Library entry title",
+                  "required": true
+                }
+              ]
+            }
+          ]
         }
       ],
       "previewPath": "{path}"
@@ -685,6 +1056,23 @@
               "name": "ebayPrice",
               "kind": "money",
               "label": "eBay price (blank: the same)"
+            },
+            {
+              "name": "etsyListingId",
+              "kind": "text",
+              "label": "Etsy listing id (blank: the listing’s)",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only",
+              "help": "Only when this option is sold in a different Etsy listing from the rest (ADR-0004: Marketplace Listings link per Variation)."
+            },
+            {
+              "name": "ebayItemId",
+              "kind": "text",
+              "label": "eBay item id (blank: the listing’s)",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only"
             }
           ]
         },

@@ -255,4 +255,16 @@ describe('editor handoff', () => {
     expect(mustChange).toEqual([])
     expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds' } })).status).toBe(200)
   })
+
+  it('lists pending changes and pushes them all to production', async () => {
+    const { call } = setup()
+    const made = await call('POST', `${base}/documents`, { body: { type: 'event', data: event } })
+    expect(made.statusCode).toBe(201)
+    const before = await call('GET', `${base}/release`)
+    expect(before.json.pending.map((d) => d.id)).toContain(made.json.id)
+    const pushed = await call('POST', `${base}/release`, { body: {} })
+    expect(pushed.statusCode).toBe(200)
+    expect(pushed.json.published.map((d) => d.id)).toContain(made.json.id)
+    expect(pushed.json.pending).toEqual([])
+  })
 })

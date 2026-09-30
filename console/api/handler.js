@@ -306,6 +306,22 @@ export function createHandler(deps) {
       const svc = await serviceFor(site)
       const body = ['POST', 'PUT'].includes(method) ? parseBody(event) : {}
 
+      // "To the Developer" in the editor: what is not yet live, and pushing it.
+      // A `request` with the push goes to Edge of the Map as a change request,
+      // only once the push has gone through.
+      if (method === 'GET' && rest === '/release') return json(200, { pending: await svc.pending() }, headers)
+      if (method === 'POST' && rest === '/release') {
+        const result = await svc.publishAll(user)
+        const note = String(body.request ?? '').trim()
+        if (note) {
+          const pushed = `Pushed ${result.published.length} change${result.published.length === 1 ? '' : 's'} to production${result.published.length ? `: ${result.published.map((d) => d.title).join(', ')}` : ''}.`
+          result.request = await requests.submit(site, user, { body: `${note}
+
+${pushed}`, page: body.page })
+        }
+        return json(200, { ...result, pending: await svc.pending() }, headers)
+      }
+
       if (method === 'GET' && rest === '/documents') return json(200, await svc.list(query.type), headers)
       if (method === 'POST' && rest === '/documents') return json(201, await svc.create(body, user), headers)
 

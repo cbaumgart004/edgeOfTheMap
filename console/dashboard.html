@@ -222,6 +222,17 @@
     }
     .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
     details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    /* Folding sections on the Manage page: Monitors, and each site's card.
+       The heading stays a heading; the marker sits before it. */
+    details.fold > summary { list-style: none; display: flex; align-items: baseline; gap: 8px; }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary::before { content: '▸'; color: var(--muted); font-size: 14px; }
+    details.fold[open] > summary::before { content: '▾'; }
+    details.fold > summary h2, details.fold > summary h3 { display: inline; margin: 0; }
+    details.fold > summary .meta { font-weight: 400; }
+    #monitors { margin: 24px 0 8px; }
+    #monitors[open] > summary { margin-bottom: 12px; }
+    .card > details.fold[open] > summary { margin-bottom: 8px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
     .card.is-done { opacity: .6; }
     /* Tickets, worked like Azure DevOps items: a state chip, assignee, and a thread. */
@@ -403,8 +414,10 @@
         <button type="button" id="push-test" class="link" hidden>Send a test</button>
       </div>
       <p id="push-note" class="meta"></p>
-      <h2>Monitors <span id="m-mon-count" class="meta"></span></h2>
-      <ul id="m-monitors" class="monitors"></ul>
+      <details id="monitors" class="fold">
+        <summary><h2>Monitors <span id="m-mon-count" class="meta"></span></h2></summary>
+        <ul id="m-monitors" class="monitors"></ul>
+      </details>
       <details id="api-log" class="card log-card">
         <summary>API log, last 24 hours <span id="log-count" class="meta"></span></summary>
         <div class="row" style="margin-top:8px"><label class="check"><input type="checkbox" id="log-errors" checked /> Errors and warnings only</label>
