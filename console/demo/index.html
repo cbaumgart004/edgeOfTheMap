@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Console Demo</title>
+  <style>
+    /* A stand-in customer page. Its deliberately rude global rules check that
+       the console's reset holds: none of these may change the editor. */
+    body { margin: 0; font: 17px/1.6 Georgia, serif; background: #faf6ee; color: #2a2118; }
+    button { background: hotpink; font-size: 30px; border: 5px solid red; }
+    input { border: 4px dashed red; }
+    ul { list-style: square; padding-left: 60px; }
+    .site-head { padding: 16px; border-bottom: 1px solid #ccc; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .site-head a { color: inherit; }
+    main { padding: 16px; max-width: 900px; margin: 0 auto 70vh; }
+    .banner { padding: 12px 16px; text-align: center; background: #ffb347; }
+    .banner.urgent { background: #c0392b; color: #fff; }
+    .banner.quiet { background: #eee; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; background: #fff; }
+    .card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+    .draft { outline: 2px dashed #2b6cb0; outline-offset: 4px; }
+    .uv-glow { color: #00c000; text-shadow: 0 0 6px #00fb00; }
+    .text-accent { color: #7a8f00; }
+    .text-gradient { background: linear-gradient(90deg, #e9b87d, #b27ae0); -webkit-background-clip: text; color: transparent; }
+    .text-outline { -webkit-text-stroke: 0.6px #8b5e00; }
+    .tip { font-size: 14px; color: #776; }
+  </style>
+</head>
+<body>
+  <div id="banner"></div>
+  <header class="site-head"><strong id="site-name"></strong><nav id="nav"></nav><span class="tip">Open the editor: add <code>?edit</code> or press Ctrl/Cmd+Shift+E</span></header>
+  <main id="page"></main>
+  <script src="/site.js"></script>
+</body>
+</html>

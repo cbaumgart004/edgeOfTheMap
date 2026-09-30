@@ -1,0 +1,796 @@
+{
+  "site": "storyshaped",
+  "version": 1,
+  "brand": {
+    "name": "StoryShaped Studios",
+    "logo": "/assets/StoryShapedStudiosLogo_GmailOptimized.png",
+    "modeSource": {
+      "selector": ".sss-home",
+      "attribute": "data-mode",
+      "map": {
+        "daylight": "light",
+        "blacklight": "dark"
+      }
+    },
+    "modes": {
+      "light": {
+        "bg": "#0f1512",
+        "surface": "#151d18",
+        "ink": "#eef2d9",
+        "muted": "#b3ca73",
+        "line": "rgba(217,255,107,0.28)",
+        "accent": "#d9ff6b",
+        "accentInk": "#0f1512"
+      },
+      "dark": {
+        "bg": "#060806",
+        "surface": "#0d140d",
+        "ink": "#d9f2d9",
+        "muted": "#72ca72",
+        "line": "rgba(0,251,0,0.35)",
+        "accent": "#00fb00",
+        "accentInk": "#060806"
+      }
+    },
+    "fonts": {
+      "body": "'Century Gothic', Futura, sans-serif",
+      "heading": "'Poiret One', sans-serif"
+    },
+    "radius": "4px"
+  },
+  "textStyles": [
+    {
+      "name": "glow",
+      "label": "Uranium glow",
+      "className": "uv-glow"
+    },
+    {
+      "name": "accent",
+      "label": "Accent",
+      "className": "text-accent"
+    }
+  ],
+  "types": {
+    "libraryArticle": {
+      "label": "Library entry",
+      "plural": "Library",
+      "titleField": "title",
+      "slugFrom": "title",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Question or title",
+          "required": true
+        },
+        {
+          "name": "body",
+          "kind": "richtext",
+          "label": "Entry",
+          "required": true
+        },
+        {
+          "name": "after",
+          "kind": "placement",
+          "label": "Place in contents",
+          "help": "Where this entry appears in the Library's contents."
+        }
+      ],
+      "previewPath": "/library/{slug}"
+    },
+    "page": {
+      "label": "Page",
+      "plural": "Pages",
+      "titleField": "title",
+      "slugFrom": "title",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Title",
+          "required": true
+        },
+        {
+          "name": "sections",
+          "kind": "blocks",
+          "label": "Sections",
+          "of": [
+            "prose",
+            "values",
+            "photoFeature"
+          ]
+        }
+      ],
+      "previewPath": "/{slug}"
+    },
+    "pageLayout": {
+      "label": "Page layout",
+      "plural": "Page layouts",
+      "titleField": "title",
+      "slugFrom": "title",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Page",
+          "required": true
+        },
+        {
+          "name": "path",
+          "kind": "url",
+          "label": "Address",
+          "required": true,
+          "help": "The page this arranges: / for Home."
+        },
+        {
+          "name": "blocks",
+          "kind": "layout",
+          "label": "Arrangement",
+          "help": "Drag the blocks on the page, or order and size them here."
+        }
+      ],
+      "previewPath": "{path}"
+    },
+    "theme": {
+      "label": "Theme",
+      "plural": "Theme",
+      "singleton": true,
+      "previewPath": "/",
+      "fields": [
+        {
+          "name": "headingFont",
+          "kind": "select",
+          "label": "Heading font",
+          "options": [
+            {
+              "value": "",
+              "label": "Poiret One (current)"
+            },
+            {
+              "value": "Josefin Sans",
+              "label": "Josefin Sans"
+            },
+            {
+              "value": "Limelight",
+              "label": "Limelight"
+            },
+            {
+              "value": "Cinzel",
+              "label": "Cinzel"
+            },
+            {
+              "value": "Marcellus",
+              "label": "Marcellus"
+            },
+            {
+              "value": "Italiana",
+              "label": "Italiana"
+            },
+            {
+              "value": "Federo",
+              "label": "Federo"
+            },
+            {
+              "value": "Playfair Display",
+              "label": "Playfair Display"
+            }
+          ]
+        },
+        {
+          "name": "bodyFont",
+          "kind": "select",
+          "label": "Body font",
+          "options": [
+            {
+              "value": "",
+              "label": "Futura / Century Gothic (current)"
+            },
+            {
+              "value": "Josefin Sans",
+              "label": "Josefin Sans"
+            },
+            {
+              "value": "Montserrat",
+              "label": "Montserrat"
+            },
+            {
+              "value": "Raleway",
+              "label": "Raleway"
+            },
+            {
+              "value": "Lato",
+              "label": "Lato"
+            },
+            {
+              "value": "Nunito Sans",
+              "label": "Nunito Sans"
+            },
+            {
+              "value": "Cormorant Garamond",
+              "label": "Cormorant Garamond"
+            },
+            {
+              "value": "EB Garamond",
+              "label": "EB Garamond"
+            }
+          ]
+        },
+        {
+          "name": "blacklight",
+          "kind": "group",
+          "label": "Blacklight (night)",
+          "fields": [
+            {
+              "name": "background",
+              "kind": "color",
+              "label": "Background"
+            },
+            {
+              "name": "accent",
+              "kind": "color",
+              "label": "Accent (headings, links, buttons)"
+            },
+            {
+              "name": "text",
+              "kind": "color",
+              "label": "Text"
+            },
+            {
+              "name": "muted",
+              "kind": "color",
+              "label": "Quiet text"
+            },
+            {
+              "name": "glow",
+              "kind": "color",
+              "label": "Glow colour"
+            },
+            {
+              "name": "glowStrength",
+              "kind": "number",
+              "label": "Glow strength (%)",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "help": "100 is the site's glow today; 0 turns it off. Blank keeps the site's own."
+            },
+            {
+              "name": "glowSpread",
+              "kind": "number",
+              "label": "Glow reach (%)",
+              "integer": true,
+              "min": 25,
+              "max": 300,
+              "help": "How far the glow spreads from each letter, apart from how bright it is. 100 is today's; 50 is a tight neon edge, 200 a wide haze. Blank keeps 100."
+            },
+            {
+              "name": "glowPulse",
+              "kind": "select",
+              "label": "Glow movement",
+              "default": "",
+              "options": [
+                {
+                  "value": "",
+                  "label": "Steady"
+                },
+                {
+                  "value": "breathe",
+                  "label": "Slow breathe"
+                },
+                {
+                  "value": "flicker",
+                  "label": "Neon flicker"
+                }
+              ],
+              "help": "Visitors who ask their device for less motion always see it steady."
+            }
+          ]
+        },
+        {
+          "name": "daylight",
+          "kind": "group",
+          "label": "Daylight",
+          "fields": [
+            {
+              "name": "background",
+              "kind": "color",
+              "label": "Background"
+            },
+            {
+              "name": "accent",
+              "kind": "color",
+              "label": "Accent (headings, links, buttons)"
+            },
+            {
+              "name": "text",
+              "kind": "color",
+              "label": "Text"
+            },
+            {
+              "name": "muted",
+              "kind": "color",
+              "label": "Quiet text"
+            },
+            {
+              "name": "glow",
+              "kind": "color",
+              "label": "Glow colour"
+            },
+            {
+              "name": "glowStrength",
+              "kind": "number",
+              "label": "Glow strength (%)",
+              "integer": true,
+              "min": 0,
+              "max": 200,
+              "help": "Daylight barely glows today; 100 gives it blacklight's glow. Blank keeps the site's own."
+            },
+            {
+              "name": "glowSpread",
+              "kind": "number",
+              "label": "Glow reach (%)",
+              "integer": true,
+              "min": 25,
+              "max": 300,
+              "help": "How far the glow spreads from each letter, apart from how bright it is. 100 is today's; 50 is a tight neon edge, 200 a wide haze. Blank keeps 100."
+            },
+            {
+              "name": "glowPulse",
+              "kind": "select",
+              "label": "Glow movement",
+              "default": "",
+              "options": [
+                {
+                  "value": "",
+                  "label": "Steady"
+                },
+                {
+                  "value": "breathe",
+                  "label": "Slow breathe"
+                },
+                {
+                  "value": "flicker",
+                  "label": "Neon flicker"
+                }
+              ],
+              "help": "Visitors who ask their device for less motion always see it steady."
+            }
+          ]
+        }
+      ]
+    },
+    "listing": {
+      "label": "Listing",
+      "plural": "Listings",
+      "titleField": "title",
+      "slugFrom": "title",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 140,
+          "help": "As buyers see it on every Marketplace. Etsy allows 140 characters."
+        },
+        {
+          "name": "description",
+          "kind": "textarea",
+          "label": "Description",
+          "required": true,
+          "maxLength": 10000
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photos",
+          "required": true,
+          "indexes": [
+            "Light",
+            "Dark"
+          ],
+          "maxItems": 10,
+          "help": "Label each Light (daylight) or Dark (blacklight). The site pairs the first Light with the first Dark, the second with the second, for the blacklight toggle; a photo with no partner gets a blacklight tint instead. A half-and-half or scale photo is Light. Etsy takes 10.",
+          "warnMissingIndex": true,
+          "missingIndexHelp": "The blacklight toggle will tint the photos it has instead of switching to a real shot."
+        },
+        {
+          "name": "section",
+          "kind": "select",
+          "label": "Shop section",
+          "required": true,
+          "options": [
+            {
+              "value": "NEW in September",
+              "label": "NEW in September"
+            },
+            {
+              "value": "Houze Factory Glass",
+              "label": "Houze Factory Glass"
+            },
+            {
+              "value": "Uranium Glass Beads",
+              "label": "Uranium Glass Beads"
+            },
+            {
+              "value": "Uranium Gems and Cabs",
+              "label": "Uranium Gems and Cabs"
+            },
+            {
+              "value": "Uranium Glass Rings",
+              "label": "Uranium Glass Rings"
+            },
+            {
+              "value": "Unisex Uranium Rings",
+              "label": "Unisex Uranium Rings"
+            },
+            {
+              "value": "Uranium Glass Necklaces",
+              "label": "Uranium Glass Necklaces"
+            },
+            {
+              "value": "Uranium Glass Earrings",
+              "label": "Uranium Glass Earrings"
+            },
+            {
+              "value": "Uranium Body Jewelry",
+              "label": "Uranium Body Jewelry"
+            },
+            {
+              "value": "Uranium Glass Bracelets",
+              "label": "Uranium Glass Bracelets"
+            },
+            {
+              "value": "Vintage Uranium Jewelry",
+              "label": "Vintage Uranium Jewelry"
+            },
+            {
+              "value": "Gold Uranium Glass",
+              "label": "Gold Uranium Glass"
+            },
+            {
+              "value": "Uranium Glass Cameos",
+              "label": "Uranium Glass Cameos"
+            },
+            {
+              "value": "Other UV/Vintage Glass",
+              "label": "Other UV/Vintage Glass"
+            },
+            {
+              "value": "Fluorescent Gemstones",
+              "label": "Fluorescent Gemstones"
+            },
+            {
+              "value": "Uranium Glass Items",
+              "label": "Uranium Glass Items"
+            },
+            {
+              "value": "Vintage Jewelry",
+              "label": "Vintage Jewelry"
+            },
+            {
+              "value": "Vintage Items",
+              "label": "Vintage Items"
+            },
+            {
+              "value": "Vintage Glass/Supplies",
+              "label": "Vintage Glass/Supplies"
+            }
+          ],
+          "help": "The Etsy shop section, and the site's own category."
+        },
+        {
+          "name": "etsyCategory",
+          "kind": "text",
+          "label": "Etsy category",
+          "required": true,
+          "maxLength": 200,
+          "help": "Etsy's category path, e.g. Jewelry < Rings < Statement Rings, or Craft Supplies & Tools < Beads, Gems & Cabochons < Beads."
+        },
+        {
+          "name": "ebayCategoryId",
+          "kind": "text",
+          "label": "eBay category id",
+          "maxLength": 20,
+          "pattern": "[0-9]+",
+          "patternHelp": "digits only"
+        },
+        {
+          "name": "tags",
+          "kind": "list",
+          "label": "Tags",
+          "required": true,
+          "maxItems": 13,
+          "itemLabel": "tag",
+          "help": "Up to 13, each 20 characters at most: letters, numbers, spaces, - ' ™ © ®. Etsy search reads them.",
+          "fields": [
+            {
+              "name": "tag",
+              "kind": "text",
+              "label": "Tag",
+              "required": true,
+              "maxLength": 20,
+              "pattern": "[\\p{L}\\p{N} \\-'™©®]+",
+              "patternHelp": "letters, numbers, spaces and - ' ™ © ® only"
+            }
+          ]
+        },
+        {
+          "name": "materials",
+          "kind": "list",
+          "label": "Materials",
+          "maxItems": 13,
+          "itemLabel": "material",
+          "fields": [
+            {
+              "name": "material",
+              "kind": "text",
+              "label": "Material",
+              "required": true,
+              "maxLength": 45
+            }
+          ]
+        },
+        {
+          "name": "whoMade",
+          "kind": "select",
+          "label": "Who made it",
+          "required": true,
+          "default": "i_did",
+          "options": [
+            {
+              "value": "i_did",
+              "label": "I did"
+            },
+            {
+              "value": "collective",
+              "label": "A member of my shop"
+            },
+            {
+              "value": "someone_else",
+              "label": "Another company or person"
+            }
+          ]
+        },
+        {
+          "name": "whenMade",
+          "kind": "select",
+          "label": "When it was made",
+          "required": true,
+          "default": "made_to_order",
+          "options": [
+            {
+              "value": "made_to_order",
+              "label": "Made to order"
+            },
+            {
+              "value": "2020_2026",
+              "label": "2020 to 2026"
+            },
+            {
+              "value": "2010_2019",
+              "label": "2010 to 2019"
+            },
+            {
+              "value": "2007_2009",
+              "label": "2007 to 2009"
+            },
+            {
+              "value": "before_2007",
+              "label": "Before 2007"
+            },
+            {
+              "value": "2000_2006",
+              "label": "2000 to 2006"
+            },
+            {
+              "value": "1990s",
+              "label": "1990s"
+            },
+            {
+              "value": "1980s",
+              "label": "1980s"
+            },
+            {
+              "value": "1970s",
+              "label": "1970s"
+            },
+            {
+              "value": "1960s",
+              "label": "1960s"
+            },
+            {
+              "value": "1950s",
+              "label": "1950s"
+            },
+            {
+              "value": "1940s",
+              "label": "1940s"
+            },
+            {
+              "value": "1930s",
+              "label": "1930s"
+            },
+            {
+              "value": "1920s",
+              "label": "1920s"
+            },
+            {
+              "value": "1910s",
+              "label": "1910s"
+            },
+            {
+              "value": "1900s",
+              "label": "1900s"
+            },
+            {
+              "value": "1800s",
+              "label": "1800s"
+            },
+            {
+              "value": "1700s",
+              "label": "1700s"
+            },
+            {
+              "value": "before_1700",
+              "label": "Before 1700"
+            }
+          ],
+          "help": "Etsy requires it; vintage means 20 years or older."
+        },
+        {
+          "name": "isSupply",
+          "kind": "boolean",
+          "label": "A craft supply (beads, cabochons, findings)",
+          "default": false
+        },
+        {
+          "name": "variationName",
+          "kind": "text",
+          "label": "What buyers choose",
+          "maxLength": 45,
+          "help": "e.g. Ring size, or Quantity. Blank when there is only one option."
+        },
+        {
+          "name": "variations",
+          "kind": "list",
+          "label": "Variations",
+          "required": true,
+          "itemLabel": "option",
+          "help": "One per option a buyer can pick. Each is one Stock Item, matched by SKU; its count lives in Inventory, not here.",
+          "fields": [
+            {
+              "name": "option",
+              "kind": "text",
+              "label": "Option",
+              "maxLength": 45,
+              "help": "e.g. 7 US, or 10 pcs. Blank for a single option."
+            },
+            {
+              "name": "sku",
+              "kind": "text",
+              "label": "SKU",
+              "required": true,
+              "maxLength": 32,
+              "pattern": "[A-Za-z0-9._-]+",
+              "patternHelp": "letters, numbers, . _ - only"
+            },
+            {
+              "name": "price",
+              "kind": "money",
+              "label": "Price",
+              "required": true
+            },
+            {
+              "name": "ebayPrice",
+              "kind": "money",
+              "label": "eBay price (blank: the same)"
+            }
+          ]
+        },
+        {
+          "name": "etsyListingId",
+          "kind": "text",
+          "label": "Etsy listing id",
+          "maxLength": 20,
+          "pattern": "[0-9]+",
+          "patternHelp": "digits only",
+          "help": "Filled by the import; links this Listing to its Etsy Marketplace Listing."
+        },
+        {
+          "name": "ebayItemId",
+          "kind": "text",
+          "label": "eBay item id",
+          "maxLength": 20,
+          "pattern": "[0-9]+",
+          "patternHelp": "digits only"
+        }
+      ]
+    }
+  },
+  "blocks": {
+    "prose": {
+      "label": "Text section",
+      "className": "section prose-block",
+      "fields": [
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading"
+        },
+        {
+          "name": "body",
+          "kind": "richtext",
+          "label": "Text"
+        },
+        {
+          "name": "link",
+          "kind": "group",
+          "label": "Link",
+          "fields": [
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Link text"
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Link to"
+            }
+          ]
+        }
+      ]
+    },
+    "values": {
+      "label": "Values grid",
+      "className": "section values-grid",
+      "fields": [
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading"
+        },
+        {
+          "name": "items",
+          "kind": "list",
+          "label": "Values",
+          "itemLabel": "title",
+          "fields": [
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "Value",
+              "required": true
+            },
+            {
+              "name": "text",
+              "kind": "textarea",
+              "label": "Text"
+            }
+          ]
+        }
+      ]
+    },
+    "photoFeature": {
+      "label": "Daylight / blacklight photo",
+      "className": "hero-figure deco-corners",
+      "fields": [
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photos",
+          "indexes": [
+            "Light",
+            "Dark"
+          ]
+        },
+        {
+          "name": "caption",
+          "kind": "text",
+          "label": "Caption"
+        }
+      ]
+    }
+  }
+}

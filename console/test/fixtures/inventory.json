@@ -1,0 +1,344 @@
+{
+  "site": "inventoryfixture",
+  "version": 1,
+  "textStyles": [
+    {
+      "name": "glow",
+      "label": "Uranium glow",
+      "className": "uv-glow"
+    },
+    {
+      "name": "accent",
+      "label": "Accent",
+      "className": "text-accent"
+    }
+  ],
+  "types": {
+    "component": {
+      "label": "Component",
+      "plural": "Components",
+      "titleField": "name",
+      "slugFrom": "name",
+      "fields": [
+        {
+          "name": "name",
+          "kind": "text",
+          "label": "Name",
+          "required": true
+        },
+        {
+          "name": "sku",
+          "kind": "text",
+          "label": "SKU"
+        },
+        {
+          "name": "unit",
+          "kind": "select",
+          "label": "Counted in",
+          "default": "unit",
+          "options": [
+            {
+              "value": "unit",
+              "label": "Units"
+            },
+            {
+              "value": "bead",
+              "label": "Beads"
+            },
+            {
+              "value": "cm",
+              "label": "Centimetres"
+            },
+            {
+              "value": "g",
+              "label": "Grams"
+            }
+          ]
+        },
+        {
+          "name": "quantityOnHand",
+          "kind": "number",
+          "label": "In stock",
+          "min": 0,
+          "required": true
+        },
+        {
+          "name": "lowStockThreshold",
+          "kind": "number",
+          "label": "Warn below",
+          "min": 0
+        }
+      ]
+    },
+    "stockItem": {
+      "label": "Inventory item",
+      "plural": "Inventory",
+      "titleField": "name",
+      "slugFrom": "name",
+      "fields": [
+        {
+          "name": "name",
+          "kind": "text",
+          "label": "Name",
+          "required": true,
+          "maxLength": 140
+        },
+        {
+          "name": "sku",
+          "kind": "text",
+          "label": "SKU",
+          "required": true,
+          "help": "Shared by Etsy, eBay and this site. Changing it breaks the marketplace link."
+        },
+        {
+          "name": "description",
+          "kind": "richtext",
+          "label": "Description",
+          "required": true
+        },
+        {
+          "name": "price",
+          "kind": "money",
+          "label": "Price",
+          "required": true
+        },
+        {
+          "name": "quantityOnHand",
+          "kind": "number",
+          "label": "In stock",
+          "integer": true,
+          "min": 0,
+          "required": true
+        },
+        {
+          "name": "components",
+          "kind": "list",
+          "label": "Made from",
+          "itemLabel": "component",
+          "help": "Each sale takes these quantities out of component stock (StoryShaped ADR-0003).",
+          "fields": [
+            {
+              "name": "component",
+              "kind": "relation",
+              "to": "component",
+              "label": "Component",
+              "required": true
+            },
+            {
+              "name": "quantityPerUnit",
+              "kind": "number",
+              "label": "Per item",
+              "min": 0.001,
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photos",
+          "indexes": [
+            "Light",
+            "Dark"
+          ],
+          "required": true,
+          "help": "Light is the daylight shot, Dark the blacklight shot of the same piece."
+        },
+        {
+          "name": "materials",
+          "kind": "list",
+          "label": "Materials",
+          "itemLabel": "name",
+          "fields": [
+            {
+              "name": "name",
+              "kind": "text",
+              "label": "Material",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "showOnSite",
+          "kind": "boolean",
+          "label": "Show in this site's shop",
+          "default": true
+        },
+        {
+          "name": "etsy",
+          "kind": "group",
+          "label": "Etsy",
+          "help": "Fields Etsy's createDraftListing asks for, from memory of API v3; confirm against Etsy's docs before the first sync.",
+          "fields": [
+            {
+              "name": "enabled",
+              "kind": "boolean",
+              "label": "List on Etsy"
+            },
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "Etsy title",
+              "maxLength": 140,
+              "help": "Blank uses the item name."
+            },
+            {
+              "name": "taxonomyId",
+              "kind": "number",
+              "label": "Etsy category id",
+              "integer": true
+            },
+            {
+              "name": "whoMade",
+              "kind": "select",
+              "label": "Who made it",
+              "default": "i_did",
+              "options": [
+                {
+                  "value": "i_did",
+                  "label": "I did"
+                },
+                {
+                  "value": "someone_else",
+                  "label": "Someone else"
+                },
+                {
+                  "value": "collective",
+                  "label": "A member of my shop"
+                }
+              ]
+            },
+            {
+              "name": "whenMade",
+              "kind": "select",
+              "label": "When it was made",
+              "default": "made_to_order",
+              "options": [
+                {
+                  "value": "made_to_order",
+                  "label": "Made to order"
+                },
+                {
+                  "value": "2020_2026",
+                  "label": "2020 to 2026"
+                },
+                {
+                  "value": "2010_2019",
+                  "label": "2010 to 2019"
+                },
+                {
+                  "value": "before_2007",
+                  "label": "Before 2007"
+                },
+                {
+                  "value": "1900s",
+                  "label": "1900s"
+                },
+                {
+                  "value": "1800s",
+                  "label": "1800s"
+                }
+              ]
+            },
+            {
+              "name": "isSupply",
+              "kind": "boolean",
+              "label": "Craft supply (beads, cabochons)"
+            },
+            {
+              "name": "tags",
+              "kind": "list",
+              "label": "Tags (up to 13)",
+              "itemLabel": "tag",
+              "fields": [
+                {
+                  "name": "tag",
+                  "kind": "text",
+                  "maxLength": 20,
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "shippingProfileId",
+              "kind": "number",
+              "label": "Shipping profile id",
+              "integer": true
+            }
+          ]
+        },
+        {
+          "name": "ebay",
+          "kind": "group",
+          "label": "eBay",
+          "help": "Fields eBay's Inventory API needs for an item and its offer, from memory; confirm against eBay's docs before the first sync.",
+          "fields": [
+            {
+              "name": "enabled",
+              "kind": "boolean",
+              "label": "List on eBay"
+            },
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "eBay title",
+              "maxLength": 80,
+              "help": "Blank uses the item name, cut to 80 characters."
+            },
+            {
+              "name": "categoryId",
+              "kind": "text",
+              "label": "eBay category id"
+            },
+            {
+              "name": "condition",
+              "kind": "select",
+              "label": "Condition",
+              "default": "NEW",
+              "options": [
+                {
+                  "value": "NEW",
+                  "label": "New"
+                },
+                {
+                  "value": "NEW_OTHER",
+                  "label": "New, other"
+                },
+                {
+                  "value": "USED_EXCELLENT",
+                  "label": "Used, excellent"
+                },
+                {
+                  "value": "USED_GOOD",
+                  "label": "Used, good"
+                }
+              ]
+            },
+            {
+              "name": "aspects",
+              "kind": "list",
+              "label": "Item specifics",
+              "itemLabel": "name",
+              "fields": [
+                {
+                  "name": "name",
+                  "kind": "text",
+                  "label": "Name",
+                  "required": true
+                },
+                {
+                  "name": "value",
+                  "kind": "text",
+                  "label": "Value",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "previewPath": "/shop"
+    }
+  },
+  "blocks": {}
+}

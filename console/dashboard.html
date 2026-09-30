@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Admin Console</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- Icons are the two heads from the Edge of the Map logo (edgeOfTheMap/src/assets/logo.png). -->
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- Cormorant Garamond for headings (Edge of the Map's display face); Noto Sans Runic so the futhark draws everywhere. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Sans+Runic&display=swap" />
+  <style>
+    /* Edge of the Map's two faces (edgeOfTheMap/src/App.css): warm paper and teal by day, violet at night. */
+    :root { --bg: #faf8f5; --surface: #ffffff; --ink: #191510; --muted: #5f584e; --line: #e3ddd3; --accent: #0f766e; --accent-ink: #fff; --danger: #b42318; --plate: #0b0912; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #101018; --surface: #191527; --ink: #ece5ff; --muted: #aba0c6; --line: rgb(122 77 231 / .34); --accent: #a1e7f5; --accent-ink: #14101f; --danger: #f97066; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+    main { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 24px; }
+    h1 { font: 600 22px/1.25 system-ui, sans-serif; margin: 0 0 4px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+    .powered { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; }
+    .powered img { width: 24px; height: 24px; border-radius: 6px; background: var(--plate); }
+    .powered:hover { color: var(--accent); }
+    .for-site { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+    .logo { width: 48px; height: 48px; flex: none; object-fit: contain; border-radius: 8px; background: #fff; border: 1px solid var(--line); }
+    .logo.is-initial { display: grid; place-items: center; font: 600 20px system-ui, sans-serif; color: var(--accent); background: var(--bg); }
+    .pw { position: relative; }
+    .pw input { padding-right: 72px; }
+    .pw button { position: absolute; right: 4px; top: 4px; min-height: 38px; padding: 0 10px; background: none; border: 0; color: var(--accent); font-size: 14px; }
+    .help { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .help p { font-size: 14px; color: var(--muted); margin: 8px 0; }
+    .help h3 { font-size: 14px; margin: 16px 0 0; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+    input { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    button { min-height: 46px; padding: 0 18px; font: 600 15px system-ui, sans-serif; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+    button.link { background: none; border: 0; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; font-weight: 500; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .msg { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10;
+      width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 12px 16px; border-radius: 10px; font-size: 14px;
+      background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgb(0 0 0 / .25); }
+    .msg:empty { display: none; }
+    .msg.is-error { background: var(--danger); color: #fff; }
+    button.is-done { background: var(--bg); color: var(--accent); }
+    button.is-failed { background: var(--danger); border-color: var(--danger); color: #fff; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .site { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; background: var(--bg); }
+    .site:hover { border-color: var(--accent); }
+    .site span { display: block; color: var(--muted); font-size: 13px; }
+    .empty { color: var(--muted); }
+    main.is-wide { max-width: 980px; }
+    h2 { font: 400 22px/1.2 'Cormorant Garamond', Georgia, serif; margin: 28px 0 10px; }
+    h3 { font-size: 16px; margin: 0; }
+    .card { border: 1px solid var(--line); border-radius: 10px; padding: 16px; background: var(--bg); display: grid; gap: 10px; }
+    .card a { color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: end; }
+    .grid label { margin: 0 0 6px; }
+    textarea { width: 100%; padding: 10px 12px; font: 15px/1.5 system-ui, sans-serif; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+    select { width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .people li { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; overflow-wrap: anywhere; }
+    /* A site's members: one bordered row each, name | email | role | Remove. */
+    .members { gap: 6px; }
+    .member { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 130px auto; gap: 12px; align-items: center;
+      padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 14px; }
+    .member > span { overflow-wrap: anywhere; }
+    .member select { min-height: 38px; padding: 6px 10px; font-size: 14px; }
+    .member.is-head { border: 0; background: none; padding-block: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .m-email { color: var(--muted); }
+    /* Phones: name, role and Remove on one line; the email beneath. */
+    @media (max-width: 560px) {
+      .member { grid-template-columns: minmax(0, 1fr) 110px auto; row-gap: 2px; }
+      .member.is-head { display: none; }
+      .m-email { grid-column: 1 / -1; grid-row: 2; }
+    }
+    /* A site pinned to an older editor than the newest release. */
+    .behind { margin: 0; padding: 8px 12px; border: 1px solid var(--danger); border-radius: 8px; color: var(--danger); font-size: 14px; }
+    /* Brand: the logo card on its own black plate, a glowing rune rule, Cormorant headings. */
+    :root { --neon: #0f766e; --glow: none; --runes: 'Noto Sans Runic', 'Segoe UI Historic', sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      :root { --neon: #5eead4; --glow: 0 0 6px rgb(94 234 212 / .7), 0 0 18px rgb(94 234 212 / .35); }
+      body { background: radial-gradient(ellipse at 50% 0%, rgb(20 90 80 / .35), transparent 60%), var(--bg); }
+    }
+    .brand { margin: -28px -24px 18px; padding: 18px 16px 10px; background: var(--plate); border-radius: 14px 14px 0 0; text-align: center; }
+    .brand img { display: block; width: min(100%, 340px); height: auto; margin: 0 auto; }
+    .rune-rule { margin: 6px 0 0; font: 18px/1.2 var(--runes); letter-spacing: .35em; color: #5eead4; text-shadow: 0 0 6px rgb(94 234 212 / .8), 0 0 16px rgb(94 234 212 / .4); overflow: hidden; white-space: nowrap; }
+    h1 { font: 600 30px/1.15 'Cormorant Garamond', Georgia, serif; letter-spacing: .01em; color: var(--neon); text-shadow: var(--glow); }
+    h2 { color: var(--neon); }
+    /* The Elder Futhark glossary. */
+    .runes { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .runes summary { font: 600 18px 'Cormorant Garamond', Georgia, serif; color: var(--neon); }
+    .aett { margin-top: 14px; }
+    .aett h3 { font: 600 17px 'Cormorant Garamond', Georgia, serif; margin: 0 0 6px; }
+    .rune-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+    button.rune { min-height: 44px; padding: 0; font: 24px/1 var(--runes); color: var(--neon); background: var(--bg); border: 1px solid var(--line); text-shadow: var(--glow); }
+    button.rune:hover, button.rune[aria-pressed="true"] { border-color: var(--neon); background: color-mix(in srgb, var(--neon) 12%, transparent); }
+    .rune-entry { display: flex; gap: 14px; align-items: flex-start; margin: 14px 0 8px; padding: 12px 14px; min-height: 76px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+    .rune-entry p { margin: 4px 0 0; font-size: 14px; }
+    .rune-big { font: 44px/1 var(--runes); color: var(--neon); text-shadow: var(--glow); }
+    /* Side panes on a wide screen: a night scene (src/campfire.js) with the runes
+       rising out of a campfire as its smoke. Drawn in the brand's navy and teal. */
+    .sigils { display: none; }
+    @media (min-width: 900px) { body:not(:has(main.is-wide)) .sigils { display: block; --main-w: 420px; } }
+    @media (min-width: 1340px) { body:has(main.is-wide) .sigils { display: block; --main-w: 980px; } }
+    .sigils { position: fixed; top: 20px; bottom: 20px; width: calc((100vw - var(--main-w, 420px)) / 2 - 54px);
+      container: pane / inline-size; overflow: hidden; border: 1px solid rgb(94 234 212 / .18); border-radius: 14px; isolation: isolate;
+      background: linear-gradient(to bottom, #03060f 0%, #071329 38%, #0c2340 62%, #123a4f 74%, #0b1622 100%); }
+    .sigils.is-left { left: 22px; --fire-x: 36%; --fire-cq: 36cqw; }
+    .sigils.is-right { right: 22px; --fire-x: 64%; --fire-cq: 64cqw; }
+    .sigils > * { position: absolute; }
+    /* Phones and narrow windows: one scene fills the screen behind the card, its
+       fire centred, and the page ends with room above the fire so it is never
+       covered once scrolled to the foot. */
+    @media (max-width: 899px) {
+      /* The card sits at the top, compact, so the fire at the foot of the screen shows under it. */
+      body { place-items: start center; padding: 12px 20px max(300px, 38dvh); }
+      main, main.is-wide { position: relative; z-index: 1; max-width: 440px; padding: 18px 16px;
+        background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px);
+        box-shadow: 0 10px 40px rgb(0 0 0 / .45); }
+      .brand { margin: -18px -16px 12px; padding: 12px 12px 6px; }
+      .brand img { width: min(100%, 210px); }
+      .rune-rule { font-size: 13px; }
+      h1 { font-size: 24px; }
+      .sub { margin-bottom: 12px; }
+      label { margin: 10px 0 4px; }
+      .row { margin-top: 14px; }
+      .sigils.is-left { display: block; inset: 0; width: auto; border: 0; border-radius: 0; z-index: 0; --fire-x: 50%; --fire-cq: 50cqw; }
+    }
+    /* A scene's painted parts fade in once painted, rather than appearing piece by piece. */
+    .sigils canvas.trees, .sigils .pit > canvas { transition: opacity .6s ease; }
+    .sigils:not(.is-painted) canvas.trees, .sigils:not(.is-painted) .pit > canvas { opacity: 0; }
+    /* Sky */
+    .sky { inset: 0 0 30% 0; }
+    .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }
+    .sky i.tw { animation: twinkle var(--d) ease-in-out infinite alternate; }
+    @keyframes twinkle { from { opacity: .25; } to { opacity: 1; } }
+    .milky { position: absolute; left: -30%; top: 8%; width: 160%; height: 26%; transform: rotate(-32deg);
+      background: radial-gradient(ellipse at 50% 50%, rgb(186 230 253 / .16), rgb(94 234 212 / .06) 45%, transparent 70%); filter: blur(10px); }
+    /* Land: ridges, ground, pines */
+    .land { left: 0; right: 0; bottom: 0; width: 100%; height: 46%; }
+    .ridge-far { fill: #1a3354; }
+    .ridge-near { fill: #0f2138; }
+    .ground { fill: #06080c; }
+    .trees { inset: 0; width: 100%; height: 100%; }
+    /* The fire's light on everything near it, flickering with the flames. */
+    .firelight { left: 0; right: 0; bottom: 0; height: 60%; pointer-events: none; mix-blend-mode: screen;
+      background: radial-gradient(ellipse 70% 55% at var(--fire-x) 100%, rgb(249 115 22 / .34), rgb(234 88 12 / .12) 45%, transparent 75%);
+      animation: firelight 1.8s ease-in-out infinite; }
+    @keyframes firelight { 0%, 100% { opacity: .85; } 30% { opacity: 1; } 55% { opacity: .7; } 80% { opacity: .95; } }
+    /* The pit: back stones, the fire's canvas, then logs and front stones, stacked in one box. */
+    .pit { left: var(--fire-x); bottom: 0; width: min(100%, 300px); aspect-ratio: 320 / 230; transform: translateX(-50%); z-index: 3; }
+    .pit > * { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    /* Multiplied, not faded: dark wood over flame reads as warm shadow, where a faded copy turned grey. */
+    .pit > canvas.pit-mid { opacity: .8; mix-blend-mode: multiply; }
+    .pit > canvas.flame-canvas { left: 21.875%; top: -82.61%; width: 56.25%; height: 165.22%; }
+    .pool { animation: firelight 1.8s ease-in-out infinite; }
+    /* Runes rise out of the fire as its smoke. */
+    .smoke i { position: absolute; bottom: 60px; left: calc(var(--fire-x) - 90px + (var(--i) - 3) * 14px); width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgb(148 163 184 / .16), rgb(94 234 212 / .08) 45%, transparent 70%); filter: blur(18px);
+      animation: smoke 16s linear infinite; animation-delay: calc(var(--i) * -2.3s); }
+    .smoke i:nth-child(even) { background: radial-gradient(circle, rgb(122 77 231 / .16), rgb(148 163 184 / .08) 45%, transparent 70%); animation-duration: 19s; }
+    @keyframes smoke {
+      0% { transform: translate(0, 0) scale(.3); opacity: 0; }
+      12% { opacity: .9; }
+      60% { transform: translate(-30px, -55dvh) scale(1.6); opacity: .6; }
+      100% { transform: translate(34px, -110dvh) scale(2.4); opacity: 0; }
+    }
+    .smoke, .rise, .embers { inset: 0; }
+    .rise { z-index: 4; }
+    button.sigil { position: absolute; left: var(--fire-x); bottom: 135px; --dx: 0px; min-height: 0; padding: 6px 10px; border: 0; background: none; color: #5eead4;
+      font: inherit; cursor: pointer; transform: translateX(-50%); opacity: 0;
+      animation: rise 80s linear infinite; animation-delay: calc(var(--i) * -80s / var(--n)); }
+    button.sigil.is-echo { display: none; }
+    /* A wide pane: three lanes, and the echo rising between, so it is never one lonely column. */
+    @container pane (min-width: 380px) {
+      /* Born at the fire like the rest, then carried out to its lane. */
+      button.sigil { --dx: calc(20cqw + var(--lane) * 30cqw - var(--fire-cq)); }
+      button.sigil.is-echo { display: block; }
+    }
+    /* Runes meander across the pane as they rise: a wide, uneven path, not a small sway. */
+    button.sigil span { display: grid; justify-items: center; gap: 2px; --drift: 24cqw; animation: sway 26s ease-in-out infinite; animation-delay: calc(var(--i) * -5.3s); }
+    @container pane (min-width: 380px) { button.sigil span { --drift: 11cqw; } }
+    button.sigil b { font: 400 44px/1 var(--runes); text-shadow: 0 0 8px rgb(94 234 212 / .9), 0 0 22px rgb(94 234 212 / .45); }
+    button.sigil em { font: italic 500 16px/1 'Cormorant Garamond', Georgia, serif; color: #cfeee8; letter-spacing: .04em; }
+    button.sigil:hover b, button.sigil:focus-visible b { color: #fff; text-shadow: 0 0 10px #5eead4, 0 0 30px #5eead4; }
+    @keyframes rise {
+      /* Out of the flame's smoke: small, grey and blurred, taking colour and shape as it rises. */
+      0% { transform: translate(-50%, 0) scale(.25); opacity: 0; filter: blur(7px) grayscale(1) brightness(.6); }
+      3% { opacity: .45; filter: blur(5px) grayscale(1) brightness(.7); }
+      8% { transform: translate(calc(-50% + var(--dx) * .3), calc((-100dvh + 170px) * .24)) scale(.85); opacity: .9; filter: blur(1.5px) grayscale(.4) brightness(.9); }
+      12% { transform: translate(calc(-50% + var(--dx) * .55), calc((-100dvh + 170px) * .36)) scale(1); opacity: 1; filter: blur(0) grayscale(0) brightness(1); }
+      25% { opacity: .95; filter: blur(0); }
+      33% { transform: translate(calc(-50% + var(--dx)), calc(-100dvh + 170px)) scale(1); opacity: 0; filter: blur(10px); }
+      100% { transform: translate(calc(-50% + var(--dx)), calc(-100dvh + 170px)); opacity: 0; }
+    }
+    @keyframes sway {
+      0%, 100% { transform: translateX(0); }
+      22% { transform: translateX(calc(var(--drift) * -1)); }
+      47% { transform: translateX(calc(var(--drift) * .7)); }
+      71% { transform: translateX(calc(var(--drift) * -.45)); }
+      88% { transform: translateX(var(--drift)); }
+    }
+    /* Hovering a pane holds its sigils still, so one can be chosen. */
+    .sigils:hover .sigil, .sigils:hover .sigil span, .sigils:focus-within .sigil, .sigils:focus-within .sigil span { animation-play-state: paused; }
+    /* Sparks from the fire. */
+    .embers { z-index: 5; pointer-events: none; }
+    .embers i { position: absolute; bottom: 90px; left: calc(var(--fire-x) + (var(--i) - 4) * 7px); width: 2.5px; height: 2.5px; border-radius: 50%; background: #fed7aa;
+      box-shadow: 0 0 6px 2px rgb(249 115 22 / .8); animation: ember 4.5s ease-out infinite; animation-delay: calc(var(--i) * -.53s); }
+    .embers i:nth-child(even) { animation-name: ember-left; animation-duration: 5.5s; }
+    @keyframes ember { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(34px, -300px); opacity: 0; } }
+    @keyframes ember-left { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate(-40px, -260px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .sigils *, .sigils *::before, .sigils *::after { animation: none !important; }
+      .embers { display: none; }
+      .rise { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 240px; overflow-y: auto; }
+      button.sigil { position: static; opacity: 1; transform: none; }
+      button.sigil.is-echo { display: none !important; }
+    }
+    .note { padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
+    details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
+    .card.is-done { opacity: .6; }
+    /* Tickets, worked like Azure DevOps items: a state chip, assignee, and a thread. */
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .tabs button { min-height: 36px; padding: 0 12px; font-size: 14px; background: var(--bg); color: var(--ink); border-color: var(--line); }
+    .tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .ticket-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+    .state::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
+    .state.is-new { --dot: #9ca3af; }
+    .state.is-active { --dot: #2563eb; }
+    .state.is-resolved { --dot: #16a34a; }
+    .state.is-closed { --dot: #6b7280; }
+    .ticket-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .ticket-controls label { margin: 0 0 4px; }
+    .ticket-controls select { min-height: 40px; padding: 6px 10px; font-size: 15px; }
+    .thread { gap: 6px; }
+    .thread li { padding: 8px 12px; border-left: 3px solid var(--line); background: var(--surface); border-radius: 0 8px 8px 0; font-size: 14px; }
+    .thread li p { margin: 2px 0 0; white-space: pre-wrap; }
+    .comment-form .row { margin-top: 8px; }
+    .comment-form label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
+    .comment-form input[type=checkbox] { width: 18px; min-height: 18px; }
+    /* Uptime monitors (UptimeRobot): state as icon and word, a 30-day strip, a
+       24-hour response line. Status steps are reserved: good, warning, critical. */
+    :root { --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; --none: #c9c3b8; }
+    @media (prefers-color-scheme: dark) { :root { --none: #3a3450; } }
+    .monitors { gap: 8px; }
+    .monitor { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 170px; gap: 8px 16px; align-items: center;
+      padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
+    .monitor.is-down, .monitor.is-seems-down { border-color: var(--critical); }
+    .mon-name { display: flex; gap: 10px; align-items: flex-start; min-width: 0; overflow-wrap: anywhere; }
+    .mon-state { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: #fff; background: var(--none); }
+    .is-up .mon-state { background: var(--good); }
+    .is-down .mon-state, .is-seems-down .mon-state { background: var(--critical); }
+    .mon-days { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; height: 24px; }
+    .mon-days i { border-radius: 2px; background: var(--none); }
+    .mon-days i.is-good { background: var(--good); }
+    .mon-days i.is-warning { background: var(--warning); }
+    .mon-days i.is-critical { background: var(--critical); }
+    .mon-days i:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+    .mon-rt { display: grid; gap: 2px; justify-items: end; }
+    .spark { width: 160px; height: 36px; overflow: visible; cursor: crosshair; }
+    .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .spark .base { stroke: var(--line); stroke-width: 1; }
+    .spark .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
+    .spark .hit { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+    .mon-events { grid-column: 1 / -1; }
+    .mon-events summary { font-size: 13px; }
+    .mon-events ul { gap: 4px; margin-top: 6px; }
+    .ev { font-size: 13px; }
+    .ev.is-down > span:first-child { color: var(--critical); }
+    .ev.is-up > span:first-child { color: var(--good); }
+    .viz-tip { position: fixed; z-index: 20; pointer-events: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; line-height: 1.35;
+      background: var(--ink); color: var(--bg); box-shadow: 0 4px 16px rgb(0 0 0 / .25); }
+    @media (max-width: 700px) {
+      .monitor { grid-template-columns: minmax(0, 1fr); }
+      .mon-rt { justify-items: start; grid-template-columns: 160px auto; align-items: center; gap: 10px; }
+    }
+    /* The API's own log. */
+    .log-card { margin-top: 10px; }
+    .log-card label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
+    .log-card input[type=checkbox] { width: 18px; min-height: 18px; }
+    .log-lines { gap: 4px; margin-top: 8px; max-height: 420px; overflow: auto; }
+    .log { font-size: 13px; overflow-wrap: anywhere; }
+    .log code { font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+    .log.is-error strong, .log.is-fatal strong { color: var(--danger); }
+    #mine-list { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <img src="/logo-card.webp" alt="Edge of the Map" width="800" height="533" />
+      <p class="rune-rule" aria-hidden="true">ᚠᚢᚦᚨᚱᚲᚷᚹ ᚺᚾᛁᛃᛈᛇᛉᛊ ᛏᛒᛖᛗᛚᛜᛞᛟ</p>
+    </header>
+    <h1>Admin Console</h1>
+    <p class="sub"><a class="powered" href="https://theedgeofthemap.com" target="_blank" rel="noopener"><img src="/icon-192.png" alt="" width="24" height="24" />Powered by Edge of the Map</a></p>
+
+    <section data-view="signin" hidden>
+      <!-- Filled when a site's editor sent the owner here to sign in (?handoff=<site>). -->
+      <div id="for-site" class="for-site" hidden></div>
+      <form id="signin-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+        <div class="row">
+          <button type="submit">Sign in</button>
+          <button type="button" id="cant" class="link" aria-expanded="false" aria-controls="help">Can’t sign in?</button>
+        </div>
+      </form>
+      <div id="help" class="help" hidden>
+        <h3>Forgotten or never set your password</h3>
+        <p>We email a link to set a new one to the address above.</p>
+        <button type="button" id="forgot" class="link">Email me a link</button>
+        <h3>Still stuck</h3>
+        <p>Tell Edge of the Map; it reaches us at once and we reply by email.</p>
+        <form id="help-form">
+          <label for="help-body">What happens when you try? (optional)</label>
+          <textarea id="help-body" rows="3" maxlength="1000"></textarea>
+          <div class="row"><button type="submit">Ask for help</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section data-view="reset" hidden>
+      <form id="reset-form">
+        <label for="new-password">New password</label>
+        <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="row"><button type="submit">Set password</button></div>
+      </form>
+    </section>
+
+    <section data-view="first" hidden>
+      <h2 style="margin-top:0">Choose your own password</h2>
+      <p class="meta">Signed in as <span id="who-first"></span> with a temporary password from Edge of the Map. Replace it before opening your sites.</p>
+      <form id="first-form">
+        <label for="first-current">Temporary password</label>
+        <input id="first-current" type="password" autocomplete="current-password" required />
+        <label for="first-new">New password (8 characters or more)</label>
+        <input id="first-new" type="password" autocomplete="new-password" minlength="8" required />
+        <label for="first-again">New password again</label>
+        <input id="first-again" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="row"><button type="submit">Set my password</button>
+          <button type="button" class="link" data-signout>Sign out</button></div>
+      </form>
+    </section>
+
+    <section data-view="sites" hidden>
+      <p class="meta">Signed in as <span id="who"></span>. Choose a site: it opens on the live page with the editor.</p>
+      <ul id="sites"></ul>
+      <details id="request">
+        <summary>Request a change</summary>
+        <form id="request-form">
+          <p class="meta">Anything the editor cannot do, or anything that looks wrong. It goes to Edge of the Map by email and notification.</p>
+          <label for="rq-site">Site</label>
+          <select id="rq-site"></select>
+          <label for="rq-body">What would you like changed?</label>
+          <textarea id="rq-body" rows="5" maxlength="4000" required></textarea>
+          <div class="row"><button type="submit">Send request</button></div>
+        </form>
+      </details>
+      <details id="mine" hidden>
+        <summary>Your requests <span id="mine-count" class="meta"></span></summary>
+        <ul id="mine-list"></ul>
+        <div class="row">
+          <button type="button" id="me-push-on" class="link">Tell me on this device when they are answered</button>
+        </div>
+        <p id="me-push-note" class="meta"></p>
+      </details>
+      <details id="change">
+        <summary>Change password</summary>
+        <form id="change-form">
+          <label for="current-password">Current (or temporary) password</label>
+          <input id="current-password" type="password" autocomplete="current-password" required />
+          <label for="changed-password">New password</label>
+          <input id="changed-password" type="password" autocomplete="new-password" minlength="8" required />
+          <div class="row"><button type="submit">Change password</button></div>
+        </form>
+      </details>
+      <div class="row">
+        <button type="button" id="manage-open" class="link" hidden>Manage all sites</button>
+        <button type="button" id="signout" class="link">Sign out</button>
+      </div>
+    </section>
+
+    <section data-view="manage" hidden>
+      <div class="row" style="margin-top:0"><button type="button" id="manage-back" class="link">← Your sites</button></div>
+      <h2>Tickets <span id="m-req-count" class="meta"></span></h2>
+      <div class="tabs" role="group" aria-label="Show tickets">
+        <button type="button" data-tickets="open" aria-pressed="true">Open</button>
+        <button type="button" data-tickets="mine" aria-pressed="false">Assigned to me</button>
+        <button type="button" data-tickets="closed" aria-pressed="false">Closed</button>
+      </div>
+      <ul id="m-requests"></ul>
+      <div class="row">
+        <button type="button" id="push-on">Turn on notifications on this device</button>
+        <button type="button" id="push-test-ticket" class="link" hidden>Test a new-ticket alert</button>
+        <button type="button" id="push-test" class="link" hidden>Send a test</button>
+      </div>
+      <p id="push-note" class="meta"></p>
+      <h2>Monitors <span id="m-mon-count" class="meta"></span></h2>
+      <ul id="m-monitors" class="monitors"></ul>
+      <details id="api-log" class="card log-card">
+        <summary>API log, last 24 hours <span id="log-count" class="meta"></span></summary>
+        <div class="row" style="margin-top:8px"><label class="check"><input type="checkbox" id="log-errors" checked /> Errors and warnings only</label>
+          <button type="button" id="log-refresh" class="link">Refresh</button></div>
+        <ul id="log-lines" class="log-lines"></ul>
+      </details>
+      <h2>Sites</h2>
+      <ul id="m-sites"></ul>
+
+      <h2>Add a user</h2>
+      <form id="m-user" class="card">
+        <div class="grid">
+          <div><label for="mu-email">Email</label><input id="mu-email" type="email" required /></div>
+          <div><label for="mu-name">Name</label><input id="mu-name" /></div>
+          <div><label for="mu-pass">Temporary password</label><input id="mu-pass" minlength="8" autocomplete="off" /></div>
+          <div><button type="button" id="mu-gen" class="link">Generate one</button></div>
+          <div><label for="mu-site">Site</label><select id="mu-site"></select></div>
+          <div><label for="mu-role">Role</label><select id="mu-role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
+        </div>
+        <p class="meta">An existing login is only given the site; its password is not changed. Pass the temporary password on privately; they change it here after signing in.</p>
+        <div><button type="submit">Add user</button></div>
+        <p id="mu-result" class="note" hidden></p>
+      </form>
+
+      <h2>Operators</h2>
+      <ul id="m-ops" class="people"></ul>
+      <form id="m-op" class="row">
+        <input id="mo-email" type="email" placeholder="Email of an existing login" required style="flex:1" />
+        <button type="submit">Make operator</button>
+      </form>
+
+      <h2>Logins</h2>
+      <ul id="m-logins" class="people"></ul>
+    </section>
+
+    <details id="runes" class="runes">
+      <summary>The Elder Futhark</summary>
+      <div id="runes-body"></div>
+    </details>
+
+    <p id="msg" class="msg" role="status"></p>
+  </main>
+  <!-- Side panes on a wide screen: a night campfire with the runes rising out of it. Choosing one opens it in the glossary. -->
+  <nav id="sigils-left" class="sigils is-left" aria-label="Runes 1 to 12"></nav>
+  <nav id="sigils-right" class="sigils is-right" aria-label="Runes 13 to 24"></nav>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

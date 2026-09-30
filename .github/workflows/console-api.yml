@@ -1,0 +1,73 @@
+# Deploys the console API Lambda (eotm-console-api) on every push to `console`
+# that touches what api.zip carries. Tests first; then the zip is uploaded and a
+# request to the API opens a fresh container, which applies any pending
+# migrations itself (console/api/lambda.js, poolFor). The admin page is built by
+# Amplify from the same push, separately.
+#
+# AWS access is GitHub's OIDC: no AWS keys are stored in GitHub. One-time setup
+# is in console/README.md ("Deploying the API from GitHub"). Until the repo
+# variable AWS_DEPLOY_ROLE_ARN is set, the deploy job is skipped and tests still run.
+
+name: Console API
+
+on:
+  push:
+    branches: [console]
+    paths:
+      - 'console/api/**'
+      - 'console/core/**'
+      - 'console/schema/**'
+      - 'console/src/richtext.js'
+      - 'console/releases/index.json'
+      - 'console/package.json'
+      - 'console/package-lock.json'
+      - 'console/scripts/package-api.js'
+      - '.github/workflows/console-api.yml'
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits rather than racing an upload.
+concurrency:
+  group: console-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: console } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: console/package-lock.json }
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # the OIDC token AWS trades for the deploy role
+    defaults: { run: { working-directory: console } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: console/package-lock.json }
+      - run: npm ci
+      - run: npm run package:api
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Upload api.zip
+        run: |
+          aws lambda update-function-code --function-name eotm-console-api --zip-file fileb://dist/api.zip --query 'LastModified' --output text
+          aws lambda wait function-updated --function-name eotm-console-api
+      - name: Wake the new code (applies pending migrations)
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://admin.theedgeofthemap.com/api/sites/storyshaped/boot)
+          echo "boot answered $code"
+          test "$code" = 200

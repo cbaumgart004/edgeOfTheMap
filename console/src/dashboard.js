@@ -1,0 +1,777 @@
+// admin.theedgeofthemap.com: sign in, then the sites this login edits, each
+// opening on its own live page with the editor. Also where a password is set
+// or reset. A site link signs the owner into that site's editor too (handoff).
+// Same sign-in code as the console (auth.js), reached through this
+// host's /_edit/auth rewrite.
+
+import { neonAuth } from './auth.js'
+import { mountRunes, mountSigils } from './runes.js'
+
+const auth = neonAuth({ base: '/_edit/auth' })
+const $ = (sel) => document.querySelector(sel)
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+// Straight to the management page: take its wide layout before the first paint,
+// so the side scenes are sized and painted once, not again when it loads.
+if (new URLSearchParams(location.search).has('manage')) document.querySelector('main').classList.add('is-wide')
+
+function show(id) {
+  for (const el of document.querySelectorAll('[data-view]')) el.hidden = el.dataset.view !== id
+  document.querySelector('main').classList.toggle('is-wide', id === 'manage')
+}
+
+async function api(method, path, body) {
+  const token = await auth.getToken()
+  if (!token) { show('signin'); throw new Error('Sign in again.') }
+  const res = await fetch(path, {
+    method, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`)
+  return data
+}
+// A toast pinned to the bottom of the screen, so it is seen however far down
+// the page the owner is. Confirmations fade; errors stay until the next message.
+let sayTimer = null
+function say(msg, isError = false) {
+  const el = $('#msg')
+  clearTimeout(sayTimer)
+  el.textContent = msg ?? ''
+  el.className = isError ? 'msg is-error' : 'msg'
+  if (msg && !isError && !/…$/.test(msg)) sayTimer = setTimeout(() => { el.textContent = '' }, 4000)
+}
+
+// Trades this page's sign-in for an editor token for one site and goes there
+// with it in the URL fragment, which is never sent to a server. `back` is a path
+// on that site; the site's address itself comes from the API, so this cannot be
+// pointed at another domain.
+async function handoff(site, back = '/', origin) {
+  say('Opening the editor…')
+  const token = await auth.getToken()
+  if (!token) return show('signin')
+  const res = await fetch('/api/handoff', {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ site, origin }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return say(data.error ?? 'Could not open the editor.', true)
+  let url = new URL(back, data.url)
+  if (url.origin !== new URL(data.url).origin) url = new URL('/', data.url)
+  if (!url.searchParams.has('edit')) url.searchParams.set('edit', '')
+  location.assign(`${url.href.replace(/edit=(&|$)/, 'edit$1')}#eotm-token=${data.token}`)
+}
+
+// A site's editor sends the owner here to sign in (?handoff=<site>&return=<path>).
+const pending = (() => {
+  const q = new URLSearchParams(location.search)
+  return q.get('handoff') ? { site: q.get('handoff'), back: q.get('return') ?? '/', origin: q.get('origin') ?? undefined } : null
+})()
+
+// A site's logo, or its initial when it has none or the image fails to load.
+const initial = (name) => `<span class="logo is-initial" aria-hidden="true">${esc(String(name ?? '?').trim().charAt(0).toUpperCase())}</span>`
+const logo = (s) => s.logo
+  ? `<img class="logo" src="${esc(s.logo)}" alt="" loading="lazy" data-initial="${esc(s.name)}" />`
+  : initial(s.name)
+document.addEventListener('error', (e) => {
+  if (e.target.matches?.('img.logo')) e.target.outerHTML = initial(e.target.dataset.initial)
+}, true)
+
+// Signing in for one site: say which, with its logo. The boot answer is public.
+async function showForSite() {
+  if (!pending || !/^[a-z0-9-]+$/.test(pending.site)) return
+  try {
+    const res = await fetch(`/api/sites/${pending.site}/boot`)
+    if (!res.ok) return
+    const s = await res.json()
+    const box = $('#for-site')
+    box.innerHTML = `${logo(s)}<span>Sign in to edit <strong>${esc(s.name)}</strong></span>`
+    box.hidden = false
+  } catch { /* the plain sign-in still works */ }
+}
+
+let myEmail = null
+async function loadSites() {
+  const token = await auth.getToken()
+  if (!token) return show('signin')
+  // ?manage: ask for the management page's three parts alongside, not after.
+  if (new URLSearchParams(location.search).has('manage')) prefetch ??= fetchManage()
+  const res = await fetch('/api/me/sites', { headers: { authorization: `Bearer ${token}` } })
+  if (res.status === 401) return show('signin')
+  const data = await res.json()
+  // A login made with an operator's temporary password: nothing else until it is replaced.
+  if (data.mustChangePassword) {
+    $('#who-first').textContent = data.email ?? ''
+    return show('first')
+  }
+  if (pending) return handoff(pending.site, pending.back, pending.origin)
+  $('#who').textContent = data.email ?? ''
+  myEmail = data.email ?? null
+  $('#manage-open').hidden = !data.operator
+  // admin.theedgeofthemap.com/?manage opens the management page directly.
+  if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
+  $('#sites').innerHTML = data.sites.length
+    ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a>${
+      // A site with a preview (or a second domain): open that one instead.
+      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}</li>`).join('')
+    : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
+  $('#request').hidden = !data.sites.length
+  loadMine().catch(() => { $('#mine').hidden = true })
+  $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
+  show('sites')
+}
+
+async function start() {
+  const token = new URLSearchParams(location.search).get('token')
+  if (token && location.pathname.startsWith('/reset')) return show('reset')
+  const session = await auth.current()
+  if (session) await loadSites()
+  else show('signin')
+}
+showForSite()
+
+// Show or hide each password as typed, for phones especially.
+for (const input of document.querySelectorAll('input[type=password]')) {
+  const wrap = document.createElement('div')
+  wrap.className = 'pw'
+  input.replaceWith(wrap)
+  const toggle = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Show' })
+  toggle.setAttribute('aria-label', 'Show password')
+  toggle.addEventListener('click', () => {
+    const hidden = input.type === 'password'
+    input.type = hidden ? 'text' : 'password'
+    toggle.textContent = hidden ? 'Hide' : 'Show'
+    toggle.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password')
+    input.focus()
+  })
+  wrap.append(input, toggle)
+}
+
+$('#cant').addEventListener('click', () => {
+  const help = $('#help')
+  help.hidden = !help.hidden
+  $('#cant').setAttribute('aria-expanded', String(!help.hidden))
+})
+
+$('#help-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const email = $('#email').value.trim()
+  if (!email) { $('#email').focus(); return say('Enter the email you sign in with, above.', true) }
+  say('Sending…')
+  try {
+    const res = await fetch('/api/signin-help', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, body: $('#help-body').value }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return say(data.error ?? 'Could not send. Try again shortly.', true)
+    $('#help-body').value = ''
+    say(`Sent. We will reply to ${email}.`)
+  } catch {
+    say('Could not reach the server. Try again shortly.', true)
+  }
+})
+
+$('#sites').addEventListener('click', (e) => {
+  const alt = e.target.closest('button[data-origin]')
+  if (alt) return handoff(alt.dataset.site, '/', alt.dataset.origin).catch((err) => say(err.message, true))
+  const link = e.target.closest('a[data-site]')
+  if (!link || e.metaKey || e.ctrlKey || e.shiftKey) return
+  e.preventDefault()
+  handoff(link.dataset.site).catch((err) => say(err.message, true))
+})
+
+$('#signin-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  say('Signing in…')
+  try {
+    const session = await auth.signIn($('#email').value, $('#password').value)
+    if (!session) throw new Error('Signed in, but no editing token came back. Tell Edge of the Map.')
+    say('')
+    await loadSites()
+  } catch (err) {
+    say(err.message, true)
+  }
+})
+
+$('#forgot').addEventListener('click', async () => {
+  const email = $('#email').value.trim()
+  if (!email) { $('#email').focus(); return say('Enter your email above first.', true) }
+  say('Checking…')
+  try {
+    const res = await fetch('/api/password-reset', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) say(`Sent. A link to set your password is on its way to ${data.email}. It comes from auth@mail.myneon.app; check spam if it is not there in a few minutes.`)
+    else if (res.status === 404) say(`No login uses ${data.email ?? email}. Check the spelling, or ask Edge of the Map to add you.`, true)
+    else say(data.error ?? 'Could not send the link. Try again shortly.', true)
+  } catch {
+    say('Could not reach the server. Try again shortly.', true)
+  }
+})
+
+// Management page (operators): every site, its editor version, photo storage and members.
+let state = null
+// quiet: a refresh after a save, which must not clear the save's message.
+// The page's three requests at once; each is awaited where it is drawn. A
+// failure is handled there, so none is left unhandled here.
+let prefetch = null
+function fetchManage() {
+  const parts = { overview: api('GET', '/api/manage'), requests: api('GET', '/api/manage/requests'), monitors: api('GET', '/api/manage/monitors') }
+  for (const p of Object.values(parts)) p.catch(() => {})
+  return parts
+}
+async function loadManage({ quiet = false } = {}) {
+  if (!quiet) say('Loading…')
+  const parts = prefetch ?? fetchManage()
+  prefetch = null
+  state = await parts.overview
+  if (!quiet) say('')
+  const versions = state.releases.map((r) => r.version).reverse()
+  // An API older than the page sends no profileFields; show no company details rather than break.
+  const profileFields = state.profileFields ?? []
+  const urlFields = profileFields.filter((f) => f.kind === 'url')
+  // A save re-renders the cards; keep open whichever details were open.
+  const openDetails = new Set([...document.querySelectorAll('details.company[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
+  $('#m-sites').innerHTML = state.sites.map((s) => `
+    <li class="card" data-slug="${esc(s.slug)}">
+      <h3>${esc(s.name)}</h3>
+      ${s.console_version === versions[0] ? '' : `<p class="behind">Editor ${esc(s.console_version)}; the newest is ${esc(versions[0])}. Choose it under Editor version and Save.</p>`}
+      <p class="meta">${s.origins.map((o) => `<a href="${esc(o)}" target="_blank" rel="noopener">${esc(o.replace(/^https:\/\//, ''))}</a>`).join(' · ')}
+        ${s.repo ? ` · <a href="${esc(s.repo)}" target="_blank" rel="noopener">repo</a>` : ''}${
+        // Every recorded address in one line, so each piece is a click away.
+        urlFields.filter((f) => s.profile?.[f.key]).map((f) => ` · <a href="${esc(s.profile[f.key])}" target="_blank" rel="noopener">${esc(f.label.replace(/ page$/, ''))}</a>`).join('')}</p>
+      ${profileFields.length ? `<details class="company">
+        <summary>Company details${Object.keys(s.profile ?? {}).length ? '' : ' (none recorded)'}</summary>
+        <form class="grid" data-form="profile">
+          ${profileFields.map((f) => f.kind === 'lines'
+            ? `<div style="grid-column: 1 / -1"><label>${esc(f.label)}</label><textarea name="${esc(f.key)}" rows="3" placeholder="${esc(f.placeholder ?? '')}">${esc(s.profile?.[f.key] ?? '')}</textarea></div>`
+            : `<div><label>${esc(f.label)}</label><input name="${esc(f.key)}" ${f.kind === 'url' ? 'type="url" placeholder="https://…"' : `placeholder="${esc(f.placeholder ?? '')}"`} value="${esc(s.profile?.[f.key] ?? '')}" /></div>`).join('')}
+          <p class="meta" style="grid-column: 1 / -1">Names, ids and addresses only. Passwords and keys belong in a password manager.</p>
+          <div><button type="submit">Save details</button></div>
+        </form>
+      </details>` : ''}
+      <form class="grid" data-form="site">
+        <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
+        <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+        <div><label>Own photo bucket</label><input name="mediaBucket" value="${esc(s.media_bucket)}" placeholder="blank: the shared one" /></div>
+        <div><label>Own photo address</label><input name="mediaBaseUrl" value="${esc(s.media_base_url)}" placeholder="shared" /></div>
+        <div style="grid-column: 1 / -1"><label>Notes (operators only; no passwords or keys)</label>
+          <textarea name="notes" rows="4" placeholder="Anything Company details has no field for…">${esc(s.notes ?? '')}</textarea></div>
+        <div><button type="submit">Save</button></div>
+      </form>
+      ${s.members.length ? `<ul class="members">
+        <li class="member is-head" aria-hidden="true"><span>Name</span><span>Username (email)</span><span>Role</span><span></span></li>
+        ${s.members.map((m) => `<li class="member">
+          <span class="m-name">${esc(m.name || '—')}</span>
+          <span class="m-email">${esc(m.email ?? m.user_id)}</span>
+          <select data-role="${esc(m.user_id)}" aria-label="Role for ${esc(m.email ?? m.user_id)}">${['owner', 'editor'].map((r) => `<option value="${r}"${r === m.role ? ' selected' : ''}>${r === 'owner' ? 'Owner' : 'Editor'}</option>`).join('')}</select>
+          <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button>
+        </li>`).join('')}</ul>` : '<p class="empty">No members.</p>'}
+      <p class="meta"><button type="button" class="link" data-token="${esc(s.slug)}">Copy an editor token</button>
+        for scripts such as a content import: edits only this site, lasts 8 hours. Paste it straight into the command; never into a file.</p>
+      <form class="grid" data-form="member">
+        <div><label>Add an existing login</label><input name="email" type="email" required placeholder="email" /></div>
+        <div><label>Role</label><select name="role"><option value="editor">Editor</option><option value="owner">Owner</option></select></div>
+        <div><button type="submit">Add</button></div>
+      </form>
+    </li>`).join('')
+  for (const slug of openDetails) document.querySelector(`[data-slug="${CSS.escape(slug)}"] details.company`)?.setAttribute('open', '')
+  $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
+  $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
+  $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
+  show('manage')
+  // Requests are one part of the page: failing to load them (say, a migration
+  // not yet run) must not hide the sites, versions and logins above.
+  try {
+    renderRequests(await parts.requests)
+  } catch (err) {
+    $('#m-req-count').textContent = ''
+    $('#m-requests').innerHTML = `<li class="empty">Tickets could not load: ${esc(err.message)}</li>`
+  }
+  loadMonitors(parts.monitors)
+  pushStatus().catch(() => {})
+  if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
+}
+
+// Tickets (api/requests.js), worked like Azure DevOps items: a state, an
+// operator assigned, and a thread whose comments can tell the requester.
+const STATES = [['new', 'New'], ['active', 'Active'], ['resolved', 'Resolved'], ['closed', 'Closed']]
+const stateLabel = (s) => (STATES.find(([v]) => v === s) ?? [s, s])[1]
+const when = (t) => new Date(t).toLocaleString()
+const thread = (comments, withNotified) => comments?.length
+  ? `<ul class="thread">${comments.map((c) => `<li><span class="meta">${esc(c.email ?? 'Edge of the Map')} · ${esc(when(c.created_at))}${withNotified && c.notified ? ' · requester told' : ''}</span><p>${esc(c.body)}</p></li>`).join('')}</ul>`
+  : ''
+let tickets = []
+let ticketView = 'open'
+// A re-render keeps any unsent comment.
+function renderRequests(list = tickets) {
+  tickets = list
+  const drafts = [...document.querySelectorAll('#m-requests textarea[name=body]')].map((t) => [t.closest('[data-ticket]').dataset.ticket, t.value])
+  const open = list.filter((r) => r.status !== 'closed')
+  $('#m-req-count').textContent = open.length ? `${open.filter((r) => r.status === 'new').length} new · ${open.length} open` : 'none open'
+  const shown = ticketView === 'closed' ? list.filter((r) => r.status === 'closed')
+    : ticketView === 'mine' ? open.filter((r) => myEmail && r.assigned_email === myEmail)
+    : open
+  const ops = state?.operators ?? []
+  $('#m-requests').innerHTML = shown.map((r) => `
+    <li class="card${r.status === 'closed' ? ' is-done' : ''}" data-ticket="${esc(r.id)}" id="ticket-${esc(r.id)}">
+      <div class="ticket-head"><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
+        <span class="meta">${esc(r.site_name)} · ${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(when(r.created_at))}</span></div>
+      <p class="request">${esc(r.body)}</p>
+      <div class="ticket-controls">
+        <div><label for="st-${esc(r.id)}">State</label><select id="st-${esc(r.id)}" data-field="status">${
+          STATES.map(([v, l]) => `<option value="${v}"${v === r.status ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div><label for="as-${esc(r.id)}">Assigned to</label><select id="as-${esc(r.id)}" data-field="assignedTo"><option value="">Unassigned</option>${
+          ops.map((o) => `<option value="${esc(o.user_id)}"${o.user_id === r.assigned_to ? ' selected' : ''}>${esc(o.email ?? o.user_id)}</option>`).join('')}</select></div>
+      </div>
+      ${thread(r.comments, true)}
+      <form class="comment-form" data-form="comment">
+        <label for="cm-${esc(r.id)}">Comment</label>
+        <textarea id="cm-${esc(r.id)}" name="body" rows="2" maxlength="4000" required></textarea>
+        <div class="row"><label class="check"><input type="checkbox" name="notify" ${r.email ? 'checked' : 'disabled'} /> Tell ${esc(r.email ?? 'the requester')}</label>
+          <button type="submit">Comment</button></div>
+      </form>
+    </li>`).join('') || `<li class="empty">${{ closed: 'No closed tickets.', mine: 'Nothing assigned to you.' }[ticketView] ?? 'No open tickets.'}</li>`
+  for (const [id, text] of drafts) {
+    const t = document.querySelector(`[data-ticket="${CSS.escape(id)}"] textarea[name=body]`)
+    if (t) t.value = text
+  }
+  // A notification opens /?manage#ticket-<id>: bring that one into view.
+  const target = location.hash.startsWith('#ticket-') && document.getElementById(location.hash.slice(1))
+  if (target) target.scrollIntoView({ block: 'center' })
+}
+
+// Uptime monitors (api/monitors.js): what UptimeRobot watches, down ones first.
+async function loadMonitors(pending) {
+  try {
+    const r = await (pending ?? api('GET', '/api/manage/monitors'))
+    if (!r.configured) {
+      $('#m-mon-count').textContent = ''
+      $('#m-monitors').innerHTML = `<li><form id="mon-connect" class="card">
+        <label for="mon-key">UptimeRobot Read-Only API Key</label>
+        <input id="mon-key" type="password" autocomplete="off" required placeholder="ur…" />
+        <p class="meta">UptimeRobot → Integrations &amp; API → Main API keys → Read-Only API Key. It is checked, kept by the console API, and never shown again.</p>
+        <div><button type="submit">Connect UptimeRobot</button></div></form></li>`
+      return
+    }
+    const rank = { down: 0, 'seems down': 1, 'not checked yet': 2, up: 3, paused: 4 }
+    const list = [...r.monitors].sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name))
+    const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
+    $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up`
+    monitorData = new Map(list.map((m) => [String(m.id), m]))
+    $('#m-monitors').innerHTML = list.map(monitorRow).join('') +
+      `<li class="meta"><a href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open UptimeRobot</a> · <button type="button" id="mon-disconnect" class="link">Disconnect</button></li>`
+  } catch (err) {
+    $('#m-mon-count').textContent = ''
+    $('#m-monitors').innerHTML = `<li class="empty">Monitors could not load: ${esc(err.message)}</li>`
+  }
+}
+
+// One monitor: state as icon and word (never colour alone), a strip of the
+// last 30 days' uptime, a line of the last 24 hours' response times, and its
+// events. Status colours are the reserved good / warning / critical steps.
+const STATE_ICON = { up: '✓', down: '▼', 'seems down': '▼', paused: '❚❚', 'not checked yet': '…' }
+const EVENT_ICON = { down: '▼', up: '✓', paused: '❚❚', started: '▶' }
+let monitorData = new Map()
+const dayClass = (u) => (u == null ? 'none' : u >= 100 ? 'good' : u >= 99 ? 'warning' : 'critical')
+const pct = (u) => (u == null ? 'no data' : `${u >= 99.995 ? '100' : u.toFixed(2)}%`)
+const since = (s) => (s == null ? '' : s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : s < 86400 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`)
+const clock = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+function sparkline(m) {
+  const pts = m.responses ?? []
+  if (pts.length < 2) return '<span class="meta">no response times</span>'
+  const W = 160; const H = 36; const pad = 3
+  const t0 = pts[0].at; const t1 = pts[pts.length - 1].at
+  const max = Math.max(...pts.map((p) => p.ms)) * 1.1
+  const xy = pts.map((p) => [pad + ((p.at - t0) / (t1 - t0 || 1)) * (W - pad * 2), H - pad - (p.ms / max) * (H - pad * 2)])
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" data-mon="${esc(m.id)}" role="img" aria-label="Response time, last 24 hours, average ${esc(m.responseAvg ?? '?')} ms">
+    <line class="base" x1="${pad}" x2="${W - pad}" y1="${H - pad}" y2="${H - pad}" />
+    <polyline points="${xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}" />
+    <line class="cross" x1="0" x2="0" y1="0" y2="${H}" style="display:none" /><circle class="hit" r="4" style="display:none" /></svg>`
+}
+
+function monitorRow(m) {
+  const state = m.status.replace(/ /g, '-')
+  const paused = m.status === 'paused'
+  return `<li class="monitor is-${esc(state)}">
+    <div class="mon-name"><span class="mon-state" aria-hidden="true">${STATE_ICON[m.status] ?? '?'}</span>
+      <span><strong>${esc(m.name)}</strong><br><span class="meta">${esc(m.status)}${paused ? '' : ` · ${esc(pct(m.uptimeMonth))} over 30 days`}</span></span></div>
+    <div class="mon-days" data-mon="${esc(m.id)}" role="list" aria-label="Uptime per day, last 30 days">${(m.days ?? []).map((d, i) =>
+      `<i role="listitem" class="is-${paused ? 'none' : dayClass(d.uptime)}" data-day="${i}" aria-label="${esc(d.date)}: ${esc(pct(d.uptime))}"></i>`).join('')}</div>
+    <div class="mon-rt">${sparkline(m)}<span class="meta">${m.responseAvg != null ? `avg ${esc(Math.round(m.responseAvg))} ms` : ''}</span></div>
+    ${m.events?.length ? `<details class="mon-events"><summary>Events (${m.events.length})</summary><ul>${m.events.map((e) =>
+      `<li class="ev is-${esc(e.type)}"><span aria-hidden="true">${EVENT_ICON[e.type] ?? '•'}</span> <strong>${esc(e.type[0].toUpperCase() + e.type.slice(1))}</strong>
+        <span class="meta">${esc(when(e.at))}${e.seconds ? ` · lasted ${esc(since(e.seconds))}` : ''}${e.reason ? ` · ${esc(e.reason)}` : ''}</span></li>`).join('')}</ul></details>` : ''}
+  </li>`
+}
+
+// One tooltip for the strips and lines, placed by the pointer.
+const tip = Object.assign(document.createElement('div'), { className: 'viz-tip', hidden: true })
+tip.setAttribute('role', 'tooltip')
+document.body.append(tip)
+function showTip(e, html) {
+  tip.innerHTML = html
+  tip.hidden = false
+  const r = tip.getBoundingClientRect()
+  tip.style.left = `${Math.min(innerWidth - r.width - 8, Math.max(8, e.clientX - r.width / 2))}px`
+  tip.style.top = `${Math.max(8, e.clientY - r.height - 14)}px`
+}
+$('#m-monitors').addEventListener('pointermove', (e) => {
+  const cell = e.target.closest('.mon-days i')
+  if (cell) {
+    const m = monitorData.get(cell.parentElement.dataset.mon)
+    const d = m?.days?.[Number(cell.dataset.day)]
+    if (d) return showTip(e, `<strong>${esc(new Date(`${d.date}T12:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' }))}</strong><br>${esc(pct(d.uptime))} up`)
+  }
+  const svg = e.target.closest('svg.spark')
+  if (svg) {
+    const m = monitorData.get(svg.dataset.mon)
+    const pts = m?.responses ?? []
+    const box = svg.getBoundingClientRect()
+    const x = ((e.clientX - box.left) / box.width) * 160
+    const t0 = pts[0].at; const t1 = pts[pts.length - 1].at
+    const at = t0 + ((x - 3) / 154) * (t1 - t0)
+    const p = pts.reduce((a, b) => (Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a))
+    const max = Math.max(...pts.map((q) => q.ms)) * 1.1
+    const px = 3 + ((p.at - t0) / (t1 - t0 || 1)) * 154
+    const py = 33 - (p.ms / max) * 30
+    const cross = svg.querySelector('.cross'); const hit = svg.querySelector('.hit')
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.display = ''
+    hit.setAttribute('cx', px); hit.setAttribute('cy', py); hit.style.display = ''
+    return showTip(e, `<strong>${esc(p.ms)} ms</strong><br>${esc(clock(p.at))}`)
+  }
+  tip.hidden = true
+})
+$('#m-monitors').addEventListener('pointerleave', () => {
+  tip.hidden = true
+  for (const el of document.querySelectorAll('svg.spark .cross, svg.spark .hit')) el.style.display = 'none'
+})
+
+// This API's own log (api/logs.js), read when opened: last 24 hours, newest first.
+let apiLog = []
+function renderLog() {
+  const errorsOnly = $('#log-errors').checked
+  const lines = errorsOnly ? apiLog.filter((l) => l.level !== 'INFO' && l.level !== 'DEBUG') : apiLog
+  $('#log-lines').innerHTML = lines.map((l) => `<li class="log is-${esc(l.level.toLowerCase())}"><span class="meta">${esc(when(l.at))}</span> <strong>${esc(l.level)}</strong> <code>${esc(l.text)}</code></li>`).join('')
+    || `<li class="empty">${errorsOnly ? 'No errors or warnings' : 'Nothing logged'} in the last 24 hours.</li>`
+}
+async function loadLog() {
+  $('#log-lines').innerHTML = '<li class="empty">Loading…</li>'
+  try {
+    const r = await api('GET', '/api/manage/logs')
+    apiLog = r.lines
+    $('#log-count').textContent = `(${r.lines.filter((l) => l.level === 'ERROR' || l.level === 'FATAL').length} errors)`
+    renderLog()
+  } catch (err) {
+    $('#log-lines').innerHTML = `<li class="empty">${esc(err.message)}</li>`
+  }
+}
+$('#api-log').addEventListener('toggle', () => { if ($('#api-log').open) loadLog() })
+$('#log-refresh').addEventListener('click', loadLog)
+$('#log-errors').addEventListener('change', renderLog)
+
+// The signed-in user's own requests and the replies to them.
+async function loadMine() {
+  const list = await api('GET', '/api/me/requests')
+  $('#mine').hidden = !list.length
+  $('#mine-count').textContent = list.length ? `(${list.filter((r) => r.status !== 'closed').length} open)` : ''
+  $('#mine-list').innerHTML = list.map((r) => `
+    <li class="card${r.status === 'closed' ? ' is-done' : ''}">
+      <div class="ticket-head"><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
+        <span class="meta">${esc(r.site_name)} · ${esc(when(r.created_at))}</span></div>
+      <p class="request">${esc(r.body)}</p>
+      ${thread(r.comments, false)}
+    </li>`).join('')
+  mePushStatus().catch(() => {})
+}
+
+// Runs a form's action with its submit button showing the outcome in place:
+// "Saving…", then "Saved" or "Not saved", as well as the toast. A save that
+// re-renders the site cards replaces its button, so the outcome goes on the
+// button now standing in the same card and form.
+const run = (fn) => async (e) => {
+  e.preventDefault()
+  const form = e.target.closest?.('form')
+  const pick = 'button[type=submit], button:not([type])'
+  let btn = form?.querySelector(pick)
+  const label = btn?.textContent
+  const slug = form?.closest('[data-slug]')?.dataset.slug
+  const find = () => {
+    if (btn?.isConnected || !slug) return btn
+    btn = document.querySelector(`[data-slug="${CSS.escape(slug)}"] form[data-form="${form.dataset.form}"]`)?.querySelector(pick)
+    return btn
+  }
+  const mark = (text, cls) => { const b = find(); if (!b?.isConnected) return; b.textContent = text; b.className = cls; b.disabled = text === 'Saving…' }
+  mark('Saving…', '')
+  try {
+    await fn(e)
+    mark('Saved', 'is-done')
+  } catch (err) {
+    say(err.message, true)
+    mark('Not saved', 'is-failed')
+  }
+  setTimeout(() => mark(label, ''), 2500)
+}
+
+$('#manage-open').addEventListener('click', run(loadManage))
+$('#manage-back').addEventListener('click', run(async () => { say(''); history.replaceState({}, '', '/'); await loadSites() }))
+
+$('#m-sites').addEventListener('submit', run(async (e) => {
+  const form = e.target
+  const slug = form.closest('[data-slug]').dataset.slug
+  const f = Object.fromEntries(new FormData(form))
+  if (form.dataset.form === 'site') {
+    await api('PUT', `/api/manage/sites/${slug}`, { ...f, reloadSchema: true })
+    say('Saved. The editor picks up the version and fields within a minute.')
+  } else if (form.dataset.form === 'profile') {
+    await api('PUT', `/api/manage/sites/${slug}`, { profile: f })
+    say('Company details saved.')
+  } else {
+    await api('POST', `/api/manage/sites/${slug}/members`, f)
+    say('Added.')
+  }
+  await loadManage({ quiet: true })
+}))
+$('#m-sites').addEventListener('click', async (e) => {
+  const site = e.target.dataset?.token
+  if (site) {
+    try {
+      const res = await fetch('/api/handoff', {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${await auth.getToken()}` }, body: JSON.stringify({ site }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Could not make a token.')
+      await navigator.clipboard.writeText(data.token)
+      say(`Copied an editor token for ${site}. It lasts 8 hours.`)
+    } catch (err) {
+      say(err.message, true)
+    }
+    return
+  }
+  const id = e.target.dataset?.remove
+  if (!id) return
+  const slug = e.target.closest('[data-slug]').dataset.slug
+  run(async () => { await api('DELETE', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`); say('Removed.'); await loadManage({ quiet: true }) })(e)
+})
+// A member's role, changed in their row.
+$('#m-sites').addEventListener('change', async (e) => {
+  const id = e.target.dataset?.role
+  if (!id) return
+  const slug = e.target.closest('[data-slug]').dataset.slug
+  try {
+    await api('PUT', `/api/manage/sites/${slug}/members/${encodeURIComponent(id)}`, { role: e.target.value })
+    say('Role changed.')
+  } catch (err) {
+    say(err.message, true)
+  }
+  await loadManage({ quiet: true })
+})
+
+// A ticket's state or assignee, changed in its card. A new state tells the
+// requester, when the ticket has someone to tell.
+$('#m-requests').addEventListener('change', async (e) => {
+  const field = e.target.dataset?.field
+  if (!field) return
+  const id = e.target.closest('[data-ticket]').dataset.ticket
+  const ticket = tickets.find((t) => t.id === id)
+  const tell = field === 'status' && Boolean(ticket?.email)
+  try {
+    await api('PUT', `/api/manage/requests/${id}`, { [field]: e.target.value, notify: tell })
+    say(field === 'status' ? `Now ${stateLabel(e.target.value)}${tell ? `; ${ticket.email} is told` : ''}.` : 'Assigned.')
+  } catch (err) {
+    say(err.message, true)
+  }
+  renderRequests(await api('GET', '/api/manage/requests').catch(() => tickets))
+})
+$('#m-requests').addEventListener('submit', run(async (e) => {
+  const form = e.target
+  const text = form.querySelector('textarea[name=body]')
+  const notify = form.querySelector('input[name=notify]').checked
+  await api('POST', `/api/manage/requests/${form.closest('[data-ticket]').dataset.ticket}/comments`, { body: text.value, notify })
+  text.value = ''
+  say(notify ? 'Commented; the requester is told.' : 'Commented.')
+  renderRequests(await api('GET', '/api/manage/requests'))
+}))
+$('#m-monitors').addEventListener('submit', run(async () => {
+  await api('PUT', '/api/manage/monitors/key', { key: $('#mon-key').value })
+  say('UptimeRobot connected.')
+  await loadMonitors()
+}))
+$('#m-monitors').addEventListener('click', async (e) => {
+  if (e.target.id !== 'mon-disconnect') return
+  try {
+    await api('DELETE', '/api/manage/monitors/key')
+    say('UptimeRobot disconnected.')
+  } catch (err) {
+    say(err.message, true)
+  }
+  await loadMonitors()
+})
+for (const b of document.querySelectorAll('[data-tickets]')) {
+  b.addEventListener('click', () => {
+    ticketView = b.dataset.tickets
+    for (const o of document.querySelectorAll('[data-tickets]')) o.setAttribute('aria-pressed', String(o === b))
+    renderRequests()
+  })
+}
+
+$('#request-form').addEventListener('submit', run(async () => {
+  await api('POST', '/api/requests', { site: $('#rq-site').value, body: $('#rq-body').value })
+  $('#rq-body').value = ''
+  say('Sent to Edge of the Map. Replies appear under “Your requests”.')
+  await loadMine().catch(() => {})
+}))
+
+// ---------------------------------------------------------------- push
+// Notifications on this device for operators: the service worker (sw.js)
+// shows what the API pushes. iPhone and iPad allow it only once the page is
+// added to the Home Screen and opened from there (iOS 16.4+).
+const pushable = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+const toKey = (b64) => Uint8Array.from(atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+
+async function pushStatus() {
+  if (!pushable) {
+    $('#push-on').hidden = true
+    $('#push-note').textContent = /iPhone|iPad/.test(navigator.userAgent)
+      ? 'To get notifications on this iPhone or iPad: Share → Add to Home Screen, then open Edge of the Map from the Home Screen and come back here.'
+      : 'This browser cannot show notifications.'
+    return
+  }
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  const sub = await reg.pushManager.getSubscription()
+  $('#push-on').textContent = sub ? 'Turn off notifications on this device' : 'Turn on notifications on this device'
+  $('#push-test').hidden = !sub
+  $('#push-test-ticket').hidden = !sub
+  $('#push-note').textContent = sub ? 'This device is told about every new ticket.' : ''
+}
+
+$('#push-on').addEventListener('click', run(async () => {
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  const current = await reg.pushManager.getSubscription()
+  if (current) {
+    await api('DELETE', '/api/manage/push', { endpoint: current.endpoint })
+    await current.unsubscribe()
+  } else {
+    if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications are blocked for this site in the browser settings.')
+    const { key } = await (await fetch('/api/push/key')).json()
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) })
+    await api('POST', '/api/manage/push', { subscription: sub.toJSON() })
+  }
+  await pushStatus()
+}))
+
+$('#push-test').addEventListener('click', run(async () => {
+  const r = await api('POST', '/api/manage/push/test')
+  say(`Test sent to ${r.sent} of ${r.of} of your devices.`)
+}))
+$('#push-test-ticket').addEventListener('click', run(async () => {
+  const r = await api('POST', '/api/manage/push/test', { kind: 'ticket' })
+  say(`A test new-ticket alert went to ${r.sent} of ${r.of} of your devices. Nothing was saved.`)
+}))
+
+// Anyone signed in: told on this device when their requests are answered.
+async function mePushStatus() {
+  if (!pushable) {
+    $('#me-push-on').hidden = true
+    $('#me-push-note').textContent = /iPhone|iPad/.test(navigator.userAgent)
+      ? 'To be told on this iPhone or iPad: Share → Add to Home Screen, then open it from the Home Screen.'
+      : ''
+    return
+  }
+  const sub = await (await navigator.serviceWorker.register('/sw.js')).pushManager.getSubscription()
+  $('#me-push-on').textContent = sub ? 'Stop telling me on this device' : 'Tell me on this device when they are answered'
+}
+$('#me-push-on').addEventListener('click', async () => {
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    const current = await reg.pushManager.getSubscription()
+    if (current) {
+      await api('DELETE', '/api/me/push', { endpoint: current.endpoint })
+      await current.unsubscribe()
+      say('This device will not be told.')
+    } else {
+      if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications are blocked for this site in the browser settings.')
+      const { key } = await (await fetch('/api/push/key')).json()
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) })
+      await api('POST', '/api/me/push', { subscription: sub.toJSON() })
+      say('This device will be told when your requests are answered.')
+    }
+  } catch (err) {
+    say(err.message, true)
+  }
+  await mePushStatus()
+})
+
+$('#mu-gen').addEventListener('click', () => {
+  const words = new Uint32Array(3)
+  crypto.getRandomValues(words)
+  $('#mu-pass').value = [...words].map((w) => w.toString(36)).join('-')
+})
+$('#m-user').addEventListener('submit', run(async () => {
+  const body = { email: $('#mu-email').value, name: $('#mu-name').value, password: $('#mu-pass').value, site: $('#mu-site').value || undefined, role: $('#mu-role').value }
+  const r = await api('POST', '/api/manage/users', body)
+  const out = $('#mu-result')
+  out.hidden = false
+  out.textContent = r.created
+    ? `Created ${r.email}. Give them the temporary password privately and send them to admin.theedgeofthemap.com; they can change it under “Change password”.`
+    : `${r.email} already had a login; ${body.site ? 'it now has the site. Its password is unchanged.' : 'nothing changed.'}`
+  $('#mu-pass').value = ''
+  await loadManage({ quiet: true })
+}))
+$('#m-op').addEventListener('submit', run(async () => {
+  await api('POST', '/api/manage/operators', { email: $('#mo-email').value })
+  $('#mo-email').value = ''
+  say('Operator added.')
+  await loadManage({ quiet: true })
+}))
+
+$('#first-form').addEventListener('submit', run(async () => {
+  const current = $('#first-current').value
+  const next = $('#first-new').value
+  if (next !== $('#first-again').value) throw new Error('The two new passwords do not match.')
+  if (next === current) throw new Error('Choose a password different from the temporary one.')
+  await auth.changePassword(current, next)
+  await api('POST', '/api/me/password-changed')
+  for (const id of ['#first-current', '#first-new', '#first-again']) $(id).value = ''
+  say('Password set. Other devices are signed out.')
+  await loadSites()
+}))
+
+$('#change-form').addEventListener('submit', run(async () => {
+  await auth.changePassword($('#current-password').value, $('#changed-password').value)
+  $('#current-password').value = ''
+  $('#changed-password').value = ''
+  $('#change').open = false
+  say('Password changed. Other devices are signed out.')
+}))
+
+$('#reset-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const token = new URLSearchParams(location.search).get('token')
+  try {
+    await auth.resetPassword(token, $('#new-password').value)
+    history.replaceState({}, '', '/')
+    say('Password set. Sign in with it now.')
+    show('signin')
+  } catch (err) {
+    say(err.message, true)
+  }
+})
+
+for (const b of document.querySelectorAll('#signout, [data-signout]')) {
+  b.addEventListener('click', async () => {
+    await auth.signOut()
+    show('signin')
+  })
+}
+
+// The glossary at the foot, and the sigils rising in the side panes, which open it.
+const showRune = mountRunes($('#runes-body'))
+const pickRune = (n) => {
+  $('#runes').open = true
+  showRune(n)
+  $('#runes').scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+mountSigils($('#sigils-left'), 1, 12, pickRune)
+mountSigils($('#sigils-right'), 13, 24, pickRune)
+start().catch((err) => say(err.message, true))

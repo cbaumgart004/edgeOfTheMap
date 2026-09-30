@@ -1,0 +1,167 @@
+{
+  "site": "spiritseeds",
+  "version": 2,
+  "brand": {
+    "name": "Spirit Seeds Wellness",
+    "logo": "/uploads/SpiritSeedsLogo.jpg",
+    "modes": {
+      "light": { "bg": "#fff4da", "surface": "#fffaf0", "ink": "#3a2a18", "muted": "#8b5e00", "line": "#f0dcb0", "accent": "#ffb347", "accentInk": "#3a2a18" },
+      "dark": { "bg": "#2a1f12", "surface": "#35281a", "ink": "#fff1cc", "muted": "#e9b87d", "line": "#5a4428", "accent": "#ffb347", "accentInk": "#2a1f12" }
+    },
+    "fonts": { "body": "Assistant, Georgia, serif", "heading": "Farsan, Georgia, serif" },
+    "radius": "12px"
+  },
+  "types": {
+    "settings": {
+      "label": "Site settings",
+      "plural": "Site settings",
+      "singleton": true,
+      "titleField": "siteTitle",
+      "previewPath": "/",
+      "fields": [
+        { "name": "siteTitle", "kind": "text", "label": "Site title" },
+        { "name": "tagline", "kind": "text", "label": "Tagline" },
+        { "name": "logo", "kind": "image", "label": "Logo" },
+        { "name": "theme", "kind": "select", "label": "Seasonal theme", "default": "summer", "options": [
+          { "value": "spring", "label": "Spring" }, { "value": "summer", "label": "Summer" },
+          { "value": "fall", "label": "Fall" }, { "value": "winter", "label": "Winter" } ] },
+        { "name": "uiStyle", "kind": "select", "label": "UI style", "default": "watercolor",
+          "help": "The overall look and feel, independent of the season: the seasonal colours carry into every style. To try styles and seasons without saving, open the site with ?preview at the end of its address.",
+          "options": [
+            { "value": "watercolor", "label": "Watercolor (original)" },
+            { "value": "editorial", "label": "Editorial (serif and airy)" },
+            { "value": "sanctuary", "label": "Sanctuary (whimsical and soft)" },
+            { "value": "immersive", "label": "Immersive (cinematic full-bleed)" } ] },
+        { "name": "navCtaLabel", "kind": "text", "label": "Menu button text", "help": "Shown in the menu bar on the Editorial, Sanctuary and Immersive styles. Blank hides it." },
+        { "name": "navCtaUrl", "kind": "url", "label": "Menu button link" },
+        { "name": "contactEmail", "kind": "text", "label": "Contact email" }
+      ]
+    },
+    "page": {
+      "label": "Page",
+      "plural": "Pages",
+      "titleField": "title",
+      "slugFrom": "title",
+      "previewPath": "/{slug}",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Page title", "required": true },
+        { "name": "navLabel", "kind": "text", "label": "Menu label" },
+        { "name": "order", "kind": "number", "label": "Menu order", "integer": true, "default": 99, "help": "Lower comes first in the menu." },
+        { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
+        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed"] }
+      ]
+    }
+  },
+  "blocks": {
+    "contentSection": {
+      "label": "Content section",
+      "className": "section",
+      "fields": [
+        { "name": "layout", "kind": "select", "label": "Layout", "default": "imageText", "help": "How this section looks. Only the fields that layout uses are shown on the page.", "options": [
+          { "value": "splash", "label": "Splash / hero (text over a full-width image)" }, { "value": "imageText", "label": "Image and text" },
+          { "value": "centered", "label": "Centered text" }, { "value": "cardGrid", "label": "Card grid" },
+          { "value": "values", "label": "Values list" }, { "value": "event", "label": "Event / announcement" } ] },
+        { "name": "title", "kind": "text", "label": "Heading" },
+        { "name": "eyebrow", "kind": "text", "label": "Eyebrow", "help": "Splash layout: the small line above the heading, e.g. MASSAGE + SOUND HEALING." },
+        { "name": "body", "kind": "richtext", "label": "Body text", "help": "Splash, Image and text, Centered text and Event layouts." },
+        { "name": "image", "kind": "image", "label": "Image", "wide": true, "help": "Image and text layout, and the background photo for Splash." },
+        { "name": "taglinePlacement", "kind": "select", "label": "Tagline artwork", "default": "none",
+          "help": "Splash only. In Beside and Over the artwork carries the words, so the heading, eyebrow and body are not shown; only the buttons.", "options": [
+          { "value": "none", "label": "Don't show it" }, { "value": "beside", "label": "Beside the photo (two-up banner)" },
+          { "value": "over", "label": "Overlapping the photo (lapped side by side)" } ] },
+        { "name": "taglineBlend", "kind": "number", "label": "Tagline blend %", "integer": true, "min": 10, "max": 100,
+          "help": "Overlapping the photo only: how opaque the artwork is where it laps onto the photo. Blank is 90." },
+        { "name": "overlayAlign", "kind": "select", "label": "Splash text position", "default": "center", "options": [
+          { "value": "center", "label": "Centered" }, { "value": "bottomLeft", "label": "Bottom left" }, { "value": "bottomCenter", "label": "Bottom center" } ] },
+        { "name": "imageSide", "kind": "select", "label": "Image placement", "default": "auto", "help": "Auto alternates sides down the page. Pick Left or Right to pin it.", "options": [
+          { "value": "auto", "label": "Auto (alternate)" }, { "value": "left", "label": "Left" }, { "value": "right", "label": "Right" } ] },
+        { "name": "imageWidth", "kind": "number", "label": "Image width (%)", "integer": true, "min": 20, "max": 70, "help": "How wide the image is against the text, 20 to 70. Blank is 45. You can also drag the image's edge on the page." },
+        { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width. You can also drag the section's edge on the page." },
+        { "name": "images", "kind": "list", "label": "Images", "help": "Event layout: one or more images.", "fields": [
+          { "name": "image", "kind": "image", "label": "Image", "required": true } ] },
+        { "name": "cards", "kind": "list", "label": "Cards", "itemLabel": "title", "help": "Card grid layout.", "fields": [
+          { "name": "image", "kind": "image", "label": "Thumbnail (optional)" }, { "name": "title", "kind": "text", "label": "Card title" },
+          { "name": "description", "kind": "textarea", "label": "Card text" }, { "name": "buttonLabel", "kind": "text", "label": "Button text" },
+          { "name": "buttonUrl", "kind": "url", "label": "Button link" } ] },
+        { "name": "words", "kind": "list", "label": "Values", "itemLabel": "text", "help": "Values list layout.", "fields": [
+          { "name": "text", "kind": "text", "label": "Value", "required": true } ] },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] },
+        { "name": "buttons", "kind": "list", "label": "Buttons", "itemLabel": "label", "fields": [
+          { "name": "label", "kind": "text", "label": "Button text" },
+          { "name": "url", "kind": "url", "label": "Button link" },
+          { "name": "status", "kind": "select", "label": "Status", "default": "active", "help": "Ignored when a linked service is set: that service's status is used.", "options": [
+            { "value": "active", "label": "Active" }, { "value": "coming-soon", "label": "Coming soon" } ] },
+          { "name": "service", "kind": "text", "label": "Linked service (optional)", "suggest": { "block": "service", "field": "title" },
+            "help": "The heading of a Service on this page. The button then shows Available or Coming soon from that service's status." } ] },
+        { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button", "default": true }
+      ]
+    },
+    "service": {
+      "label": "Service / offering",
+      "className": "section section--split",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Heading" },
+        { "name": "description", "kind": "richtext", "label": "Body text" },
+        { "name": "image", "kind": "image", "label": "Image" },
+        { "name": "imageSide", "kind": "select", "label": "Image placement", "default": "auto", "help": "Auto alternates sides down the page. Pick Left or Right to pin it.", "options": [
+          { "value": "auto", "label": "Auto (alternate)" }, { "value": "left", "label": "Left" }, { "value": "right", "label": "Right" } ] },
+        { "name": "imageWidth", "kind": "number", "label": "Image width (%)", "integer": true, "min": 20, "max": 70, "help": "20 to 70. Blank is 45. You can also drag the image's edge on the page." },
+        { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width." },
+        { "name": "status", "kind": "select", "label": "Status", "default": "available", "help": "Coming soon disables this service's booking buttons and shows a badge.", "options": [
+          { "value": "available", "label": "Available" }, { "value": "coming-soon", "label": "Coming soon" } ] },
+        { "name": "bookingOptions", "kind": "list", "label": "Booking options", "itemLabel": "label", "fields": [
+          { "name": "label", "kind": "text", "label": "Session label (button text)" },
+          { "name": "bookUrl", "kind": "url", "label": "Booking link" },
+          { "name": "note", "kind": "text", "label": "Note" },
+          { "name": "addOns", "kind": "list", "label": "Add-ons for this session", "itemLabel": "service", "fields": [
+            { "name": "service", "kind": "text", "label": "Add-on service", "suggest": { "block": "service", "field": "title" },
+              "help": "The heading of another Service. Its button shows Available or Coming soon from that service's status." },
+            { "name": "bookUrl", "kind": "url", "label": "Booking link (this session with the add-on)" } ] } ] },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] },
+        { "name": "buttons", "kind": "list", "label": "Buttons", "itemLabel": "label", "fields": [
+          { "name": "label", "kind": "text", "label": "Button text" },
+          { "name": "url", "kind": "url", "label": "Button link" },
+          { "name": "status", "kind": "select", "label": "Status", "default": "active", "help": "Ignored when a linked service is set.", "options": [
+            { "value": "active", "label": "Active" }, { "value": "coming-soon", "label": "Coming soon" } ] },
+          { "name": "service", "kind": "text", "label": "Linked service (optional)", "suggest": { "block": "service", "field": "title" } } ] },
+        { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button", "default": true }
+      ]
+    },
+    "embed": {
+      "label": "Embed (OfferingTree, Canva, Kit, schedule)",
+      "className": "section section--stack",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Heading (optional)" },
+        { "name": "source", "kind": "select", "label": "Source", "default": "offeringtree", "help": "Which tool this comes from, for your reference.", "options": [
+          { "value": "offeringtree", "label": "OfferingTree (schedule / offering)" }, { "value": "canva", "label": "Canva (design / poster)" },
+          { "value": "kit", "label": "Kit / ConvertKit (signup form)" }, { "value": "teaching-schedule", "label": "My teaching schedule (all studios)" },
+          { "value": "other", "label": "Other" } ] },
+        { "name": "mode", "kind": "select", "label": "Embed type", "default": "url", "options": [
+          { "value": "url", "label": "URL (iframe link)" }, { "value": "code", "label": "Embed code (HTML / script)" },
+          { "value": "schedule", "label": "Teaching schedule (nothing to paste; updates itself)" },
+          { "value": "newsletter", "label": "Newsletter signup (Kit, in the site's own look)" } ] },
+        { "name": "url", "kind": "url", "label": "Embed URL", "help": "URL type: a Canva smart-embed link or an OfferingTree schedule or offering address." },
+        { "name": "code", "kind": "textarea", "label": "Embed code", "help": "Code type: paste the snippet exactly as the tool gives it; its scripts run." },
+        { "name": "height", "kind": "number", "label": "Height (px)", "integer": true, "min": 100, "help": "URL type. Blank is 640." },
+        { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width." },
+        { "name": "newsletterFormId", "kind": "text", "label": "Newsletter: Kit form ID", "help": "The number in app.kit.com/forms/designers/THIS-NUMBER. Not a key; nothing secret." },
+        { "name": "newsletterIntro", "kind": "text", "label": "Newsletter: intro line" },
+        { "name": "newsletterAskName", "kind": "boolean", "label": "Newsletter: also ask for a first name" },
+        { "name": "newsletterPlaceholder", "kind": "text", "label": "Newsletter: email box placeholder", "help": "Blank is your@email.com." },
+        { "name": "newsletterNamePlaceholder", "kind": "text", "label": "Newsletter: name box placeholder", "help": "Blank is First name." },
+        { "name": "newsletterButtonLabel", "kind": "text", "label": "Newsletter: button label", "help": "Blank is Subscribe." },
+        { "name": "newsletterSuccess", "kind": "text", "label": "Newsletter: thank-you message", "help": "Blank is: Thank you, check your inbox to confirm." },
+        { "name": "newsletterFinePrint", "kind": "text", "label": "Newsletter: fine print" },
+        { "name": "scheduleLimit", "kind": "number", "label": "Schedule: most classes to show", "integer": true, "min": 1, "help": "Blank shows everything found (about two weeks ahead)." },
+        { "name": "scheduleEmptyText", "kind": "text", "label": "Schedule: message when there are no classes" },
+        { "name": "scheduleLinkLabel", "kind": "text", "label": "Schedule: studio link wording", "help": "Blank is: Full schedule at {studio}." },
+        { "name": "caption", "kind": "text", "label": "Caption (optional)" },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] },
+        { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button", "default": true }
+      ]
+    }
+  }
+}

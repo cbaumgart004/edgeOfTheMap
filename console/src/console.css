@@ -1,0 +1,299 @@
+/* The console shares a document with the customer's page (ADR-0007), so every
+   rule is under .eotm-root and the elements it uses are reset first: a site's
+   `button { ... }` must not restyle the editor, and nothing here leaks out.
+   Colours come only from the --eotm-* tokens the schema's brand supplies. */
+
+.eotm-root {
+  all: initial;
+  --eotm-bg: #fff; --eotm-surface: #fff; --eotm-ink: #1b1b1b; --eotm-muted: #666; --eotm-line: #ddd;
+  --eotm-accent: #2b6cb0; --eotm-accent-ink: #fff; --eotm-font: system-ui, sans-serif; --eotm-heading: inherit; --eotm-radius: 8px;
+  --eotm-danger: #c0392b;
+  position: fixed; inset: auto 0 0 0; z-index: 2147483000;
+  font: 15px/1.45 var(--eotm-font); color: var(--eotm-ink);
+  -webkit-text-size-adjust: 100%;
+}
+.eotm-root *, .eotm-root *::before, .eotm-root *::after { box-sizing: border-box; }
+.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i) {
+  all: unset; box-sizing: border-box;
+}
+.eotm-root :where(ul, ol, section, header, form, fieldset, p, li) { display: block; }
+.eotm-root :where(img) { display: block; max-width: 100%; }
+.eotm-root :where(strong, b) { font-weight: 700; }
+.eotm-root :where(i) { font-style: italic; }
+.eotm-root [hidden] { display: none !important; }
+.eotm-root :focus-visible { outline: 2px solid var(--eotm-accent); outline-offset: 2px; }
+
+/* ------------------------------------------------------------ sheet */
+
+.eotm-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column;
+  background: var(--eotm-surface); color: var(--eotm-ink);
+  border-top: 1px solid var(--eotm-line);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.28);
+  transition: height 220ms ease, opacity 160ms ease;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.eotm-sheet.is-bar { height: calc(64px + env(safe-area-inset-bottom)); }
+.eotm-sheet.is-half { height: 52dvh; }
+.eotm-sheet.is-full { height: 90dvh; }
+/* Peek: the page shows through everywhere but the header, which stays solid so
+   the owner can toggle back. Opacity on the sheet would fade the header too (a
+   child cannot be more opaque than its parent), so the sheet's own paint goes
+   and its contents hide instead, and clicks fall through to the page. */
+.eotm-sheet.is-peek { background: transparent; border-color: transparent; box-shadow: none; pointer-events: none; }
+.eotm-sheet.is-peek .eotm-grip, .eotm-sheet.is-peek .eotm-scroll { visibility: hidden; }
+.eotm-sheet.is-peek .eotm-head { pointer-events: auto; background: var(--eotm-surface); border: 1px solid var(--eotm-line);
+  border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); }
+
+.eotm-sheet.is-wide {
+  left: auto; top: 0; width: min(460px, 38vw); height: 100dvh;
+  border-top: 0; border-left: 1px solid var(--eotm-line); border-radius: 0;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.22);
+}
+.eotm-sheet.is-wide.is-bar { top: auto; height: 60px; border-radius: 12px 0 0 0; }
+
+.eotm-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
+.eotm-grip span { display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--eotm-line); }
+.eotm-sheet.is-wide .eotm-grip { display: none; }
+
+.eotm-head { display: flex; align-items: center; gap: 6px; padding: 4px 10px 8px; border-bottom: 1px solid var(--eotm-line); min-height: 52px; }
+.eotm-logo { height: 30px; width: auto; border-radius: 4px; }
+.eotm-title { flex: 1; min-width: 0; display: flex; flex-direction: column; cursor: pointer; padding: 4px 6px; }
+.eotm-title strong { font-family: var(--eotm-heading); font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eotm-save { font-size: 12px; color: var(--eotm-muted); }
+.eotm-save.is-error { color: var(--eotm-danger); }
+
+.eotm-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 32px; -webkit-overflow-scrolling: touch; }
+
+/* ------------------------------------------------------------ controls */
+
+.eotm-icon, .eotm-btn, .eotm-rt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.eotm-icon { min-width: 40px; min-height: 40px; border-radius: 50%; font-size: 17px; color: var(--eotm-ink); }
+.eotm-icon:hover, .eotm-icon.is-on { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); }
+.eotm-icon[disabled] { opacity: 0.3; cursor: default; }
+/* Preview: labelled, because a bare icon means nothing on a phone, where there is no tooltip. */
+.eotm-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; flex: none;
+  border: 1px solid var(--eotm-line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--eotm-ink);
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.eotm-pill svg { display: block; }
+.eotm-pill:hover, .eotm-pill.is-on { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); border-color: var(--eotm-accent); }
+
+.eotm-btn {
+  min-height: 42px; padding: 0 16px; border-radius: var(--eotm-radius);
+  border: 1px solid var(--eotm-line); background: var(--eotm-bg); color: var(--eotm-ink); font-weight: 600;
+}
+.eotm-btn.is-primary { background: var(--eotm-accent); color: var(--eotm-accent-ink); border-color: var(--eotm-accent); }
+.eotm-btn.is-quiet { background: transparent; }
+.eotm-btn.is-danger { background: var(--eotm-danger); color: #fff; border-color: var(--eotm-danger); }
+.eotm-btn[disabled] { opacity: 0.6; cursor: default; }
+
+.eotm-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.eotm-row > .eotm-input { flex: 1; min-width: 0; }
+.eotm-swatch { width: 44px; height: 42px; padding: 2px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-bg); cursor: pointer; flex: none; }
+
+.eotm-field { display: block; margin: 0 0 16px; }
+.eotm-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--eotm-ink); }
+.eotm-help { font-size: 12.5px; color: var(--eotm-muted); margin-top: 5px; }
+.eotm-error { font-size: 13px; color: var(--eotm-danger); margin-top: 5px; }
+.eotm-field.has-error .eotm-input { border-color: var(--eotm-danger); }
+
+.eotm-input {
+  display: block; width: 100%; min-height: 44px; padding: 10px 12px;
+  font: 16px/1.4 var(--eotm-font); /* 16px stops iOS zooming on focus */
+  color: var(--eotm-ink); background: var(--eotm-bg);
+  border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius);
+}
+textarea.eotm-input { min-height: 96px; resize: vertical; }
+select.eotm-input { appearance: auto; }
+select.eotm-input[multiple] { min-height: 120px; }
+.eotm-unit { color: var(--eotm-muted); font-size: 14px; }
+
+.eotm-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.eotm-check input { appearance: auto; width: 22px; height: 22px; accent-color: var(--eotm-accent); }
+.eotm-check label { cursor: pointer; }
+.eotm-check .eotm-help { flex-basis: 100%; }
+
+.eotm-group { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); padding: 12px; margin: 0 0 16px; }
+.eotm-group > legend { font-family: var(--eotm-heading); font-size: 16px; padding: 0 6px; }
+
+/* ------------------------------------------------------------ lists */
+
+.eotm-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.eotm-card {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 16px; cursor: pointer;
+  border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-bg);
+}
+.eotm-card strong { font-family: var(--eotm-heading); font-size: 18px; }
+.eotm-card span { color: var(--eotm-muted); font-size: 13px; }
+.eotm-card.is-request { border-style: dashed; }
+
+.eotm-list > .eotm-row { margin-bottom: 12px; }
+.eotm-doc { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--eotm-line); }
+.eotm-doc-open { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 4px; cursor: pointer; }
+.eotm-doc-open strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-chip { flex-shrink: 0; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--eotm-line); color: var(--eotm-muted); }
+.eotm-chip.is-published { border-color: var(--eotm-accent); color: var(--eotm-ink); }
+.eotm-chip.is-changed { border-style: dashed; border-color: var(--eotm-accent); color: var(--eotm-ink); }
+.eotm-empty { color: var(--eotm-muted); padding: 24px 0; text-align: center; }
+
+.eotm-status { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.eotm-danger { display: flex; justify-content: space-between; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--eotm-line); }
+
+.eotm-conflict { background: color-mix(in srgb, var(--eotm-danger) 12%, var(--eotm-surface)); border: 1px solid var(--eotm-danger); border-radius: var(--eotm-radius); padding: 12px; margin-bottom: 16px; }
+.eotm-conflict p { margin-bottom: 10px; }
+.eotm-warn { flex-basis: 100%; background: color-mix(in srgb, var(--eotm-accent) 12%, var(--eotm-surface)); border: 1px solid var(--eotm-accent); border-radius: var(--eotm-radius); padding: 12px; }
+.eotm-warn p { margin-bottom: 10px; }
+
+.eotm-repeater > ol { display: block; }
+.eotm-item { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); margin-bottom: 8px; background: var(--eotm-bg); }
+.eotm-item.has-error { border-color: var(--eotm-danger); }
+.eotm-item-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; }
+.eotm-item-title { flex: 1; min-width: 0; padding: 10px 0; cursor: pointer; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-item-body { padding: 10px 12px 2px; border-top: 1px solid var(--eotm-line); }
+.eotm-palette { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ------------------------------------------------------------ media */
+
+.eotm-image img { max-height: 180px; border-radius: var(--eotm-radius); margin-bottom: 8px; }
+.eotm-image .eotm-input { margin-top: 8px; }
+.eotm-photos ul { display: grid; gap: 10px; margin-bottom: 10px; }
+.eotm-photo { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; }
+.eotm-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: var(--eotm-radius); }
+.eotm-photo-meta { display: grid; gap: 6px; }
+.eotm-seg { display: inline-flex; border: 1px solid var(--eotm-line); border-radius: 999px; overflow: hidden; width: max-content; }
+.eotm-seg button { padding: 7px 16px; cursor: pointer; font-size: 14px; }
+.eotm-seg button.is-on { background: var(--eotm-accent); color: var(--eotm-accent-ink); }
+
+/* ------------------------------------------------------------ rich text */
+
+.eotm-rt { border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-bg); }
+.eotm-rt-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-bottom: 1px solid var(--eotm-line); position: sticky; top: -14px; background: var(--eotm-bg); z-index: 1; }
+.eotm-rt-btn { min-width: 38px; min-height: 38px; border-radius: 6px; font-size: 15px; }
+.eotm-rt-btn.is-on, .eotm-rt-btn:hover { background: color-mix(in srgb, var(--eotm-accent) 22%, transparent); }
+.eotm-rt-style { padding: 0 10px; font-size: 13px; white-space: nowrap; }
+.eotm-rt-link { display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--eotm-line); }
+.eotm-rt-link input { all: unset; flex: 1; min-height: 40px; padding: 0 10px; border: 1px solid var(--eotm-line); border-radius: 6px; font-size: 16px; }
+.eotm-rt-body { min-height: 140px; padding: 12px; outline: none; font-size: 16px; line-height: 1.55; }
+.eotm-rt-body > * + * { margin-top: 0.6em; }
+.eotm-rt-body :where(p, h2, h3, h4, ul, ol, li, blockquote, span, a, img, strong, em, s, code, hr) { all: revert; }
+.eotm-rt-body h2, .eotm-rt-body h3, .eotm-rt-body h4 { font-family: var(--eotm-heading); margin: 0.8em 0 0.3em; }
+.eotm-rt-body a { color: var(--eotm-accent); text-decoration: underline; }
+.eotm-rt-body img { display: inline-block; max-width: 100%; max-height: 240px; vertical-align: middle; border-radius: 4px; }
+.eotm-rt-body img.ProseMirror-selectednode { outline: 2px solid var(--eotm-accent); }
+.eotm-rt-body span[class] { outline: 1px dotted var(--eotm-accent); outline-offset: 1px; }
+
+/* ------------------------------------------------------------ misc */
+
+.eotm-signin { display: grid; gap: 6px; max-width: 360px; margin: 0 auto; }
+.eotm-signin .eotm-btn { margin-top: 10px; }
+.eotm-toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom));
+  background: var(--eotm-ink); color: var(--eotm-surface); padding: 10px 16px; border-radius: 999px; font-size: 14px;
+  max-width: calc(100vw - 32px); z-index: 1;
+}
+
+/* ------------------------------------------------------------ layout */
+
+.eotm-layout { display: grid; gap: 10px; }
+.eotm-layout ol { display: grid; gap: 6px; }
+.eotm-layout-row { display: flex; align-items: center; gap: 4px; }
+.eotm-layout-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-layout-row .eotm-input { width: auto; flex: none; }
+
+/* Arrange: boxes drawn over the page's own blocks. Only the handles take
+   pointers, so the page still scrolls under a finger everywhere else. */
+.eotm-arrange { position: fixed; inset: 0; pointer-events: none; }
+.eotm-box { position: fixed; border: 2px dashed var(--eotm-accent); border-radius: 6px;
+  background: color-mix(in srgb, var(--eotm-accent) 7%, transparent); }
+.eotm-box.is-dragging { opacity: 0.7; z-index: 1; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); }
+.eotm-box-move, .eotm-box-size, .eotm-box-span {
+  position: absolute; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--eotm-accent); color: var(--eotm-accent-ink); font-size: 14px; font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); user-select: none; -webkit-user-select: none;
+}
+.eotm-box-move { top: 8px; left: 8px; max-width: calc(100% - 16px); min-height: 40px; padding: 0 14px; border-radius: 999px;
+  pointer-events: auto; touch-action: none; cursor: grab; white-space: nowrap; overflow: hidden; }
+.eotm-box.is-dragging .eotm-box-move { cursor: grabbing; }
+.eotm-box-span { top: 8px; right: 8px; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+.eotm-box-size { top: 50%; right: 4px; width: 32px; height: 64px; margin-top: -32px; border-radius: 16px;
+  pointer-events: auto; touch-action: none; cursor: ew-resize; }
+.eotm-drop { position: fixed; border-radius: 3px; background: var(--eotm-accent); }
+.eotm-arrange-bar {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px);
+  display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto;
+  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); font-size: 14px;
+}
+
+/* Click-to-edit (Targets.jsx): an outline on the element under the pointer and
+   one Edit button; only the button takes pointers. */
+.eotm-target { position: fixed; inset: 0; pointer-events: none; }
+.eotm-target-box { position: fixed; border: 2px solid var(--eotm-accent); border-radius: 6px; }
+.eotm-target-bar { position: fixed; display: flex; gap: 6px; pointer-events: none; }
+.eotm-target-edit { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--eotm-accent); color: var(--eotm-accent-ink); font: 600 14px var(--eotm-font);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+.eotm-target-snap { pointer-events: auto; min-height: 36px; padding: 0 12px; border-radius: 999px; cursor: pointer; font: 600 13px var(--eotm-font);
+  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
+.eotm-target-snap.is-on { color: var(--eotm-accent); border-color: var(--eotm-accent); }
+.eotm-target-grid { position: fixed; outline: 1px dashed color-mix(in srgb, var(--eotm-accent) 60%, transparent); }
+.eotm-target-grid span { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--eotm-accent) 45%, transparent); }
+.eotm-target-box.is-sizer { border-style: dashed; }
+.eotm-target-size { position: fixed; pointer-events: auto; touch-action: none; cursor: ew-resize;
+  width: 22px; height: 56px; margin: -28px 0 0 -11px; padding: 0; border: 2px solid var(--eotm-accent-ink); border-radius: 11px;
+  background: var(--eotm-accent); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+.eotm-target-size::before { content: ""; position: absolute; inset: 14px 7px; border-inline: 2px solid var(--eotm-accent-ink); opacity: 0.8; }
+.eotm-target-size.is-active { transform: scale(1.1); }
+.eotm-target-value { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px;
+  background: var(--eotm-ink); color: var(--eotm-bg); font: 600 12px var(--eotm-font); white-space: nowrap; }
+.eotm-library { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin-top: 8px; }
+.eotm-library .eotm-input { grid-column: 1 / -1; }
+.eotm-thumb { padding: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+.eotm-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.eotm-thumb.is-on, .eotm-thumb:hover { border-color: var(--eotm-accent); }
+
+/* Your own types (CustomTypes.jsx) and the long-list pickers. */
+.eotm-custom { display: grid; gap: 12px; }
+.eotm-custom-list, .eotm-custom-fields { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.eotm-custom-field { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); }
+.eotm-custom-field .eotm-row .eotm-input { flex: 1; min-width: 0; }
+.eotm-custom-sub { padding-left: 10px; border-left: 2px solid var(--eotm-line); }
+.eotm-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.eotm-spacer { flex: 1; }
+.eotm-types-picker { display: grid; gap: 12px; }
+.eotm-palette-pick { margin-top: 8px; }
+
+.eotm-photo-look { display: grid; gap: 6px; }
+.eotm-range { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; }
+.eotm-range input { grid-column: 1 / -1; width: 100%; }
+.eotm-btn.is-on { border-color: var(--eotm-accent); color: var(--eotm-accent); }
+
+/* Add-section cards with a sketch of each section (Sketch.jsx). */
+.eotm-palette.is-sketches { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.eotm-palette-pick { display: grid; gap: 8px; margin-top: 8px; }
+.eotm-add { display: grid; gap: 6px; padding: 8px; text-align: left; cursor: pointer; font: 600 13px var(--eotm-font);
+  color: var(--eotm-ink); background: var(--eotm-surface); border: 1px dashed var(--eotm-line); border-radius: var(--eotm-radius); }
+.eotm-add:hover, .eotm-add:focus-visible { border-color: var(--eotm-accent); border-style: solid; }
+.eotm-sketch { display: flex; gap: 6px; height: 56px; padding: 6px; border-radius: 6px; background: var(--eotm-bg); overflow: hidden; }
+.eotm-sketch.is-image { width: 100%; object-fit: cover; padding: 0; }
+.eotm-sketch-p { flex: 0 0 40%; border-radius: 4px; background: color-mix(in srgb, var(--eotm-accent) 35%, var(--eotm-line)); }
+.eotm-sketch-body { flex: 1; display: flex; flex-direction: column; gap: 4px; justify-content: center; min-width: 0; }
+.eotm-sketch-h { height: 7px; width: 70%; border-radius: 3px; background: var(--eotm-ink); opacity: .75; }
+.eotm-sketch-l { height: 3px; width: 100%; border-radius: 2px; background: var(--eotm-muted); opacity: .6; }
+.eotm-sketch-l.is-short { width: 60%; }
+.eotm-sketch-list { display: grid; gap: 3px; }
+.eotm-sketch-list i { height: 4px; border-radius: 2px; background: var(--eotm-muted); opacity: .45; }
+.eotm-sketch-b { align-self: flex-start; height: 8px; width: 34%; border-radius: 99px; background: var(--eotm-accent); }
+
+@media (prefers-reduced-motion: reduce) { .eotm-sheet { transition: none; } }
+
+/* A section just added from the palette, on the site page itself. */
+.eotm-just-added { outline: 3px solid var(--eotm-accent, #2b6cb0) !important; outline-offset: 4px; transition: outline-color 1.2s; }
