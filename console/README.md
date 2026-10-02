@@ -219,6 +219,8 @@ no login.
   unverified address and is logged, the push still goes.
 - **Folding on the Manage page:** Monitors and each site's card fold to one line (the site's name,
   member count and editor version). Monitors opens by itself when one is down or none is connected.
+  Each ticket folds to its state, title (the request's first line, there being no title field), site
+  and date; a `#ticket-<id>` link from a notification opens that one.
 - **Monitors on the Manage page** (`api/monitors.js`): every UptimeRobot monitor with its status and
   30-day uptime. Connect it once on the Manage page by pasting UptimeRobot's **Read-Only API Key**
   (Integrations & API, Main API keys); the API checks it against UptimeRobot, keeps it in

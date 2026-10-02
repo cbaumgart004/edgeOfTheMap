@@ -326,10 +326,15 @@ function renderRequests(list = tickets) {
     : ticketView === 'mine' ? open.filter((r) => myEmail && r.assigned_email === myEmail)
     : open
   const ops = state?.operators ?? []
+  // Each ticket folds to its title (the request's first line), so the page
+  // opens on a list to scan. A re-render keeps open whichever were open.
+  const openTickets = new Set([...document.querySelectorAll('#m-requests details.ticket-fold[open]')].map((d) => d.closest('[data-ticket]').dataset.ticket))
   $('#m-requests').innerHTML = shown.map((r) => `
-    <li class="card${r.status === 'closed' ? ' is-done' : ''}" data-ticket="${esc(r.id)}" id="ticket-${esc(r.id)}">
-      <div class="ticket-head"><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
-        <span class="meta">${esc(r.site_name)} · ${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(when(r.created_at))}</span></div>
+    <li class="card${r.status === 'closed' ? ' is-done' : ''}" data-ticket="${esc(r.id)}" id="ticket-${esc(r.id)}"><details class="fold ticket-fold"${openTickets.has(String(r.id)) ? ' open' : ''}>
+      <summary><span class="state is-${esc(r.status)}">${esc(stateLabel(r.status))}</span>
+        <span class="ticket-title">${esc(ticketTitle(r.body))}</span>
+        <span class="meta">${esc(r.site_name)} · ${esc(new Date(r.created_at).toLocaleDateString())}</span></summary>
+      <p class="meta">${esc(r.email ?? 'unknown')}${r.page ? ` · ${esc(r.page)}` : ''} · ${esc(when(r.created_at))}</p>
       <p class="request">${esc(r.body)}</p>
       <div class="ticket-controls">
         <div><label for="st-${esc(r.id)}">State</label><select id="st-${esc(r.id)}" data-field="status">${
@@ -344,14 +349,22 @@ function renderRequests(list = tickets) {
         <div class="row"><label class="check"><input type="checkbox" name="notify" ${r.email ? 'checked' : 'disabled'} /> Tell ${esc(r.email ?? 'the requester')}</label>
           <button type="submit">Comment</button></div>
       </form>
-    </li>`).join('') || `<li class="empty">${{ closed: 'No closed tickets.', mine: 'Nothing assigned to you.' }[ticketView] ?? 'No open tickets.'}</li>`
+    </details></li>`).join('') || `<li class="empty">${{ closed: 'No closed tickets.', mine: 'Nothing assigned to you.' }[ticketView] ?? 'No open tickets.'}</li>`
   for (const [id, text] of drafts) {
     const t = document.querySelector(`[data-ticket="${CSS.escape(id)}"] textarea[name=body]`)
     if (t) t.value = text
   }
   // A notification opens /?manage#ticket-<id>: bring that one into view.
   const target = location.hash.startsWith('#ticket-') && document.getElementById(location.hash.slice(1))
-  if (target) target.scrollIntoView({ block: 'center' })
+  if (target) {
+    target.querySelector('details.ticket-fold').open = true
+    target.scrollIntoView({ block: 'center' })
+  }
+}
+// A ticket has no title field: its title is the request's first line, cut short.
+function ticketTitle(body) {
+  const line = String(body ?? '').trim().split('\n')[0].trim()
+  return line.length > 90 ? `${line.slice(0, 89)}…` : line || '(no text)'
 }
 
 // Uptime monitors (api/monitors.js): what UptimeRobot watches, down ones first.
