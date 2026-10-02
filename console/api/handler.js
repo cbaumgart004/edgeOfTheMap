@@ -247,13 +247,19 @@ export function createHandler(deps) {
       if (!m) return json(404, { error: 'Not found.' })
       const site = await loadSite(m[1])
       if (!site) return json(404, { error: 'No such site.' })
-      headers = cors(origin, site)
+      const rest = m[2] ?? ''
+      // The two public reads are open to any origin. CloudFront caches them
+      // keyed on the path alone, ignoring Vary: Origin, so a per-origin
+      // allow header was served to whoever asked next: a copy cached from the
+      // admin page (same origin, so no header at all) stopped the site's loader
+      // from opening the editor until it expired. They carry no credentials
+      // and anyone can read them without a browser, so * gives nothing away.
+      const isPublic = method === 'GET' && (rest === '/boot' || rest.startsWith('/public/'))
+      headers = isPublic ? { 'access-control-allow-origin': '*' } : cors(origin, site)
       // A browser request from anywhere else gets no CORS headers, so the
       // browser refuses the response; refusing here as well saves the work.
       if (origin && !headers['access-control-allow-origin']) return json(403, { error: 'Origin not allowed.' })
       if (method === 'OPTIONS') return { statusCode: 204, headers, body: '' }
-
-      const rest = m[2] ?? ''
 
       // Public: what the loader and visitors need, no login.
       if (method === 'GET' && rest === '/boot') {

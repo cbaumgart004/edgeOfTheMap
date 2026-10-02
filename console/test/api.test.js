@@ -74,16 +74,22 @@ const base = '/api/sites/spiritseeds'
 const event = { title: 'New moon circle', startsAt: '2026-10-21T18:30:00-06:00', description: '<p onclick="x()">Join <a href="javascript:bad()">us</a> <span class="text-gradient evil">here</span></p>' }
 
 describe('console API', () => {
-  it('serves boot data without a login, with CORS for an allowed origin', async () => {
+  it('serves boot data without a login, open to any origin', async () => {
     const r = await setup().call('GET', `${base}/boot`, { token: null })
     expect(r.statusCode).toBe(200)
     expect(r.json).toMatchObject({ site: 'spiritseeds', version: '0.1.0', url: ORIGIN, logo: `${ORIGIN}/uploads/SpiritSeedsLogo.jpg` })
-    expect(r.headers['access-control-allow-origin']).toBe(ORIGIN)
+    // CloudFront caches it on the path alone, so the header must suit every caller.
+    expect(r.headers['access-control-allow-origin']).toBe('*')
+    const other = await setup().call('GET', `${base}/boot`, { token: null, origin: 'https://elsewhere.example' })
+    expect(other.statusCode).toBe(200)
+    expect(other.headers['access-control-allow-origin']).toBe('*')
   })
 
-  it('refuses an origin the site does not list', async () => {
-    const r = await setup().call('GET', `${base}/boot`, { origin: 'https://evil.example' })
+  it('refuses an origin the site does not list for anything but the public reads', async () => {
+    const r = await setup().call('GET', `${base}/documents`, { origin: 'https://evil.example', query: { type: 'event' } })
     expect(r.statusCode).toBe(403)
+    const ok = await setup().call('GET', `${base}/documents`, { query: { type: 'event' } })
+    expect(ok.headers['access-control-allow-origin']).toBe(ORIGIN)
   })
 
   it('needs a valid login that is a member of the site', async () => {
