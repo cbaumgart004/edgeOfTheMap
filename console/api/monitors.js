@@ -1,7 +1,9 @@
 // The uptime monitors on the management page: every UptimeRobot monitor on the
 // account, read through its API v2 with a read-only key, so the page shows
-// what the phone app alerts on. Cached a minute per warm container; UptimeRobot
-// checks every five.
+// what the phone app alerts on. Kept five minutes, UptimeRobot's own check
+// interval: in the warm container, and beside the key in console_settings so a
+// cold container does not ask UptimeRobot again (its API can take seconds). If
+// UptimeRobot fails, the last kept list is served marked stale.
 //
 // The key is pasted once on the Manage page ("Connect UptimeRobot") and kept in
 // console_settings beside the Web Push keys; it is checked against UptimeRobot
@@ -20,13 +22,19 @@ const DASHBOARD = 'https://dashboard.uptimerobot.com/monitors'
 const STATUS = { 0: 'paused', 1: 'not checked yet', 2: 'up', 8: 'seems down', 9: 'down' }
 const EVENT = { 1: 'down', 2: 'up', 98: 'started', 99: 'paused' }
 
+const FRESH = 5 * 60_000
+
 export function createMonitors(deps) {
   const q = (sql, params) => deps.control.query(sql, params)
+  const now = deps.now ?? Date.now
   let cache = null
+  const setting = async (name) => (await q('SELECT value FROM console_settings WHERE name = $1', [name])).rows[0]?.value ?? null
+  const keep = (name, value) => q(`INSERT INTO console_settings (name, value) VALUES ($1, $2)
+                                   ON CONFLICT (name) DO UPDATE SET value = $2`, [name, value])
 
   async function storedKey() {
-    const { rows } = await q("SELECT value FROM console_settings WHERE name = 'uptimerobot'")
-    if (rows[0]?.value?.key) return rows[0].value.key
+    const stored = await setting('uptimerobot')
+    if (stored?.key) return stored.key
     return deps.fallbackKey ? deps.fallbackKey() : null
   }
 
@@ -69,11 +77,23 @@ export function createMonitors(deps) {
 
   return {
     async list() {
-      if (cache && cache.at > Date.now() - 60_000) return cache.value
+      if (cache && cache.at > now() - FRESH) return cache.value
       const key = await storedKey()
       if (!key) return { configured: false, monitors: [] }
-      const value = { configured: true, dashboard: DASHBOARD, monitors: await fetchMonitors(key) }
-      cache = { at: Date.now(), value }
+      const kept = await setting('uptimerobot_cache')
+      if (kept && kept.at > now() - FRESH) {
+        cache = kept
+        return kept.value
+      }
+      let value
+      try {
+        value = { configured: true, dashboard: DASHBOARD, monitors: await fetchMonitors(key, now()) }
+      } catch (err) {
+        if (kept) return { ...kept.value, stale: true, checkedAt: kept.at }
+        throw err
+      }
+      cache = { at: now(), value }
+      await keep('uptimerobot_cache', cache)
       return value
     },
 
@@ -82,15 +102,15 @@ export function createMonitors(deps) {
       if (!/^[\w-]{10,100}$/.test(key)) throw new ServiceError(400, 'Paste the Read-Only API Key from UptimeRobot (Integrations & API).')
       // Main keys start u<digits>-, read-only ones ur<digits>-.
       if (/^u\d/.test(key)) throw new ServiceError(400, 'That is the main API key, which can change monitors. Use the Read-Only API Key.')
-      const monitors = await fetchMonitors(key)
-      await q(`INSERT INTO console_settings (name, value) VALUES ('uptimerobot', $1)
-               ON CONFLICT (name) DO UPDATE SET value = $1`, [{ key }])
-      cache = { at: Date.now(), value: { configured: true, dashboard: DASHBOARD, monitors } }
+      const monitors = await fetchMonitors(key, now())
+      await keep('uptimerobot', { key })
+      cache = { at: now(), value: { configured: true, dashboard: DASHBOARD, monitors } }
+      await keep('uptimerobot_cache', cache)
       return cache.value
     },
 
     async disconnect() {
-      await q("DELETE FROM console_settings WHERE name = 'uptimerobot'")
+      await q("DELETE FROM console_settings WHERE name IN ('uptimerobot', 'uptimerobot_cache')")
       cache = null
     },
   }

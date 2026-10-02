@@ -230,7 +230,13 @@ no login.
   amber 99% or more, red below), a line of the last 24 hours' response times with a hover readout,
   and its last 20 events (down, up, paused) with UptimeRobot's reason. Verified against the live
   account 2026-09-29 for status and 30-day uptime; the daily strip, response times and events are
-  **unverified** until the next deploy reads them.
+  **unverified** until the next deploy reads them. The list is kept five minutes, in the warm
+  container and as `uptimerobot_cache` in `console_settings`, so a cold container does not call
+  UptimeRobot again; when UptimeRobot fails, the last list is served and the page says how old it is.
+- **Manage page kept in the browser:** the last-loaded sites, tickets and monitors (`eotm:manage` in
+  localStorage, for the login that loaded them, at most a week old) are drawn as soon as the session
+  is confirmed, then replaced by the API's answer. Removed on sign-out and for a login that is not an
+  operator.
 - **API log on the Manage page** (`api/logs.js`): this Lambda's own CloudWatch log for the last 24
   hours, newest first, errors and warnings by default, without Lambda's START/END/REPORT lines. Needs
   one grant on the execution role (`eotm-console-api-role-3asduby6`): `logs:FilterLogEvents` on

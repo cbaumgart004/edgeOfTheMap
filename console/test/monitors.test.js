@@ -10,22 +10,21 @@ const MONITORS = [
   { id: 3, friendly_name: 'loader', url: 'https://admin.theedgeofthemap.com/loader.js', status: 9, interval: 300, custom_uptime_ratio: '90-98.5' },
 ]
 
-function setup({ answer = { stat: 'ok', monitors: MONITORS } } = {}) {
-  const settings = new Map()
+function setup({ answer = { stat: 'ok', monitors: MONITORS }, settings = new Map(), clock = { t: 1_700_000_000_000 } } = {}) {
   const calls = []
   const control = {
     async query(sql, p = []) {
-      if (sql.startsWith('SELECT value FROM console_settings')) return { rows: settings.has('uptimerobot') ? [{ value: settings.get('uptimerobot') }] : [] }
-      if (sql.startsWith('INSERT INTO console_settings')) { settings.set('uptimerobot', p[0]); return { rows: [] } }
-      if (sql.startsWith('DELETE FROM console_settings')) { settings.delete('uptimerobot'); return { rowCount: 1 } }
+      if (sql.startsWith('SELECT value FROM console_settings')) return { rows: settings.has(p[0]) ? [{ value: settings.get(p[0]) }] : [] }
+      if (sql.startsWith('INSERT INTO console_settings')) { settings.set(p[0], structuredClone(p[1])); return { rows: [] } }
+      if (sql.startsWith('DELETE FROM console_settings')) { settings.delete('uptimerobot'); settings.delete('uptimerobot_cache'); return { rowCount: 1 } }
       throw new Error(`unexpected SQL: ${sql}`)
     },
   }
   const fetch = async (url, init) => {
     calls.push(Object.fromEntries(init.body))
-    return { ok: true, json: async () => answer }
+    return { ok: true, json: async () => (typeof answer === 'function' ? answer() : answer) }
   }
-  return { settings, calls, monitors: createMonitors({ control, fetch }) }
+  return { settings, calls, clock, monitors: createMonitors({ control, fetch, now: () => clock.t }) }
 }
 
 describe('uptime monitors', () => {
@@ -33,7 +32,30 @@ describe('uptime monitors', () => {
     expect(await setup().monitors.list()).toEqual({ configured: false, monitors: [] })
   })
 
-  it('checks a read-only key, keeps it, and lists every monitor once a minute', async () => {
+  it('serves a cold container the list kept in the database, not UptimeRobot', async () => {
+    const warm = setup()
+    await warm.monitors.connect('ur123456-abcdef0123')
+    const cold = setup({ settings: warm.settings, clock: warm.clock })
+    warm.clock.t += 4 * 60_000
+    expect((await cold.monitors.list()).monitors).toHaveLength(3)
+    expect(cold.calls).toHaveLength(0)
+    warm.clock.t += 2 * 60_000
+    await cold.monitors.list()
+    expect(cold.calls).toHaveLength(1)
+  })
+
+  it('serves the last list marked stale when UptimeRobot fails', async () => {
+    let fail = false
+    const { monitors, clock } = setup({ answer: () => (fail ? { stat: 'fail', error: { message: 'down' } } : { stat: 'ok', monitors: MONITORS }) })
+    await monitors.connect('ur123456-abcdef0123')
+    fail = true
+    clock.t += 6 * 60_000
+    const r = await monitors.list()
+    expect(r).toMatchObject({ configured: true, stale: true })
+    expect(r.monitors).toHaveLength(3)
+  })
+
+  it('checks a read-only key, keeps it, and lists every monitor once in five minutes', async () => {
     const { settings, calls, monitors } = setup()
     const r = await monitors.connect(' ur123456-abcdef0123 ')
     expect(settings.get('uptimerobot')).toEqual({ key: 'ur123456-abcdef0123' })

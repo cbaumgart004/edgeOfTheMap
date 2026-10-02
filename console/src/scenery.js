@@ -205,11 +205,16 @@ export function paintCoals(ctx, k, cx, cy, rx, ry, fbm, seed) {
   paint(ctx, img, x0, y0)
 }
 
+// A scratch canvas: offscreen where it exists, so this file also runs in the
+// painting worker (scenery.worker.js), which has no document.
+function makeCanvas(w, h) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
+  return Object.assign(document.createElement('canvas'), { width: w, height: h })
+}
+
 // putImageData ignores blending, so each piece goes through its own canvas.
 function paint(ctx, img, x, y) {
-  const c = document.createElement('canvas')
-  c.width = img.width
-  c.height = img.height
+  const c = makeCanvas(img.width, img.height)
   c.getContext('2d').putImageData(img, 0, 0)
   ctx.drawImage(c, x, y)
 }
@@ -282,8 +287,7 @@ function conifer(ctx, rand, x, y, h, width) {
 let TOOTH = null
 function tooth() {
   if (TOOTH) return TOOTH
-  const c = document.createElement('canvas')
-  c.width = c.height = 96
+  const c = makeCanvas(96, 96)
   const g = c.getContext('2d')
   const rand = seeded(4049)
   g.strokeStyle = '#000'
@@ -304,9 +308,7 @@ function tooth() {
 // Trees of the given rows into a layer of their own, grained there, so the
 // grain never touches the ground or sky beneath.
 function treeLayer(w, h, dpr, rows, rand, at) {
-  const c = document.createElement('canvas')
-  c.width = Math.round(w * dpr)
-  c.height = Math.round(h * dpr)
+  const c = makeCanvas(Math.round(w * dpr), Math.round(h * dpr))
   const ctx = c.getContext('2d')
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   for (const row of rows) {
@@ -467,10 +469,15 @@ export function paintTrees(canvas, key, side, fireX) {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
   canvas.width = Math.round(r.width * dpr)
   canvas.height = Math.round(r.height * dpr)
-  const ctx = canvas.getContext('2d')
+  drawTrees(canvas.getContext('2d'), r.width, r.height, dpr, key, side, fireX)
+  return true
+}
+
+// The same into any 2D context sized W x H CSS pixels at `dpr`: on the page,
+// or in the painting worker.
+export function drawTrees(ctx, W, H, dpr, key, side, fireX) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   const rand = seeded(key * 104729)
-  const W = r.width; const H = r.height
   const ground = H - Math.min(150, H * 0.17)
   const outer = side === 'left' ? 0 : 1
   const at = (p) => (outer === 0 ? p : 1 - p) * W
@@ -499,7 +506,6 @@ export function paintTrees(canvas, key, side, fireX) {
   ctx.fillStyle = g
   ctx.fillRect(0, 0, W, H)
   ctx.globalCompositeOperation = 'source-over'
-  return true
 }
 
 // The pit's back logs and stones (`layer` 'back', behind the fire), the back
@@ -511,8 +517,13 @@ export function paintPit(canvas, key, layer, pit) {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
   canvas.width = Math.round(r.width * dpr)
   canvas.height = Math.round(r.height * dpr)
-  const k = canvas.width / 320
-  const ctx = canvas.getContext('2d')
+  drawPit(canvas.getContext('2d'), canvas.width, key, layer, pit)
+  return true
+}
+
+// The same into any 2D context `width` device pixels wide.
+export function drawPit(ctx, width, key, layer, pit) {
+  const k = width / 320
   const fbm = noise(seeded(key * 31337))
   const fire = { x: pit.cx, y: pit.base - 22, lift: 34, power: 3.2, reach: 70 }
   // The logs sit in the fire; light them from a little way off so they read as wood, not glare.

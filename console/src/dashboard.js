@@ -110,6 +110,8 @@ async function loadSites() {
   $('#who').textContent = data.email ?? ''
   myEmail = data.email ?? null
   $('#manage-open').hidden = !data.operator
+  // Only an operator's browser keeps the management page.
+  if (!data.operator) forgetManage()
   // admin.theedgeofthemap.com/?manage opens the management page directly.
   if (data.operator && new URLSearchParams(location.search).has('manage')) return loadManage()
   $('#sites').innerHTML = data.sites.length
@@ -132,8 +134,10 @@ async function start() {
   const token = new URLSearchParams(location.search).get('token')
   if (token && location.pathname.startsWith('/reset')) return show('reset')
   const session = await auth.current()
-  if (session) await loadSites()
-  else show('signin')
+  if (!session) return show('signin')
+  sessionEmail = session.email ?? null
+  if (sessionEmail && new URLSearchParams(location.search).has('manage')) showKeptManage(sessionEmail)
+  await loadSites()
 }
 showForSite()
 
@@ -193,6 +197,7 @@ $('#signin-form').addEventListener('submit', async (e) => {
   try {
     const session = await auth.signIn($('#email').value, $('#password').value)
     if (!session) throw new Error('Signed in, but no editing token came back. Tell Edge of the Map.')
+    sessionEmail = session.email ?? null
     say('')
     await loadSites()
   } catch (err) {
@@ -223,15 +228,48 @@ let state = null
 // The page's three requests at once; each is awaited where it is drawn. A
 // failure is handled there, so none is left unhandled here.
 let prefetch = null
+// The page as last loaded, kept in this browser so the next visit draws it as
+// soon as the session is confirmed, while the API (often a cold start) answers.
+// Kept for the login that loaded it, and removed on sign-out.
+const MANAGE_CACHE = 'eotm:manage'
+let sessionEmail = null
+function keptManage(email) {
+  try {
+    const c = JSON.parse(localStorage.getItem(MANAGE_CACHE))
+    return c?.email === email && c.overview && Date.now() - c.at < 7 * 86_400_000 ? c : null
+  } catch { return null }
+}
+function keepManage(part, value) {
+  const email = myEmail ?? sessionEmail
+  if (!email) return
+  try {
+    const c = JSON.parse(localStorage.getItem(MANAGE_CACHE))
+    const next = c?.email === email ? c : { email }
+    next[part] = value
+    next.at = Date.now()
+    localStorage.setItem(MANAGE_CACHE, JSON.stringify(next))
+  } catch { /* private mode, or full: the page simply loads as before */ }
+}
+const forgetManage = () => { try { localStorage.removeItem(MANAGE_CACHE) } catch { /* private mode */ } }
 function fetchManage() {
   const parts = { overview: api('GET', '/api/manage'), requests: api('GET', '/api/manage/requests'), monitors: api('GET', '/api/manage/monitors') }
-  for (const p of Object.values(parts)) p.catch(() => {})
+  for (const [name, p] of Object.entries(parts)) p.then((v) => keepManage(name, v), () => {})
   return parts
 }
-async function loadManage({ quiet = false } = {}) {
+// Draws the kept page, if there is one for this login, and says it is refreshing.
+function showKeptManage(email) {
+  const c = keptManage(email)
+  if (!c) return
+  const settled = (v) => (v === undefined ? Promise.reject(new Error('Loading…')) : Promise.resolve(v))
+  loadManage({ quiet: true, parts: { overview: settled(c.overview), requests: settled(c.requests), monitors: settled(c.monitors) } })
+    .then(() => { if (!manageLoaded) say('Refreshing…') })
+    .catch(() => {})
+}
+let manageLoaded = false
+async function loadManage({ quiet = false, parts: given = null } = {}) {
   if (!quiet) say('Loading…')
-  const parts = prefetch ?? fetchManage()
-  prefetch = null
+  const parts = given ?? prefetch ?? fetchManage()
+  if (!given) prefetch = null
   state = await parts.overview
   if (!quiet) say('')
   const versions = state.releases.map((r) => r.version).reverse()
@@ -303,6 +341,7 @@ async function loadManage({ quiet = false } = {}) {
   }
   loadMonitors(parts.monitors)
   pushStatus().catch(() => {})
+  if (!given) manageLoaded = true
   if (!new URLSearchParams(location.search).has('manage')) history.replaceState({}, '', '/?manage')
 }
 
@@ -384,7 +423,8 @@ async function loadMonitors(pending) {
     const rank = { down: 0, 'seems down': 1, 'not checked yet': 2, up: 3, paused: 4 }
     const list = [...r.monitors].sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name))
     const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
-    $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up`
+    $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up` +
+      (r.stale ? ` · as of ${new Date(r.checkedAt).toLocaleTimeString()}, UptimeRobot not answering` : '')
     // Folded by default; a monitor that is down opens it.
     if (down) $('#monitors').open = true
     monitorData = new Map(list.map((m) => [String(m.id), m]))
@@ -804,6 +844,7 @@ $('#reset-form').addEventListener('submit', async (e) => {
 
 for (const b of document.querySelectorAll('#signout, [data-signout]')) {
   b.addEventListener('click', async () => {
+    forgetManage()
     await auth.signOut()
     show('signin')
   })

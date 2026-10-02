@@ -2,11 +2,57 @@
 // stars and a faint Milky Way, blue ridges, pines, and a campfire in a ring of
 // stones. The sky and ridges are SVG; the trees, stones and logs are painted
 // (scenery.js) and the fire is a noise shader, or particles without WebGL
-// (startFire), because shapes alone looked like a cartoon. `key` makes each pane's sky, trees and ids its own.
+// (startFire), because shapes alone looked like a cartoon. `key` makes each
+// pane's sky, trees and ids its own.
 // The left pane's fire stands left of centre and the right pane's right of it
 // (dashboard.html, --fire-x), so the two frame the page.
 
 import { seeded, paintTrees, paintPit } from './scenery.js'
+import SceneryWorker from './scenery.worker.js?worker&inline'
+
+// Painting runs in a worker (scenery.worker.js) wherever OffscreenCanvas does,
+// so the page and the flame never wait on it; elsewhere, on the page as before.
+let worker
+let jobId = 0
+const replies = new Map()
+function painter() {
+  if (worker !== undefined) return worker
+  try {
+    worker = typeof OffscreenCanvas === 'undefined' ? null : new SceneryWorker()
+    if (worker) worker.onmessage = ({ data }) => { replies.get(data.id)?.(data.bitmap); replies.delete(data.id) }
+  } catch {
+    worker = null
+  }
+  return worker
+}
+
+// Paints `canvas` at its current size through the worker, keeping the old
+// picture until the new one arrives; `fallback` paints it on the page instead.
+// A reply that a newer request has overtaken is dropped.
+const latest = new WeakMap()
+function paintOff(canvas, job, fallback) {
+  const w = painter()
+  if (!w) return Promise.resolve(fallback())
+  const r = canvas.getBoundingClientRect()
+  if (!r.width) return Promise.resolve(false)
+  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  const pw = Math.round(r.width * dpr)
+  const ph = Math.round(r.height * dpr)
+  const id = ++jobId
+  latest.set(canvas, id)
+  return new Promise((resolve) => {
+    replies.set(id, (bitmap) => {
+      if (latest.get(canvas) === id) {
+        canvas.width = pw
+        canvas.height = ph
+        canvas.getContext('2d').drawImage(bitmap, 0, 0)
+      }
+      bitmap.close()
+      resolve(true)
+    })
+    w.postMessage({ ...job, id, w: r.width, h: r.height, dpr, pw, ph })
+  })
+}
 
 const f = (n) => Math.round(n * 10) / 10
 
@@ -80,16 +126,19 @@ export function startScene(pane, key, side) {
   // The pit is drawn pixel by pixel, the costly part; it keeps its size when
   // only the pane's height changes, so it is repainted only when it resizes.
   let pitSize = ''
-  const paintAll = () => {
-    paintTrees(pane.querySelector('canvas.trees'), key, side, fireX())
+  const paintAll = async () => {
+    const jobs = [paintOff(pane.querySelector('canvas.trees'), { kind: 'trees', key, side, fireX: fireX() }, () => paintTrees(pane.querySelector('canvas.trees'), key, side, fireX()))]
     const pit = pane.querySelector('.pit').getBoundingClientRect()
     const size = `${Math.round(pit.width)}x${Math.round(pit.height)}`
     if (size !== pitSize) {
       pitSize = size
-      paintPit(pane.querySelector('canvas.pit-back'), key, 'back', PIT)
-      paintPit(pane.querySelector('canvas.pit-mid'), key, 'mid', PIT)
-      paintPit(pane.querySelector('canvas.pit-front'), key, 'front', PIT)
+      for (const layer of ['back', 'mid', 'front']) {
+        const canvas = pane.querySelector(`canvas.pit-${layer}`)
+        jobs.push(paintOff(canvas, { kind: 'pit', key, layer, pit: PIT }, () => paintPit(canvas, key, layer, PIT)))
+      }
     }
+    // Shown once every layer is in, so the scene never appears half-drawn.
+    await Promise.all(jobs)
     pane.classList.add('is-painted')
   }
   let timer = null
