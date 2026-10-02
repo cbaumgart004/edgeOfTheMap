@@ -37,6 +37,14 @@ function noise(rand) {
 }
 
 const clamp = (v) => (v < 0 ? 0 : v > 1 ? 1 : v)
+const smooth = (a, b, x) => { const u = clamp((x - a) / (b - a)); return u * u * (3 - 2 * u) }
+// The coal bed's light: pinker and lower than the flames', so it lights the logs from beneath.
+const COAL = [0.9, 0.42, 0.32]
+function lightFrom(n, px, py, src) {
+  const lx = src.x - px; const ly = src.y - py; const lz = src.lift
+  const d = Math.hypot(lx, ly, lz)
+  return Math.max(0, (n[0] * lx + n[1] * ly + n[2] * lz) / d) * src.power / (1 + (d * d) / (src.reach * src.reach))
+}
 // Filmic-ish tone curve so bright firelight rolls off instead of clipping.
 const tone = (v) => Math.round(255 * clamp(1 - Math.exp(-v * 1.6)))
 const FIRE = [1.0, 0.56, 0.22]
@@ -143,32 +151,50 @@ export function paintLog(ctx, k, x1, y1, x2, y2, radius, fire, fbm, seed) {
       const z = t > L ? Math.sqrt(1 - Math.min(1, s * s)) : Math.sqrt(1 - r2 / (edge * edge))
       // Bark: grooves running along the log.
       const groove = fbm(t * 0.08 + seed, s * 2.6, 4)
-      // Char: the whole foot, burning out unevenly toward the top.
-      const char = clamp(1.2 - t / (L * 0.72) + (fbm(t * 0.05 + seed, s + seed, 2) - 0.5) * 0.9)
-      // Alligator cracks in the char: the thin ridges of a noise field.
-      const rv = fbm(t * 0.24 + seed * 1.3, s * 3.4 + seed, 3)
-      const crack = Math.pow(clamp(1 - Math.abs(rv - 0.5) * 10), 2) * char
+      // Char over nearly all of it, as in a fire that has been going a while;
+      // only the tips of the longest pieces keep some bark.
+      const char = clamp(1.5 - t / (L * 0.95) + (fbm(t * 0.05 + seed, s + seed, 2) - 0.5) * 0.9)
+      // Burnt wood checks into blocks: rows round the log, staggered like
+      // brickwork, each block's crown a little proud, a black crack round it.
+      const ang = Math.asin(s < -1 ? -1 : s > 1 ? 1 : s)
+      const bw = 0.62 // block width, radians round the log
+      const bl = girth * (0.7 + 0.4 * fbm(t * 0.02 + seed * 5, 3.3, 2)) // block length along it, uneven
+      const rowF = ang / bw + (fbm(t * 0.15 + seed, seed * 1.7, 2) - 0.5) * 0.9 + seed * 0.37
+      const row = Math.floor(rowF)
+      const colF = t / bl + (((row % 2) + 2) % 2) * 0.5 + (fbm(row * 3.1 + seed, t * 0.05, 2) - 0.5) * 0.6 + (fbm(t * 0.3, ang * 4 + seed, 2) - 0.5) * 0.35
+      const fx = colF - Math.floor(colF); const fy = rowF - row
+      const e = Math.min(Math.min(fx, 1 - fx) * bl, Math.min(fy, 1 - fy) * bw * girth)
+      const cw = 0.5 + fbm(t * 0.5 + seed, s * 6, 2) * 0.6
+      const crack = (1 - smooth(cw * 0.5, cw * 1.6, e)) * char
+      const proud = smooth(0, cw * 3, e)
       const n0 = [-dy * s, dx * s, z]
-      const bump = (groove - 0.5) * 0.9 - crack * 0.5 + knot * 3
+      const bump = (groove - 0.5) * 0.4 - crack * 0.8 + knot * 3
       const n = [n0[0] + -dy * bump, n0[1] + dx * bump, n0[2]]
       const nl = Math.hypot(n[0], n[1], n[2])
-      const l = shade([n[0] / nl, n[1] / nl, n[2] / nl], px, py, fire)
-      // Unburnt bark is brown with grain along it; char is near black and
-      // faintly silvered where it has ashed over; broken wood at the top end is pale.
+      const nn = [n[0] / nl, n[1] / nl, n[2] / nl]
+      const l = shade(nn, px, py, fire)
+      // The coals light it from beneath, pink-orange on the undersides.
+      const up = fire.coal ? lightFrom(nn, px, py, fire.coal) : 0
+      // Unburnt bark is brown with grain along it; char is near black, its
+      // block crowns brown-grey where ash catches the light; the broken top
+      // end is a dark face with a rough, lighter rim.
       const grain = fbm(t * 0.6 + seed, s * 9, 3)
       const bark = [0.2 + grain * 0.12, 0.13 + grain * 0.07, 0.08 + grain * 0.04]
-      const ash = clamp((fbm(t * 0.4 + seed, s * 5 - seed, 2) - 0.6) * 4) * char
-      const coal = [0.05 + groove * 0.09 + ash * 0.1, 0.045 + groove * 0.08 + ash * 0.1, 0.04 + groove * 0.07 + ash * 0.1]
-      const broke = t > L ? clamp(endT * 2.5) * (0.8 + 0.4 * fbm(s * 14 + seed, t * 0.5, 2)) : 0
-      const wood = [0.34, 0.24, 0.15]
-      const albedo = [0, 1, 2].map((c) => (bark[c] + (coal[c] - bark[c]) * char) * (1 - broke) * (1 - crack * 0.85) + wood[c] * broke * (1 - char))
+      const ash = (0.35 + 0.65 * clamp((fbm(t * 0.4 + seed, s * 5 - seed, 2) - 0.45) * 3)) * proud
+      const coal = [0.03 + ash * 0.2, 0.027 + ash * 0.17, 0.025 + ash * 0.15]
+      const face = t > L ? smooth(0, 0.35, endT) : 0
+      const rim = face * smooth(edge * 0.72, edge * 0.95, Math.sqrt(r2)) * (0.6 + 0.8 * fbm(s * 11 + seed, endT * 9, 2))
+      const end = [0.028 + rim * 0.12, 0.024 + rim * 0.085, 0.022 + rim * 0.06]
+      const albedo = [0, 1, 2].map((c) => ((bark[c] + (coal[c] - bark[c]) * char) * (1 - crack * 0.9)) * (1 - face) + end[c] * face)
       // Embers in the cracks near the foot, where the wood burns.
-      const low = clamp(1 - t / (L * 0.55))
-      const glow = (Math.max(0, fbm(t * 0.3 + seed * 2, s * 4, 3) - 0.58) * 5 + crack * 0.9) * low
+      // Only the lowest stretch burns, and only some of its cracks are live.
+      const low = clamp(1 - t / (L * 0.32)) * clamp(0.4 + s)
+      const live = clamp((fbm(t * 0.35 + seed * 2, ang * 3, 2) - 0.5) * 4)
+      const glow = (Math.max(0, fbm(t * 0.3 + seed * 2, s * 4, 3) - 0.6) * 4 + crack * live * 0.9) * low
       const o = (j * W + i) * 4
-      d[o] = tone(l[0] * albedo[0] * z + glow * 1.6)
-      d[o + 1] = tone(l[1] * albedo[1] * z + glow * 0.55)
-      d[o + 2] = tone(l[2] * albedo[2] * z + glow * 0.12)
+      d[o] = tone((l[0] + COAL[0] * up) * albedo[0] * z + glow * 1.6)
+      d[o + 1] = tone((l[1] + COAL[1] * up) * albedo[1] * z + glow * 0.55)
+      d[o + 2] = tone((l[2] + COAL[2] * up) * albedo[2] * z + glow * 0.12)
       d[o + 3] = Math.round(255 * clamp((edge - Math.sqrt(r2)) * 12))
     }
   }
@@ -193,12 +219,13 @@ export function paintCoals(ctx, k, cx, cy, rx, ry, fbm, seed) {
       const seam = Math.pow(clamp(1 - Math.abs(lump - 0.5) * 7), 2)
       const heart = clamp(1 - r * 1.15)
       const ash = clamp((fbm(u * 3 - seed, v * 6, 2) - 0.5) * 3) * clamp(r * 1.6 - 0.4)
-      const glow = (seam * 1.6 + Math.max(0, lump - 0.55) * 2) * heart * (0.6 + 0.6 * fbm(u * 11, v * 17 + seed, 2))
+      const glow = (seam * 1.6 + Math.max(0, lump - 0.5) * 2.4 + 0.25) * heart * (0.6 + 0.6 * fbm(u * 11, v * 17 + seed, 2))
       const base = 0.05 + (lump - 0.5) * 0.06 + ash * 0.22
       const o = (j * W + i) * 4
-      d[o] = tone(base * 1.1 + glow * 1.7)
-      d[o + 1] = tone(base + glow * 0.6)
-      d[o + 2] = tone(base * 0.95 + glow * 0.13)
+      // Pink-red where it glows, as a bed of coals reads at night.
+      d[o] = tone(base * 1.1 + glow * 2.5)
+      d[o + 1] = tone(base + glow * 0.75)
+      d[o + 2] = tone(base * 0.95 + glow * 0.42)
       d[o + 3] = Math.round(255 * clamp((1 - r) * 6))
     }
   }
@@ -527,12 +554,12 @@ export function drawPit(ctx, width, key, layer, pit) {
   const fbm = noise(seeded(key * 31337))
   const fire = { x: pit.cx, y: pit.base - 22, lift: 34, power: 3.2, reach: 70 }
   // The logs sit in the fire; light them from a little way off so they read as wood, not glare.
-  const logFire = { ...fire, y: pit.base - 30, lift: 42, power: 1.3 }
+  const logFire = { ...fire, y: pit.base - 30, lift: 42, power: 1.3, coal: { x: pit.cx, y: pit.base + 12, lift: 6, power: 1.1, reach: 34 } }
   // Kindling: thin sticks leaning in among the logs.
   const sticks = (list, foot, seed) => list.forEach(([f, tp, hgt], i) => paintLog(ctx, k, pit.cx + f, pit.base + foot, pit.cx + tp, pit.base - hgt, 2.6, logFire, fbm, i * 5.3 + seed))
   if (layer === 'back') {
     pit.back.forEach(([x, y, rx, ry], i) => paintStone(ctx, k, x, y, rx, ry, fire, fbm, i * 1.7 + key))
-    paintCoals(ctx, k, pit.cx, pit.base + 5, 44, 9, fbm, key)
+    paintCoals(ctx, k, pit.cx, pit.base + 5, 52, 11, fbm, key)
     sticks(pit.backSticks, 4, key + 60)
     pit.backLogs.forEach(([foot, top, h], i) => paintLog(ctx, k, pit.cx + foot, pit.base + 6, pit.cx + top, pit.base - h, 7, logFire, fbm, i * 3.1 + key + 20))
   } else if (layer === 'mid') {
