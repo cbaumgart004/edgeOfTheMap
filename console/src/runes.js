@@ -1,6 +1,9 @@
 // The Elder Futhark, for the glossary at the foot of the admin page (the rune
 // staff on Edge of the Map's logo). Names are the reconstructed Proto-Germanic
-// ones, which is why they carry an asterisk: no source spells them out. Order
+// ones, which is why they carry an asterisk: no inscription spells them out.
+// Spellings follow R. I. Page, Runes (2005), as tabulated in Wikipedia's Elder
+// Futhark article; meanings follow the rune poems in Dickins (1915). The
+// glossary's last line cites all three. Order
 // follows the Kylver stone (c. 400 AD), the oldest complete row. Meanings come
 // mostly from the later rune poems; where scholars disagree the entry says so.
 
@@ -15,7 +18,7 @@ export const AETTIR = [
       { glyph: 'ᚦ', name: 'þurisaz', sound: 'th (þ)', meaning: 'Giant (a thurs). A force against order.' },
       { glyph: 'ᚨ', name: 'ansuz', sound: 'a', meaning: 'A god, one of the Æsir. Speech and inspiration.' },
       { glyph: 'ᚱ', name: 'raidō', sound: 'r', meaning: 'Riding; a journey.' },
-      { glyph: 'ᚲ', name: 'kaunan', sound: 'k', meaning: 'Ulcer or sore in the rune poems; read as torch in English tradition. Uncertain.' },
+      { glyph: 'ᚲ', name: 'kauną', sound: 'k', meaning: 'Ulcer or sore in the rune poems; read as torch in English tradition. Uncertain.' },
       { glyph: 'ᚷ', name: 'gebō', sound: 'g', meaning: 'Gift, and the bond a gift creates.' },
       { glyph: 'ᚹ', name: 'wunjō', sound: 'w', meaning: 'Joy.' },
     ],
@@ -27,7 +30,7 @@ export const AETTIR = [
       { glyph: 'ᚾ', name: 'naudiz', sound: 'n', meaning: 'Need; hardship.' },
       { glyph: 'ᛁ', name: 'īsaz', sound: 'i', meaning: 'Ice. Stillness.' },
       { glyph: 'ᛃ', name: 'jēra', sound: 'j (y)', meaning: 'Year; a good harvest.' },
-      { glyph: 'ᛈ', name: 'perþ', sound: 'p', meaning: 'Unknown. Guesses include a pear tree and a gaming piece. The Kylver stone sets it before ᛇ; later rows swap them.' },
+      { glyph: 'ᛈ', name: 'perþō', sound: 'p', meaning: 'Unknown. Guesses include a pear tree and a gaming piece. The Kylver stone sets it before ᛇ; later rows swap them.' },
       { glyph: 'ᛇ', name: 'ī(h)waz', sound: 'ï (between i and e)', meaning: 'Yew, the evergreen tree of bows.' },
       { glyph: 'ᛉ', name: 'algiz', sound: 'z (later R)', meaning: 'Elk, or protection. Uncertain.' },
       { glyph: 'ᛊ', name: 'sōwilō', sound: 's', meaning: 'Sun.' },
@@ -43,7 +46,7 @@ export const AETTIR = [
       { glyph: 'ᛚ', name: 'laguz', sound: 'l', meaning: 'Water; lake.' },
       { glyph: 'ᛜ', name: 'ingwaz', sound: 'ng (ŋ)', meaning: 'The god Ing (Yngvi-Freyr).' },
       { glyph: 'ᛞ', name: 'dagaz', sound: 'd', meaning: 'Day. The Kylver stone ends ᛞ ᛟ; many modern rows end ᛟ ᛞ.' },
-      { glyph: 'ᛟ', name: 'ōþila', sound: 'o', meaning: 'Inheritance; ancestral land.' },
+      { glyph: 'ᛟ', name: 'ōþala', sound: 'o', meaning: 'Inheritance; ancestral land.' },
     ],
   },
 ]
@@ -62,7 +65,8 @@ export function mountRunes(root) {
       <div class="rune-row">${aett.runes.map((r) => { n += 1; return `<button type="button" class="rune" data-rune="${n}" aria-label="${n}. ${esc(r.name)}" aria-pressed="false">${r.glyph}</button>` }).join('')}</div>
     </div>`).join('')}
     <div class="rune-entry" aria-live="polite"><p class="meta">Choose a rune.</p></div>
-    <p class="meta">Order after the Kylver stone. The three groups of eight are attested on the oldest rows; their names come from later Icelandic tradition.</p>`
+    <p class="meta">Order after the Kylver stone. The three groups of eight are attested on the oldest rows; their names come from later Icelandic tradition.</p>
+    <p class="meta rune-source">Sources. Names: reconstructed Proto-Germanic, after R. I. Page, <cite>Runes</cite> (British Museum Press, 2005), pp. 8, 15–16, as tabulated in <a href="https://en.wikipedia.org/wiki/Elder_Futhark" target="_blank" rel="noopener">Wikipedia, “Elder Futhark”</a>. Reconstructions vary between scholars, and popular sites often use others (kenaz for kauną, after the English rune poem). Meanings: the Anglo-Saxon, Norwegian and Icelandic rune poems, in Bruce Dickins, <cite>Runic and Heroic Poems of the Old Teutonic Peoples</cite> (Cambridge University Press, 1915), <a href="https://en.wikisource.org/wiki/Rune_poems" target="_blank" rel="noopener">on Wikisource</a>.</p>`
   const select = (i) => {
     const r = ALL[i - 1]
     for (const b of root.querySelectorAll('button[data-rune]')) b.setAttribute('aria-pressed', String(Number(b.dataset.rune) === i))
