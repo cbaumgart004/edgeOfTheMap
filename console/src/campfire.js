@@ -140,7 +140,18 @@ export function startScene(pane, key, side) {
     // Shown once every layer is in, so the scene never appears half-drawn.
     await Promise.all(jobs)
     pane.classList.add('is-painted')
+    if (!lit) light()
   }
+  // The pane opens black (dashboard.html, .sigils::after). Once the scene is
+  // painted the fire is lit, and when it has drawn its first frame the dark
+  // lifts, like a fire struck at night. A pane that never paints lifts anyway.
+  let lit = false
+  const light = () => {
+    lit = true
+    startFire(pane.querySelector('.flame-canvas'))
+    requestAnimationFrame(() => requestAnimationFrame(() => pane.classList.add('is-lit')))
+  }
+  setTimeout(() => pane.classList.add('is-lit'), 5000)
   let timer = null
   let last = ''
   new ResizeObserver(() => {
@@ -151,11 +162,6 @@ export function startScene(pane, key, side) {
     clearTimeout(timer)
     timer = setTimeout(paintAll, 120)
   }).observe(pane)
-  // Lit once the page is idle: creating the WebGL context and compiling the
-  // shader during load held up the page's first paint.
-  const light = () => startFire(pane.querySelector('.flame-canvas'))
-  if (window.requestIdleCallback) requestIdleCallback(light, { timeout: 1500 })
-  else setTimeout(light, 300)
 }
 
 // ---------------------------------------------------------------- fire
@@ -311,14 +317,21 @@ precision mediump float;
 uniform float uScale;
 uniform float uTime;
 uniform float uSurge;
-float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+// Hashed on the lattice point taken mod 289, exact in 32-bit floats, so the
+// noise is periodic every 289 units and never loses precision.
+float hash(vec2 i) {
+  i = mod(i, 289.);
+  float x = mod((i.x * 34. + 1.) * i.x, 289.);
+  x = mod(((x + i.y) * 34. + 1.) * (x + i.y), 289.);
+  return x / 289.;
+}
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f);
   return mix(mix(hash(i), hash(i + vec2(1., 0.)), u.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), u.x), u.y);
 }
 float fbm(vec2 p) {
   float v = 0., a = .5;
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= .5; }
+  for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2. + vec2(1.7, 9.2); a *= .5; }
   return v;
 }
 vec3 blackbody(float k) {
@@ -337,9 +350,13 @@ void main() {
   // Sums of sines, so it is smooth however fast it pulses.
   float flick = 1. + .03 * sin(t * 62.83 + .8 * sin(t * 7.1)) + .02 * sin(t * 41.3 + 1.7);
   float hh = max(h, 0.) / (uSurge * flick);
-  vec2 q = vec2(x * 1.5, max(h, 0.) * 2.2 - t * 1.9);
-  vec2 w = vec2(fbm(q + vec2(0., t * .4)), fbm(q + vec2(5.2, 1.3 - t * .2)));
-  float n = fbm(q * 1.3 + (w - .5) * 3.2);
+  // Time enters the noise only wrapped to 289, the noise's own period (octaves
+  // double exactly, so every octave repeats with it): the coordinates stay
+  // small and the scroll is seamless. Unwrapped, they grew with the page's age
+  // until float precision made the texture step instead of flow.
+  vec2 q = vec2(x * 1.5, max(h, 0.) * 2.2 - mod(t * 1.9, 289.));
+  vec2 w = vec2(fbm(q + vec2(0., mod(t * .4, 289.))), fbm(q + vec2(5.2, 1.3 - mod(t * .2, 289.))));
+  float n = fbm(q + (w - .5) * 3.2 + vec2(3.1, 7.7));
   float sway = (w.x - .5) * .55 * h + sin(t * 1.3 + h * 2.) * .06 * h;
   float width = 1.02 * max(.05, 1. - hh * .55);
   float d = abs(x - sway);
@@ -406,8 +423,9 @@ function startShaderFire(canvas) {
     if (Math.random() < dt * 0.25) target = 0.85 + Math.random() * 0.35
     surge += (target - surge) * Math.min(1, dt * 0.7)
     gl.uniform1f(uScale, scale)
-    // Wrapped, so float precision holds however long the page stays open.
-    gl.uniform1f(uTime, (offset + now / 1000) % 3600)
+    // Wrapped at 2890 s, a whole number of the noise's 289 periods for each
+    // scroll speed (1.9, 0.4, 0.2), so the wrap is invisible.
+    gl.uniform1f(uTime, (offset + now / 1000) % 2890)
     gl.uniform1f(uSurge, surge)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)

@@ -133,6 +133,9 @@
     /* A scene's painted parts fade in once painted, rather than appearing piece by piece. */
     .sigils canvas.trees, .sigils .pit > canvas { transition: opacity .6s ease; }
     .sigils:not(.is-painted) canvas.trees, .sigils:not(.is-painted) .pit > canvas { opacity: 0; }
+    /* Each pane opens dark and lifts once its scene is painted and its fire is lit (campfire.js). */
+    .sigils::after { content: ''; position: absolute; inset: 0; z-index: 20; background: #000; pointer-events: none; transition: opacity 2.2s cubic-bezier(.4, 0, .2, 1); }
+    .sigils.is-lit::after { opacity: 0; }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
     .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }
