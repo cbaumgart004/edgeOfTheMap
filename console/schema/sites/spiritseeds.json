@@ -22,6 +22,7 @@
         { "name": "siteTitle", "kind": "text", "label": "Site title" },
         { "name": "tagline", "kind": "text", "label": "Tagline" },
         { "name": "logo", "kind": "image", "label": "Logo" },
+        { "name": "headerImage", "kind": "image", "label": "Header photo", "help": "The photo behind the site's title along the top. Blank: each season's own photo." },
         { "name": "theme", "kind": "select", "label": "Seasonal theme", "default": "summer", "options": [
           { "value": "spring", "label": "Spring" }, { "value": "summer", "label": "Summer" },
           { "value": "fall", "label": "Fall" }, { "value": "winter", "label": "Winter" } ] },
