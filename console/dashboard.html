@@ -133,9 +133,27 @@
     /* A scene's painted parts fade in once painted, rather than appearing piece by piece. */
     .sigils canvas.trees, .sigils .pit > canvas { transition: opacity .6s ease; }
     .sigils:not(.is-painted) canvas.trees, .sigils:not(.is-painted) .pit > canvas { opacity: 0; }
-    /* Each pane opens dark and lifts once its scene is painted and its fire is lit (campfire.js). */
-    .sigils::after { content: ''; position: absolute; inset: 0; z-index: 20; background: #000; pointer-events: none; transition: opacity 2.2s cubic-bezier(.4, 0, .2, 1); }
-    .sigils.is-lit::after { opacity: 0; }
+    /* Each pane opens dark; once its scene is painted and its fire lit (campfire.js),
+       the dark burns away outward from the fire. After Edge of the Map's mode
+       transition (edgeOfTheMap/src/App.css, BURN): a black sheet with a hole whose
+       edge is torn by displacing the mask's circle, a charred rim riding the cut,
+       and the combustion line just outside it. --burn is a registered length so the
+       mask and the rim's gradients cannot disagree about where the front is. */
+    @property --burn { syntax: '<length>'; inherits: true; initial-value: 0px; }
+    .sigils .burn { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden;
+      --burn: 0px; --burn-x: var(--fire-x); --burn-y: calc(100% - 70px); }
+    .sigils.is-lit .burn { --burn: 115vh; transition: --burn 2.4s cubic-bezier(.42, .03, .72, .62); }
+    .sigils.is-burnt .burn { display: none; }
+    .burn-svg, .burn-sheet, .burn-ember-warp, .burn-ember { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .burn-sheet { background: #000; }
+    .burn-hole { cx: var(--burn-x); cy: var(--burn-y); r: var(--burn); }
+    .burn-ember {
+      background:
+        radial-gradient(circle at var(--burn-x) var(--burn-y), rgb(10 7 6 / .97) 0 calc(var(--burn) - 1px), rgb(20 12 8 / .88) calc(var(--burn) + 2px), rgb(48 23 10 / .42) calc(var(--burn) + 8px), rgb(72 34 13 / 0) calc(var(--burn) + 17px)),
+        radial-gradient(circle at var(--burn-x) var(--burn-y), #fff0a8 0%, #ffb020 30%, #ff5a1f 55%, #a3260f 80%, transparent 95%);
+      filter: blur(2px) saturate(1.4);
+      --ember-rim: radial-gradient(circle at var(--burn-x) var(--burn-y), transparent 0 calc(var(--burn) - 8px), #000 calc(var(--burn) - 2px), #000 calc(var(--burn) + 7px), transparent calc(var(--burn) + 22px));
+      -webkit-mask-image: var(--ember-rim); mask-image: var(--ember-rim); }
     /* Sky */
     .sky { inset: 0 0 30% 0; }
     .sky i { position: absolute; border-radius: 50%; background: #e0f2fe; box-shadow: 0 0 4px rgb(224 242 254 / .8); opacity: .85; }

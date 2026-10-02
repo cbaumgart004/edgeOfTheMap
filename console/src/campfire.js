@@ -115,6 +115,23 @@ export function campfire(key) {
       <canvas class="flame-canvas"></canvas>
       <canvas class="pit-mid"></canvas>
       <canvas class="pit-front"></canvas>
+    </div>
+    <div class="burn" aria-hidden="true">
+      <svg class="burn-svg" focusable="false">
+        <defs>
+          <filter id="${id('tear')}" x="-12%" y="-12%" width="124%" height="124%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="2" seed="${11 + key}" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="26" xChannelSelector="R" yChannelSelector="G" result="torn" />
+            <feGaussianBlur in="torn" stdDeviation="3" />
+          </filter>
+          <mask id="${id('burn')}" maskUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
+            <circle class="burn-hole" fill="#000" filter="url(#${id('tear')})" />
+          </mask>
+        </defs>
+      </svg>
+      <div class="burn-sheet" style="mask: url(#${id('burn')}); -webkit-mask: url(#${id('burn')})"></div>
+      <div class="burn-ember-warp" style="filter: url(#${id('tear')})"><div class="burn-ember"></div></div>
     </div>`
 }
 
@@ -142,16 +159,23 @@ export function startScene(pane, key, side) {
     pane.classList.add('is-painted')
     if (!lit) light()
   }
-  // The pane opens black (dashboard.html, .sigils::after). Once the scene is
-  // painted the fire is lit, and when it has drawn its first frame the dark
-  // lifts, like a fire struck at night. A pane that never paints lifts anyway.
+  // The pane opens black (dashboard.html, .burn). Once the scene is painted
+  // the fire is lit, and when it has drawn its first frame the dark burns away
+  // outward from the fire, as Edge of the Map's pages burn between modes
+  // (edgeOfTheMap/src/App.css, BURN). A pane that never paints burns anyway.
+  // The burn layer is hidden once it has passed, so its filter costs nothing after.
   let lit = false
+  const burn = () => {
+    if (pane.classList.contains('is-lit')) return
+    pane.classList.add('is-lit')
+    setTimeout(() => pane.classList.add('is-burnt'), 2600)
+  }
   const light = () => {
     lit = true
     startFire(pane.querySelector('.flame-canvas'))
-    requestAnimationFrame(() => requestAnimationFrame(() => pane.classList.add('is-lit')))
+    requestAnimationFrame(() => requestAnimationFrame(burn))
   }
-  setTimeout(() => pane.classList.add('is-lit'), 5000)
+  setTimeout(burn, 5000)
   let timer = null
   let last = ''
   new ResizeObserver(() => {
