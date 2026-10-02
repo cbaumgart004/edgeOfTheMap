@@ -1,8 +1,8 @@
 // The night scene behind the rising runes in the admin page's side panes:
 // stars and a faint Milky Way, blue ridges, pines, and a campfire in a ring of
 // stones. The sky and ridges are SVG; the trees, stones and logs are painted
-// (scenery.js) and the fire is particles (startFire), because shapes alone
-// looked like a cartoon. `key` makes each pane's sky, trees and ids its own.
+// (scenery.js) and the fire is a noise shader, or particles without WebGL
+// (startFire), because shapes alone looked like a cartoon. `key` makes each pane's sky, trees and ids its own.
 // The left pane's fire stands left of centre and the right pane's right of it
 // (dashboard.html, --fire-x), so the two frame the page.
 
@@ -31,6 +31,9 @@ const PIT = {
   // Inner logs stand behind the fire, outer ones in front of it.
   backLogs: [[-26, 12, 42], [30, -12, 40], [2, -6, 46]],
   logs: [[-58, 10, 34], [56, -10, 36]],
+  // Kindling sticks, [foot x offset, top x offset, top height], behind and in front.
+  backSticks: [[-40, 8, 30], [36, -6, 32], [-12, 14, 38]],
+  frontSticks: [[-24, 4, 22], [30, 2, 20]],
 }
 
 export function campfire(key) {
@@ -50,7 +53,6 @@ export function campfire(key) {
       </defs>
       <path class="ridge-far" filter="url(#${id('rockface')})" d="M0 196L22 170L38 150L52 161L70 176L90 146L112 118L128 136L150 160L170 139L188 128L208 150L232 176L250 139L268 112L288 138L310 162L330 146L350 134L376 156L400 170V360H0Z" />
       <path fill="url(#${id('haze')})" filter="url(#${id('rockface')})" d="M0 236L24 219L46 206L70 222L92 232L118 210L140 196L166 216L196 230L220 214L244 204L268 222L290 234L316 218L338 208L370 224L400 236V360H0Z" />
-      <path class="ground" d="M0 262Q200 248 400 262V360H0Z" />
     </svg>
     <canvas class="trees" aria-hidden="true"></canvas>
     <div class="firelight" aria-hidden="true"></div>
@@ -100,7 +102,11 @@ export function startScene(pane, key, side) {
     clearTimeout(timer)
     timer = setTimeout(paintAll, 120)
   }).observe(pane)
-  startFire(pane.querySelector('.flame-canvas'))
+  // Lit once the page is idle: creating the WebGL context and compiling the
+  // shader during load held up the page's first paint.
+  const light = () => startFire(pane.querySelector('.flame-canvas'))
+  if (window.requestIdleCallback) requestIdleCallback(light, { timeout: 1500 })
+  else setTimeout(light, 300)
 }
 
 // ---------------------------------------------------------------- fire
@@ -130,10 +136,23 @@ let SPRITES = null
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5
 
 // Runs the fire in `canvas`, which spans x 70-250 and y -190 to 190 of the pit's
-// drawing (dashboard.html, .flame-canvas). Stops drawing while its pane is
+// drawing (dashboard.html, .flame-canvas): the shader flame where WebGL runs,
+// the particle fire where it does not. Stops drawing while its pane is
 // hidden; with reduced motion, draws one settled frame and stops.
 export function startFire(canvas) {
   if (!canvas.getContext) return
+  // It catches rather than appearing at full height.
+  const kindle = (c) => c.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 1200, easing: 'ease-out' })
+  if (startShaderFire(canvas)) return kindle(canvas)
+  // A canvas that gave out a WebGL context cannot give a 2D one: the
+  // particles get a fresh copy of it.
+  const fresh = canvas.cloneNode(false)
+  canvas.replaceWith(fresh)
+  startParticleFire(fresh)
+  kindle(fresh)
+}
+
+function startParticleFire(canvas) {
   SPRITES ??= sprites()
   const ctx = canvas.getContext('2d')
   const W = 180
@@ -202,11 +221,19 @@ export function startFire(canvas) {
     ctx.globalCompositeOperation = 'source-over'
   }
   const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  const frame = () => {
+  // The simulation steps 60 times a second of clock time, however fast the
+  // screen refreshes: stepping once per frame burned a 144 Hz screen's fire
+  // 2.4 times faster. After a stall (a hidden tab) it catches up at most 4 steps.
+  const STEP = 1000 / 60
+  let clock = null
+  let owed = 0
+  const frame = (now) => {
     if (canvas.offsetParent !== null && (canvas.width || size())) {
-      step()
+      owed = Math.min(owed + (clock === null ? STEP : now - clock), STEP * 4)
+      for (; owed >= STEP; owed -= STEP) step()
       draw()
     }
+    clock = now
     if (!still) requestAnimationFrame(frame)
   }
   if (still) {
@@ -215,4 +242,139 @@ export function startFire(canvas) {
   }
   new ResizeObserver(() => size()).observe(canvas)
   requestAnimationFrame(frame)
+}
+
+// ---------------------------------------------------------------- shader fire
+// One continuous flame drawn per pixel on the GPU, after the usual real-time
+// fire technique (The Book of Shaders, noise and fBm chapters; Inigo Quilez,
+// "domain warping"): layered noise scrolls upward through a flame-shaped
+// envelope, warped by more noise so the edges fold and split into tongues.
+// Colour comes from temperature, as a blackbody cools: near-white at the core,
+// then yellow, orange, and deep red at the edges. The height flickers at about
+// 10 Hz, as a small wood fire does, under a slower surge. Time is the clock's.
+const FIRE_VERT = `attribute vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }`
+const FIRE_FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform float uScale;
+uniform float uTime;
+uniform float uSurge;
+float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p), u = f * f * (3. - 2. * f);
+  return mix(mix(hash(i), hash(i + vec2(1., 0.)), u.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0., a = .5;
+  for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= .5; }
+  return v;
+}
+vec3 blackbody(float k) {
+  vec3 c = mix(vec3(.42, .04, .01), vec3(1., .3, .03), smoothstep(0., .35, k));
+  c = mix(c, vec3(1., .66, .17), smoothstep(.35, .7, k));
+  return mix(c, vec3(1., .93, .74), smoothstep(.78, 1., k));
+}
+void main() {
+  // Canvas units, y up: the fire's foot is at (90, 18), its body about 46 wide each side, 200 tall.
+  vec2 u = gl_FragCoord.xy / uScale;
+  float x = (u.x - 90.) / 46.;
+  float h = (u.y - 18.) / 200.;
+  float t = uTime;
+  // The flicker moves only the flame's outline (hh), never the noise inside it:
+  // scaling the noise with it shook the whole texture ten times a second.
+  // Sums of sines, so it is smooth however fast it pulses.
+  float flick = 1. + .03 * sin(t * 62.83 + .8 * sin(t * 7.1)) + .02 * sin(t * 41.3 + 1.7);
+  float hh = max(h, 0.) / (uSurge * flick);
+  vec2 q = vec2(x * 1.5, max(h, 0.) * 2.2 - t * 1.9);
+  vec2 w = vec2(fbm(q + vec2(0., t * .4)), fbm(q + vec2(5.2, 1.3 - t * .2)));
+  float n = fbm(q * 1.3 + (w - .5) * 3.2);
+  float sway = (w.x - .5) * .55 * h + sin(t * 1.3 + h * 2.) * .06 * h;
+  float width = 1.02 * max(.05, 1. - hh * .55);
+  float d = abs(x - sway);
+  float body = 1. - smoothstep(width * .35, width, d);
+  // Noise breaks the flame up only near its outline, so no fire floats free of it.
+  float near = 1. - smoothstep(width * .7, width * 1.25, d);
+  float heat = body * (1.15 - hh * .95) + (n - .5) * (.55 + hh * .9) * near;
+  heat += exp(-x * x * 9.) * (1. - smoothstep(0., .3, hh)) * .35;
+  // Tips may part from the body, but not far above it.
+  heat *= smoothstep(-.08, .06, h) * (1. - smoothstep(.95, 1.3, hh)) * (1. - smoothstep(1.4, 1.7, h));
+  heat = clamp(heat, 0., 1.);
+  float a = smoothstep(.12, .45, heat);
+  // Premultiplied, and slightly brighter than its cover, so it adds light where it overlaps.
+  gl_FragColor = vec4(blackbody(smoothstep(.12, 1., heat)) * a, a * .85);
+}`
+
+function startShaderFire(canvas) {
+  const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false })
+  if (!gl) return false
+  const shader = (type, src) => {
+    const s = gl.createShader(type)
+    gl.shaderSource(s, src)
+    gl.compileShader(s)
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null
+  }
+  const vs = shader(gl.VERTEX_SHADER, FIRE_VERT)
+  const fs = shader(gl.FRAGMENT_SHADER, FIRE_FRAG)
+  if (!vs || !fs) return false
+  const prog = gl.createProgram()
+  gl.attachShader(prog, vs)
+  gl.attachShader(prog, fs)
+  gl.linkProgram(prog)
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return false
+  gl.useProgram(prog)
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
+  const at = gl.getAttribLocation(prog, 'p')
+  gl.enableVertexAttribArray(at)
+  gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 0, 0)
+  const uScale = gl.getUniformLocation(prog, 'uScale')
+  const uTime = gl.getUniformLocation(prog, 'uTime')
+  const uSurge = gl.getUniformLocation(prog, 'uSurge')
+
+  const W = 180
+  const H = 380
+  let scale = 1
+  const size = () => {
+    const r = canvas.getBoundingClientRect()
+    if (!r.width) return false
+    scale = (r.width / W) * Math.min(2, window.devicePixelRatio || 1)
+    canvas.width = Math.round(W * scale)
+    canvas.height = Math.round(H * scale)
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    return true
+  }
+  // Each pane's fire starts at its own point in time, so the two never match.
+  const offset = Math.random() * 500
+  let surge = 1
+  let target = 1
+  let clock = null
+  const draw = (now) => {
+    const dt = clock === null ? 0 : Math.min(0.1, (now - clock) / 1000)
+    clock = now
+    if (Math.random() < dt * 0.25) target = 0.85 + Math.random() * 0.35
+    surge += (target - surge) * Math.min(1, dt * 0.7)
+    gl.uniform1f(uScale, scale)
+    // Wrapped, so float precision holds however long the page stays open.
+    gl.uniform1f(uTime, (offset + now / 1000) % 3600)
+    gl.uniform1f(uSurge, surge)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  }
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (still) {
+    if (size()) draw(0)
+    return true
+  }
+  const frame = (now) => {
+    if (canvas.offsetParent !== null && (canvas.width || size())) draw(now)
+    else clock = null
+    requestAnimationFrame(frame)
+  }
+  new ResizeObserver(() => size()).observe(canvas)
+  requestAnimationFrame(frame)
+  return true
 }
