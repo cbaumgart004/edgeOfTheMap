@@ -154,6 +154,7 @@ no login.
 - **Sign-in on a site:** the site's Amplify rewrite `/_edit/auth/<*>` goes to the Lambda's `/auth/<*>`
   (`api/auth-proxy.js`), not to Neon Auth: Amplify adds `X-Forwarded-Host` and Neon Auth rejects any
   request carrying one. Both apps keep cookies in the cache key, and `_edit/**/*` is `private, no-store`.
+- **A site's own account button** (Spirit Seeds): the visitor signs in or signs up through `/_edit/auth`, then `POST /api/sites/<site>/handoff` with that Neon Auth token. A member gets an editor token, as the admin page's handoff gives; anyone else gets 403 and stays a signed-in visitor. Neon Auth must list the site's address as a trusted domain, or sign-in answers `INVALID_ORIGIN` (both preview addresses did on 2026-10-03).
 - **Management page:** operators (control table `operators`, migration `002`) see "Manage all sites"
   on the admin page: each site's repo, editor version (pinning replaces the SQL `UPDATE sites`), company
   details (`PROFILE_FIELDS` in `api/manage.js`), an optional photo bucket of its own, and members

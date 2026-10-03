@@ -241,6 +241,17 @@ describe('editor handoff', () => {
     expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds', origin: 'https://evil.example' } })).json.url).toBe(ORIGIN)
   })
 
+  it('a login made on the site itself is an editor when it is a member, else a visitor', async () => {
+    const call = make()
+    const path = '/api/sites/spiritseeds/handoff'
+    const ok = await call('POST', path, { token: 'neon', origin: ORIGIN })
+    expect(ok).toMatchObject({ status: 200, json: { token: 'editor:spiritseeds', email: 'o@x.example', role: 'owner' } })
+    expect((await make({ member: false })('POST', path, { token: 'neon', origin: ORIGIN })).status).toBe(403)
+    expect((await call('POST', path, { token: 'neon', origin: 'https://evil.example' })).status).toBe(403)
+    expect((await call('POST', path, { token: 'editor:spiritseeds', origin: ORIGIN })).status).toBe(403)
+    expect((await call('POST', path, { origin: ORIGIN })).status).toBe(401)
+  })
+
   it('will not let an editor token mint another', async () => {
     expect((await make()('POST', '/api/handoff', { token: 'editor:spiritseeds', body: { site: 'spiritseeds' } })).status).toBe(403)
   })

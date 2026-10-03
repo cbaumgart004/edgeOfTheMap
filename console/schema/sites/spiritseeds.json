@@ -35,7 +35,39 @@
             { "value": "immersive", "label": "Immersive (cinematic full-bleed)" } ] },
         { "name": "navCtaLabel", "kind": "text", "label": "Menu button text", "help": "Shown in the menu bar on the Editorial, Sanctuary and Immersive styles. Blank hides it." },
         { "name": "navCtaUrl", "kind": "url", "label": "Menu button link" },
-        { "name": "contactEmail", "kind": "text", "label": "Contact email" }
+        { "name": "contactEmail", "kind": "text", "label": "Contact email" },
+        { "name": "actionButtons", "kind": "list", "label": "Buttons under the menu bar", "itemLabel": "label",
+          "help": "The row of buttons just below the menu bar, on every page. A Connect button is added at the end.",
+          "fields": [
+            { "name": "label", "kind": "text", "label": "Button text" },
+            { "name": "url", "kind": "url", "label": "Button link" } ] },
+        { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect" },
+        { "name": "connectIntro", "kind": "text", "label": "Connect window message", "default": "Find me on social media, or get first word of new classes and events." },
+        { "name": "socials", "kind": "list", "label": "Social links", "itemLabel": "label",
+          "help": "Shown in the Connect window.",
+          "fields": [
+            { "name": "label", "kind": "text", "label": "Name (Instagram, Facebook…)" },
+            { "name": "url", "kind": "url", "label": "Link" } ] },
+        { "name": "newsletterFormId", "kind": "text", "label": "Newsletter form ID (Kit)", "default": "7800435",
+          "help": "The signup in the Connect window. Blank hides it there." }
+      ]
+    },
+    "event": {
+      "label": "Event",
+      "plural": "Events",
+      "titleField": "title",
+      "slugFrom": "title",
+      "previewPath": "/",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Event name", "required": true },
+        { "name": "date", "kind": "date", "label": "Date", "required": true, "help": "The banner shows the next event from today on; once its date passes it moves to the next." },
+        { "name": "startTime", "kind": "text", "label": "Start time", "help": "As it should read, e.g. 6:30 PM." },
+        { "name": "endTime", "kind": "text", "label": "End time" },
+        { "name": "location", "kind": "text", "label": "Where" },
+        { "name": "description", "kind": "richtext", "label": "Description" },
+        { "name": "image", "kind": "image", "label": "Photo or poster" },
+        { "name": "linkUrl", "kind": "url", "label": "Link (tickets, details)" },
+        { "name": "linkLabel", "kind": "text", "label": "Link button text", "default": "Learn More" }
       ]
     },
     "page": {
@@ -49,11 +81,29 @@
         { "name": "navLabel", "kind": "text", "label": "Menu label" },
         { "name": "order", "kind": "number", "label": "Menu order", "integer": true, "default": 99, "help": "Lower comes first in the menu." },
         { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
-        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed"] }
+        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp"] }
       ]
     }
   },
   "blocks": {
+    "nextUp": {
+      "label": "Next class and event banner",
+      "fields": [
+        { "name": "classHeading", "kind": "text", "label": "Class heading", "default": "Next Live Class" },
+        { "name": "className", "kind": "text", "label": "Class name", "help": "Blank: the next class on your teaching schedule fills in name, date, time and studio." },
+        { "name": "classDate", "kind": "date", "label": "Date" },
+        { "name": "classTime", "kind": "text", "label": "Time", "help": "As it should read, e.g. 6:00 PM." },
+        { "name": "studio", "kind": "text", "label": "Studio" },
+        { "name": "showSignUp", "kind": "boolean", "label": "Show the sign-up button", "default": true },
+        { "name": "signUpLabel", "kind": "text", "label": "Sign-up button text", "default": "Sign Up Now" },
+        { "name": "signUpUrl", "kind": "url", "label": "Sign-up link", "help": "Blank: the studio's schedule page, when the class comes from your teaching schedule." },
+        { "name": "showEvent", "kind": "boolean", "label": "Show the next upcoming event below", "default": true,
+          "help": "Comes from Events. With no event from today on it is hidden on the site; here it stays visible, marked hidden." },
+        { "name": "eventHeading", "kind": "text", "label": "Event heading", "default": "Next Upcoming Event" },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
+      ]
+    },
     "contentSection": {
       "label": "Content section",
       "className": "section",

@@ -278,6 +278,17 @@ export function createHandler(deps) {
       // Never cacheable: CloudFront sits in front of this API and keys on the path,
       // so a cached draft list would be served to the next caller.
       headers = { ...headers, 'cache-control': 'private, no-store' }
+      // The site's own sign-in (its account button): a login made on the site
+      // trades its Neon Auth token for an editor token when it is a member, as
+      // the admin page's handoff does. A visitor's login answers 403 here.
+      if (method === 'POST' && rest === '/handoff') {
+        const user = await verified(event)
+        if (user.site) throw new ServiceError(403, 'Sign in again.')
+        if (await passwordChangeRequired(user.id)) throw new ServiceError(403, 'Choose your own password first, on the admin page.')
+        const member = await authorize(event, site)
+        const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
+        return json(200, { token, email: member.email ?? null, role: member.role }, headers)
+      }
       const user = await authorize(event, site)
       // Who this sign-in is, for a site's own backend guarding its admin routes
       // (StoryShaped's inventory): a 200 means a member of this site.
