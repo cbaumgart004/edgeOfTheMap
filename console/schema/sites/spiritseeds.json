@@ -75,8 +75,10 @@
             { "name": "url", "kind": "url", "label": "Button link" } ] },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect" },
         { "name": "connectIntro", "kind": "text", "label": "Connect window message", "default": "Find me on social media, or get first word of new classes and events." },
-        { "name": "facebookUrl", "kind": "url", "label": "Facebook page", "help": "Shown as the Facebook icon in the Connect window. Blank hides it." },
-        { "name": "instagramUrl", "kind": "url", "label": "Instagram profile", "help": "Shown as the Instagram icon in the Connect window. Blank hides it." },
+        { "name": "showFacebook", "kind": "boolean", "label": "Show Facebook in the Connect window", "default": false },
+        { "name": "facebookUrl", "kind": "url", "label": "Facebook page", "help": "The icon shows once this is filled in and the switch above is on." },
+        { "name": "showInstagram", "kind": "boolean", "label": "Show Instagram in the Connect window", "default": false },
+        { "name": "instagramUrl", "kind": "url", "label": "Instagram profile", "help": "The icon shows once this is filled in and the switch above is on." },
         { "name": "socials", "kind": "list", "label": "Other links", "itemLabel": "label",
           "help": "More buttons in the Connect window, after Facebook, Instagram and email.",
           "fields": [
