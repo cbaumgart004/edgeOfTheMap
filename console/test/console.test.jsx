@@ -193,6 +193,50 @@ describe('console in a page', () => {
     page.remove()
   })
 
+  it('one click on page text types it in place and opens that field; the pane and the page agree', async () => {
+    localStorage.clear()
+    const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+    const store = localStore({ schema: ss })
+    const doc = await store.create({ type: 'page', data: { title: 'Home', blocks: [
+      { _id: 'intro', _type: 'contentSection', layout: 'centered', title: 'Welcome' },
+      { _id: 'vals', _type: 'contentSection', layout: 'values', title: 'Our Core Values' },
+    ] } })
+    const page = document.createElement('div')
+    page.innerHTML = '<section data-eotm-edit="page:' + doc.slug + '" data-eotm-item="vals"><a href="#away"><h2 data-eotm-text="title">Our Core Values</h2></a><p>plain</p></section>'
+    document.body.append(page)
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+
+    // A click on the heading: no navigation, typeable in place, its section open in the pane.
+    const h2 = page.querySelector('h2')
+    const clicked = new MouseEvent('click', { bubbles: true, cancelable: true })
+    await act(async () => h2.dispatchEvent(clicked))
+    await tick(300)
+    expect(clicked.defaultPrevented).toBe(true)
+    expect(h2.contentEditable).toBe('plaintext-only')
+    expect(host.querySelector('[data-eotm-item="vals"]').classList.contains('is-open')).toBe(true)
+    const field = host.querySelector('[data-eotm-item="vals"] [data-eotm-field="title"] input')
+    expect(field.value).toBe('Our Core Values')
+
+    // Typing on the page reaches the pane.
+    h2.textContent = 'Values'
+    await act(async () => h2.dispatchEvent(new Event('input', { bubbles: true })))
+    await tick()
+    expect(field.value).toBe('Values')
+    await act(async () => h2.dispatchEvent(new Event('blur')))
+
+    // A click elsewhere in the section opens it too.
+    await act(async () => byText(host, 'button', 'Back')?.click())
+    await act(async () => page.querySelector('p').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
+    await tick(50)
+    expect(host.querySelector('[data-eotm-item="vals"]')).toBeTruthy()
+    await act(async () => root.unmount())
+    page.remove()
+  })
+
   it('lets the owner design a section type and then place it on a page', async () => {
     localStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))

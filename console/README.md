@@ -68,6 +68,11 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
 - **Editing on the page and in the pane, mirrored (1.1.9+).** Double-clicking marked text (`data-eotm-text`,
   `data-eotm-richtext`) makes it editable where it stands; each keystroke reaches the pane, and the pane already
   redraws the page. Leaving the text (or Escape) hands the page back.
+- **One click opens what was clicked (1.2.3+).** A click on marked text makes it typeable in place (no double-click)
+  and opens the document in the pane at that field, scrolled to and outlined; nothing in the pane takes focus, so
+  typing carries on on the page. A click anywhere else in a marked part opens it at its nearest `data-eotm-field`,
+  or at the section. The page's own links and buttons still work, unless their text is itself marked. Customer
+  view turns all of this off.
 - **Undo, Save, Discard (1.1.9+).** Undo (and Ctrl/Cmd+Z outside a text box) steps back through the document's
   changes, a word at a time; Save saves at once (it also saves by itself); Discard changes puts a live document
   back to what is live (`POST …/documents/<id>/discard`).

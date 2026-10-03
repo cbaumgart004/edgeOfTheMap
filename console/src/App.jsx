@@ -244,7 +244,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
-  const openTarget = async ({ type, key, item }) => {
+  const openTarget = async ({ type, key, item, field = null }) => {
     if (!schema.types[type]) return
     try {
       let doc = await findDoc(type, key)
@@ -254,7 +254,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       if (!doc) return notify('That part of the page is not in the editor yet.')
       setPeek(false)
       if (size === 'bar') setSize('half')
-      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusAt: Date.now() })
+      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now() })
     } catch (e) {
       notify(e.message)
     }
@@ -322,7 +322,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       onState={(patch) => setView((v) => ({ ...v, ...patch }))}
       onGone={() => setView({ name: 'list', type: view.type })}
       onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
-      focus={view.focus} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
+      focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
 
   if (customer) return (
     <div className="eotm-root" data-eotm-mode={mode} style={style}>
@@ -345,7 +345,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
       <div ref={setOverlay} />
-      {user && overlay && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
+      {user && overlay && !customer && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
   )
 }
@@ -571,7 +571,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   )
 }
 
-function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, focus, focusAt, editorApi, pendingSize }) {
+function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, focus, focusField, focusAt, editorApi, pendingSize }) {
   const [doc, setDoc] = useState(null)
   const [conflict, setConflict] = useState(null)
   const [serverErrors, setServerErrors] = useState([])
@@ -660,6 +660,25 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
     if (p && (p.key === d.id || p.key === d.slug)) { pendingSize.current = null; setField(p.item, p.field, p.value, p.imageIndex) }
     return () => { if (editorApi.current?.id === d.id) editorApi.current = null }
   }, [loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A click on the page names a field: bring it into view in the pane and mark
+  // it for a moment, once the section holding it has opened. Nothing in the
+  // pane takes focus, so typing on the page carries on.
+  useEffect(() => {
+    if (!loaded || !focusField) return undefined
+    const t = setTimeout(() => {
+      const root = document.querySelector('.eotm-root')
+      const scope = (focus && root?.querySelector(`[data-eotm-item="${focus}"]`)) || root
+      const hit = scope?.querySelector(`[data-eotm-field="${focusField}"]`)
+      if (!hit) return
+      // A folded group holding it unfolds.
+      for (let d = hit.closest('details'); d; d = d.parentElement?.closest('details')) d.open = true
+      hit.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      hit.classList.add('is-picked')
+      setTimeout(() => hit.classList.remove('is-picked'), 1600)
+    }, 160)
+    return () => clearTimeout(t)
+  }, [loaded, focusField, focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (fn, okMsg) => {
     clearTimeout(timer.current)

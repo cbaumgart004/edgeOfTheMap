@@ -20,7 +20,7 @@ function Field({ field, value, onChange, ctx, path }) {
   const error = ctx.errors?.find((e) => e.startsWith(`${path}:`))?.slice(path.length + 2)
   const label = field.label ?? field.name
   const wrap = (control, { block = false } = {}) => (
-    <div className={`eotm-field${error ? ' has-error' : ''}${block ? ' is-block' : ''}`}>
+    <div className={`eotm-field${error ? ' has-error' : ''}${block ? ' is-block' : ''}`} data-eotm-field={field.name}>
       <label htmlFor={id} className="eotm-label">{label}{field.required && <span aria-hidden="true"> *</span>}</label>
       {control}
       {field.help && <p className="eotm-help">{field.help}</p>}
@@ -75,7 +75,7 @@ function Field({ field, value, onChange, ctx, path }) {
         </div>)
     case 'boolean':
       return (
-        <div className="eotm-field eotm-check">
+        <div className="eotm-field eotm-check" data-eotm-field={field.name}>
           <input id={id} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
           <label htmlFor={id}>{label}</label>
           {field.help && <p className="eotm-help">{field.help}</p>}
@@ -99,13 +99,13 @@ function Field({ field, value, onChange, ctx, path }) {
     case 'group':
       // `collapsible: true`: folds to its heading, closed unless `open: true`.
       if (field.collapsible) return (
-        <details className="eotm-group is-fold" open={field.open}>
+        <details className="eotm-group is-fold" open={field.open} data-eotm-field={field.name}>
           <summary>{label}</summary>
           {field.help && <p className="eotm-help">{field.help}</p>}
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} />
         </details>)
       return (
-        <fieldset className="eotm-group">
+        <fieldset className="eotm-group" data-eotm-field={field.name}>
           <legend>{label}</legend>
           {field.help && <p className="eotm-help">{field.help}</p>}
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} />
@@ -394,7 +394,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
   }
 
   return (
-    <fieldset className={`eotm-group eotm-repeater${sections ? ' is-sections' : ''}`}>
+    <fieldset className={`eotm-group eotm-repeater${sections ? ' is-sections' : ''}`} data-eotm-field={path.split('.').pop().replace(/\[.*$/, '')}>
       <legend>{label}</legend>
       {help && <p className="eotm-help">{help}</p>}
       <ol>

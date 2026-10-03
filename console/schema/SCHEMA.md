@@ -87,10 +87,11 @@ content and the site's code do not, so a rename never needs a migration.
 | `data-eotm-edit="<type>:<id or slug>"` | any element showing a document | an Edit button that opens it (click-to-edit) |
 | `data-eotm-item="<_id>"` | a section or row inside it | opens with that section expanded |
 | `data-eotm-label` | either | names the Edit button |
+| `data-eotm-field="<field>"` | inside (or on) a marked element | the field a click there opens in the pane (1.2.3+) |
 | `data-eotm-size="<field>"`, `data-eotm-min`, `data-eotm-max` | an element whose width is that number field, in % of its parent | a drag handle; snaps to twelfths or moves freely (the owner's toggle) |
 | `data-eotm-edge="left"`, `data-eotm-centered` | a sizable element | the handle on the left edge; a centred element's edge moves half as far |
-| `data-eotm-richtext="<field>"` | a rich text container | a handle on each image in it, stored as `width="n%"`; double-click to type in it on the page (1.1.9+) |
-| `data-eotm-text="<field>"` | an element showing a text field | double-click to type in it on the page; each keystroke reaches the pane (1.1.9+) |
+| `data-eotm-richtext="<field>"` | a rich text container | a handle on each image in it, stored as `width="n%"`; click to type in it on the page (double-click before 1.2.3) |
+| `data-eotm-text="<field>"` | an element showing a text field | click to type in it on the page and open it in the pane; each keystroke reaches the pane (double-click before 1.2.3) |
 | `data-eotm-in="<_id>"` | beside either of the two above | the row the field belongs to, when not the marked element's item (a value inside a Values grid) |
 | `data-eotm-layout`, `data-eotm-block`, `data-eotm-span` | a page arranged by a `layout` field | Arrange's move and resize boxes |
 

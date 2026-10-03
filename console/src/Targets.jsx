@@ -6,6 +6,9 @@ import React, { useEffect, useRef, useState } from 'react'
 //   data-eotm-edit="<type>:<id or slug>"   the document an element shows
 //   data-eotm-item="<_id>"                 optional: the section or row within it
 //   data-eotm-label="Services"             optional: named on the button
+//   data-eotm-field="<field>"              optional: the field a click inside it
+//                                          opens in the pane (the buttons row of
+//                                          Site settings, say)
 //
 // and, on that element or inside it, what can be sized by dragging an edge:
 //
@@ -28,12 +31,15 @@ import React, { useEffect, useRef, useState } from 'react'
 //                                          (a value inside a Values grid), when
 //                                          it is not the marked element's item
 //
-// Double-clicking one makes it editable in place; every keystroke reaches the
-// editor's pane (onText), and leaving it (or Escape) hands the page back.
+// Clicking one makes it editable in place and opens its field in the pane;
+// every keystroke reaches the pane (onText), so the page and the pane show the
+// same value, and leaving it (or Escape) hands the page back.
 //
-// Pointing at (or tapping) a marked element outlines it and shows an Edit
-// button and its size handles. The page's own links keep working: only the
-// console's buttons and handles take the pointer.
+// Clicking anywhere else in a marked element opens it in the pane at its
+// nearest data-eotm-field, or at the section. Pointing at (or tapping) one
+// outlines it and shows an Edit button and its size handles. The page's own
+// links and buttons keep working: a click on one is the page's, not the
+// console's, unless the link's text is itself marked.
 
 const MARK = '[data-eotm-edit]'
 const SIZE = '[data-eotm-size]'
@@ -74,6 +80,16 @@ function sizersIn(el) {
 }
 
 const TEXT = '[data-eotm-text], [data-eotm-richtext]'
+const CONTROL = 'a, button, input, select, textarea, label, summary, [role="button"], [contenteditable="true"], [contenteditable="plaintext-only"]'
+
+// The field a click on `node` points at: marked text names its own; anything
+// else the nearest data-eotm-field between it and its marked element.
+function fieldAt(node, owner) {
+  for (let n = node; n && n !== owner.parentElement; n = n.parentElement) {
+    if (n.dataset?.eotmField) return { field: n.dataset.eotmField, item: n.dataset.eotmIn || null }
+  }
+  return { field: null, item: null }
+}
 
 // Editing in place: plain text for a text field, HTML for rich text.
 function startTyping(node, onText) {
@@ -110,6 +126,9 @@ export default function Targets({ onOpen, onResize, onText }) {
   const [drag, setDrag] = useState(null) // { node, value, parent }
   const [snap, setSnap] = useState(readSnap)
   const dragging = useRef(false)
+  // The page's listeners are installed once; they call the latest handlers.
+  const latest = useRef({})
+  latest.current = { onOpen, onText }
 
   useEffect(() => {
     const find = (e) => {
@@ -119,22 +138,37 @@ export default function Targets({ onOpen, onResize, onText }) {
       const hit = t.closest(MARK)
       if (hit) setEl(hit)
     }
-    // Double-click marked text to type on the page itself.
-    const type = (e) => {
+    // One click: marked text becomes typeable where it stands and its field
+    // opens in the pane; anything else marked opens in the pane.
+    const click = (e) => {
       const t = e.target
-      if (!onText || !(t instanceof Element) || t.closest('.eotm-root')) return
-      const node = t.closest(TEXT)
-      if (!node || !node.closest(MARK)) return
-      e.preventDefault()
-      startTyping(node, onText)
+      if (dragging.current || !(t instanceof Element) || t.closest('.eotm-root')) return
+      const owner = t.closest(MARK)
+      if (!owner) return
+      const { onOpen: open, onText: typed } = latest.current
+      const node = typed ? t.closest(TEXT) : null
+      if (node && node.closest(MARK) === owner) {
+        if (node.isContentEditable) return // already typing: place the caret
+        // Text inside a link or button is typed, not followed.
+        e.preventDefault()
+        e.stopPropagation()
+        const rich = !node.hasAttribute('data-eotm-text')
+        const field = rich ? node.dataset.eotmRichtext : node.dataset.eotmText
+        startTyping(node, typed)
+        open({ ...targetOf(owner), item: node.dataset.eotmIn || targetOf(owner).item, field, typing: true })
+        return
+      }
+      if (t.closest(CONTROL)?.closest(MARK) === owner) return // the page's own link or button
+      const at = fieldAt(t, owner)
+      open({ ...targetOf(owner), item: at.item || targetOf(owner).item, field: at.field })
     }
     document.addEventListener('pointerover', find, true)
     document.addEventListener('pointerdown', find, true)
-    document.addEventListener('dblclick', type, true)
+    document.addEventListener('click', click, true)
     return () => {
       document.removeEventListener('pointerover', find, true)
       document.removeEventListener('pointerdown', find, true)
-      document.removeEventListener('dblclick', type, true)
+      document.removeEventListener('click', click, true)
     }
   }, [])
 
@@ -208,13 +242,13 @@ export default function Targets({ onOpen, onResize, onText }) {
       )}
       <div className="eotm-target-box" style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }} />
       <div className="eotm-target-bar" style={{ top, left: Math.max(rect.left, 0) + 8 }}>
-        <button type="button" className="eotm-target-edit" onClick={() => onOpen(targetOf(el))}>
+        <button type="button" className="eotm-target-edit" onClick={() => onOpen({ ...targetOf(el), field: el.dataset.eotmField || null })}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
           </svg>
           {label ? `Edit ${label}` : 'Edit'}
         </button>
-        {onText && el.querySelector(TEXT) && <span className="eotm-target-hint">or double-click text to type here</span>}
+        {onText && el.querySelector(TEXT) && <span className="eotm-target-hint">or click text to type here</span>}
         {sizers.length > 0 && (
           <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}
             title={snap ? 'Sizes snap to a 12-column grid. Click for free sizing.' : 'Free sizing in 1% steps. Click to snap to a 12-column grid.'}>

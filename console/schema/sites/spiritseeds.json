@@ -73,6 +73,9 @@
           "fields": [
             { "name": "label", "kind": "text", "label": "Button text" },
             { "name": "url", "kind": "url", "label": "Button link" } ] },
+        { "name": "actionButtonsPerRow", "kind": "select", "label": "Buttons per row on a phone", "default": "2",
+          "help": "How the buttons under the menu bar sit on a narrow screen. Two per row puts four buttons in a 2 by 2 square.",
+          "options": [ { "value": "2", "label": "Two per row" }, { "value": "1", "label": "One per row" }, { "value": "all", "label": "All in one row" } ] },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect" },
         { "name": "connectIntro", "kind": "text", "label": "Connect window message", "default": "Find me on social media, or get first word of new classes and events." },
         { "name": "showFacebook", "kind": "boolean", "label": "Show Facebook in the Connect window", "default": false },
@@ -154,7 +157,7 @@
         { "name": "layout", "kind": "select", "label": "Layout", "default": "imageText", "help": "How this section looks. Only the fields that layout uses are shown on the page.", "options": [
           { "value": "splash", "label": "Splash / hero (text over a full-width image)" }, { "value": "imageText", "label": "Image and text" },
           { "value": "centered", "label": "Centered text" }, { "value": "cardGrid", "label": "Card grid" },
-          { "value": "values", "label": "Values list" }, { "value": "event", "label": "Event / announcement" } ] },
+          { "value": "values", "label": "Footer (values in one small line)" }, { "value": "event", "label": "Event / announcement" } ] },
         { "name": "title", "kind": "text", "label": "Heading" },
         { "name": "eyebrow", "kind": "text", "label": "Eyebrow", "help": "Splash layout: the small line above the heading, e.g. MASSAGE + SOUND HEALING." },
         { "name": "body", "kind": "richtext", "label": "Body text", "help": "Splash, Image and text, Centered text and Event layouts." },
@@ -177,7 +180,7 @@
           { "name": "image", "kind": "image", "label": "Thumbnail (optional)" }, { "name": "title", "kind": "text", "label": "Card title" },
           { "name": "description", "kind": "textarea", "label": "Card text" }, { "name": "buttonLabel", "kind": "text", "label": "Button text" },
           { "name": "buttonUrl", "kind": "url", "label": "Button link" } ] },
-        { "name": "words", "kind": "list", "label": "Values", "itemLabel": "text", "help": "Values list layout.", "fields": [
+        { "name": "words", "kind": "list", "label": "Values", "itemLabel": "text", "help": "Footer layout: the values in one line, separated by blossoms.", "fields": [
           { "name": "text", "kind": "text", "label": "Value", "required": true } ] },
         { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
           { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] },
