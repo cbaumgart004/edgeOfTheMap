@@ -436,8 +436,9 @@ async function loadMonitors(pending) {
     const down = list.filter((m) => m.status === 'down' || m.status === 'seems down').length
     $('#m-mon-count').textContent = `${down ? `${down} down · ` : ''}${list.filter((m) => m.status === 'up').length} of ${list.length} up` +
       (r.stale ? ` · as of ${new Date(r.checkedAt).toLocaleTimeString()}, UptimeRobot not answering` : '')
-    // Folded by default; a monitor that is down opens it.
-    if (down) $('#monitors').open = true
+    // Folded, always: the count beside the heading says how many are down, and
+    // opening it is the operator's choice (asked 2026-10-03; a long-standing
+    // down monitor kept it open on every visit).
     monitorData = new Map(list.map((m) => [String(m.id), m]))
     $('#m-monitors').innerHTML = list.map(monitorRow).join('') +
       `<li class="meta"><a href="${esc(r.dashboard)}" target="_blank" rel="noopener">Open UptimeRobot</a> · <button type="button" id="mon-disconnect" class="link">Disconnect</button></li>`
