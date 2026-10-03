@@ -117,6 +117,13 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const notify = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 4000) }, [])
 
   useEffect(() => { auth.current().then(setUser) }, [auth])
+  // Ends the sign-in here and on the admin page, which then offers this site's
+  // sign-in again; local mode has no admin page, so it shows the form instead.
+  const signOut = async () => {
+    await auth.signOut()
+    if (auth.redirect) auth.redirect({ signout: true })
+    else setUser(null)
+  }
   // Unpublished changes (To the Developer's count), and what closing does with them.
   const [unpublished, setUnpublished] = useState(0)
   const [leaving, setLeaving] = useState(false)
@@ -279,6 +286,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <div className="eotm-root" data-eotm-mode={mode} style={style}>
       <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={wide}>
         {body}
+        {user && view.name === 'home' && !leaving && (
+          <p className="eotm-who">
+            Signed in as <strong>{user.email ?? 'the site owner'}</strong>
+            <button type="button" className="eotm-btn is-quiet" onClick={signOut}>Sign out</button>
+          </p>
+        )}
         {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}

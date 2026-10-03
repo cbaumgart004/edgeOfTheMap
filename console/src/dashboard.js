@@ -131,6 +131,17 @@ async function loadSites() {
 }
 
 async function start() {
+  // A site's editor signed out (auth.js redirect): end this session too, take
+  // ?signout out of the address so a reload does not repeat it, and offer the
+  // site's sign-in, which hands back to the site as usual.
+  const q = new URLSearchParams(location.search)
+  if (q.has('signout')) {
+    forgetManage()
+    await auth.signOut()
+    q.delete('signout')
+    history.replaceState(history.state, '', `${location.pathname}${q.size ? `?${q}` : ''}`)
+    return show('signin')
+  }
   const token = new URLSearchParams(location.search).get('token')
   if (token && location.pathname.startsWith('/reset')) return show('reset')
   const session = await auth.current()

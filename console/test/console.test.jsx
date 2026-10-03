@@ -57,6 +57,19 @@ describe('console in a page', () => {
     expect(host.textContent).toMatch(/required/)
   })
 
+  it('says who is signed in, and Sign out ends it on the admin page too', async () => {
+    localStorage.clear()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const calls = []
+    const auth = { ...localAuth(), signOut: async () => calls.push('signOut'), redirect: (o) => calls.push(o) }
+    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={auth} onClose={() => {}} />))
+    await tick()
+    expect(host.querySelector('.eotm-who').textContent).toContain('Signed in as owner@example.test')
+    await act(async () => byText(host, '.eotm-who button', 'Sign out').click())
+    expect(calls).toEqual(['signOut', { signout: true }])
+  })
+
   it('links home to the dashboard and labels the preview toggle', async () => {
     localStorage.clear()
     const host = document.createElement('div')

@@ -111,10 +111,12 @@ export function editorAuth({ apiBase, site, fallback }) {
     },
     signIn: (email, password) => fallback.signIn(email, password),
     // Leaves the page for the admin sign-in, which sends the owner back here.
-    redirect() {
+    // signout: the admin page ends its own session first, so signing out here
+    // is not undone by the next visit handing a fresh token straight back.
+    redirect({ signout = false } = {}) {
       const back = location.pathname + location.search
       // origin: come back to this address (a preview, say), not the site's first.
-      location.assign(`${apiBase.replace(/\/$/, '')}/?handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}&origin=${encodeURIComponent(location.origin)}`)
+      location.assign(`${apiBase.replace(/\/$/, '')}/?${signout ? 'signout&' : ''}handoff=${encodeURIComponent(site)}&return=${encodeURIComponent(back)}&origin=${encodeURIComponent(location.origin)}`)
     },
     async signOut() {
       try {

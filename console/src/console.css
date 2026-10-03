@@ -204,6 +204,8 @@ select.eotm-input[multiple] { min-height: 120px; }
 
 /* ------------------------------------------------------------ misc */
 
+.eotm-who { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--eotm-line); color: var(--eotm-muted); font-size: 14px; }
+.eotm-who strong { color: var(--eotm-ink); overflow-wrap: anywhere; }
 .eotm-signin { display: grid; gap: 6px; max-width: 360px; margin: 0 auto; }
 .eotm-signin .eotm-btn { margin-top: 10px; }
 .eotm-toast {
