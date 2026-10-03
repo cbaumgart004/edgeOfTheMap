@@ -33,6 +33,38 @@
             { "value": "editorial", "label": "Editorial (serif and airy)" },
             { "value": "sanctuary", "label": "Sanctuary (whimsical and soft)" },
             { "value": "immersive", "label": "Immersive (cinematic full-bleed)" } ] },
+        { "name": "headingFont", "kind": "select", "label": "Heading font", "default": "default", "options": [
+            { "value": "default", "label": "The UI style's own" },
+            { "value": "Euphoria Script", "label": "Euphoria Script (flowing script)" },
+            { "value": "Caveat", "label": "Caveat (handwritten)" },
+            { "value": "Farsan", "label": "Farsan (soft display)" },
+            { "value": "Playfair Display", "label": "Playfair Display (elegant serif)" },
+            { "value": "Fraunces", "label": "Fraunces (warm serif)" },
+            { "value": "Cormorant Garamond", "label": "Cormorant Garamond (classic serif)" },
+            { "value": "Merriweather Sans", "label": "Merriweather Sans (clean sans)" },
+            { "value": "Assistant", "label": "Assistant (light sans)" } ] },
+        { "name": "subheadingFont", "kind": "select", "label": "Subheading font", "default": "default", "options": [
+            { "value": "default", "label": "The UI style's own" },
+            { "value": "Euphoria Script", "label": "Euphoria Script (flowing script)" },
+            { "value": "Caveat", "label": "Caveat (handwritten)" },
+            { "value": "Farsan", "label": "Farsan (soft display)" },
+            { "value": "Playfair Display", "label": "Playfair Display (elegant serif)" },
+            { "value": "Fraunces", "label": "Fraunces (warm serif)" },
+            { "value": "Cormorant Garamond", "label": "Cormorant Garamond (classic serif)" },
+            { "value": "Merriweather Sans", "label": "Merriweather Sans (clean sans)" },
+            { "value": "Assistant", "label": "Assistant (light sans)" } ] },
+        { "name": "bodyFont", "kind": "select", "label": "Body text font", "default": "default", "options": [
+            { "value": "default", "label": "The UI style's own" },
+            { "value": "Euphoria Script", "label": "Euphoria Script (flowing script)" },
+            { "value": "Caveat", "label": "Caveat (handwritten)" },
+            { "value": "Farsan", "label": "Farsan (soft display)" },
+            { "value": "Playfair Display", "label": "Playfair Display (elegant serif)" },
+            { "value": "Fraunces", "label": "Fraunces (warm serif)" },
+            { "value": "Cormorant Garamond", "label": "Cormorant Garamond (classic serif)" },
+            { "value": "Merriweather Sans", "label": "Merriweather Sans (clean sans)" },
+            { "value": "Assistant", "label": "Assistant (light sans)" } ] },
+        { "name": "textSize", "kind": "number", "label": "Text size (%)", "slider": true, "min": 85, "max": 125, "step": 5, "default": 100,
+          "help": "Scales all the site's text together. 100 is the original size." },
         { "name": "navCtaLabel", "kind": "text", "label": "Menu button text", "help": "Shown in the menu bar on the Editorial, Sanctuary and Immersive styles. Blank hides it." },
         { "name": "navCtaUrl", "kind": "url", "label": "Menu button link" },
         { "name": "contactEmail", "kind": "text", "label": "Contact email" },
@@ -43,8 +75,10 @@
             { "name": "url", "kind": "url", "label": "Button link" } ] },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect" },
         { "name": "connectIntro", "kind": "text", "label": "Connect window message", "default": "Find me on social media, or get first word of new classes and events." },
-        { "name": "socials", "kind": "list", "label": "Social links", "itemLabel": "label",
-          "help": "Shown in the Connect window.",
+        { "name": "facebookUrl", "kind": "url", "label": "Facebook page", "help": "Shown as the Facebook icon in the Connect window. Blank hides it." },
+        { "name": "instagramUrl", "kind": "url", "label": "Instagram profile", "help": "Shown as the Instagram icon in the Connect window. Blank hides it." },
+        { "name": "socials", "kind": "list", "label": "Other links", "itemLabel": "label",
+          "help": "More buttons in the Connect window, after Facebook, Instagram and email.",
           "fields": [
             { "name": "label", "kind": "text", "label": "Name (Instagram, Facebook…)" },
             { "name": "url", "kind": "url", "label": "Link" } ] },
@@ -100,6 +134,13 @@
         { "name": "showEvent", "kind": "boolean", "label": "Show the next upcoming event below", "default": true,
           "help": "Comes from Events. With no event from today on it is hidden on the site; here it stays visible, marked hidden." },
         { "name": "eventHeading", "kind": "text", "label": "Event heading", "default": "Next Upcoming Event" },
+        { "name": "layout", "kind": "select", "label": "Layout", "default": "stacked", "options": [
+          { "value": "stacked", "label": "Class above event" }, { "value": "side", "label": "Side by side (wide screens)" } ] },
+        { "name": "align", "kind": "select", "label": "Text alignment", "default": "center", "options": [
+          { "value": "center", "label": "Centered" }, { "value": "left", "label": "Left" } ] },
+        { "name": "textSize", "kind": "select", "label": "Text size", "default": "normal", "options": [
+          { "value": "small", "label": "Small" }, { "value": "normal", "label": "Normal" }, { "value": "large", "label": "Large" } ] },
+        { "name": "width", "kind": "number", "label": "Width (%)", "min": 30, "max": 100 },
         { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
           { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
       ]
