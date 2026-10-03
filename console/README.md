@@ -31,6 +31,7 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   that has not run out, every page shows an **Edit site** button bottom right that opens the editor; it
   goes when the editor opens and comes back when it closes (from console 1.2.0, which tells the loader it
   closed). A site with its own way in sets `data-edit-button="off"` on the loader tag.
+- **Moving the minimised editor (1.2.2+).** Minimised to its bar, the editor floats: drag its grip anywhere on the page and it stays there, in this browser, for every site (`eotm:bar-pos`); a tap on the grip opens it again. Until first moved it sits along the bottom as before.
 - **Who is signed in (1.2.1+).** The editor's home screen ends with **Signed in as** the login's email and **Sign out**. Sign out clears the editor token in this browser and sends the owner to `admin.theedgeofthemap.com/?signout&handoff=<site>`, which ends the admin session too and shows that site's sign-in; signing in hands back to the site as usual. Without the admin step, the next visit to a `preview.*` address would hand a fresh token straight back.
 - **Customer view (1.2.0+).** **Customer view**, beside Preview current changes under the title, steps the editor aside and shows the site as a visitor sees
   it: published documents only (`window.EOTM.previewing`, drafts kept, not dropped). **Back to editing**

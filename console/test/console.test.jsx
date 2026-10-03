@@ -70,6 +70,25 @@ describe('console in a page', () => {
     expect(calls).toEqual(['signOut', { signout: true }])
   })
 
+  it('the minimised editor can be dragged anywhere, remembered, and a tap opens it', async () => {
+    localStorage.clear()
+    const host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+    const sheet = host.querySelector('.eotm-sheet')
+    await act(async () => host.querySelector('.eotm-title').click())
+    expect(sheet.classList.contains('is-bar')).toBe(true)
+    const grip = host.querySelector('.eotm-grip')
+    const fire = (type, x, y) => grip.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }))
+    await act(async () => { fire('pointerdown', 10, 10); fire('pointermove', 210, 110); fire('pointerup', 210, 110) })
+    expect(sheet.classList.contains('is-floating')).toBe(true)
+    expect(sheet.style.left).toBe('200px')
+    expect(JSON.parse(localStorage.getItem('eotm:bar-pos'))).toEqual({ x: 200, y: 100 })
+    await act(async () => { fire('pointerdown', 210, 110); fire('pointerup', 211, 111) })
+    expect(sheet.classList.contains('is-half')).toBe(true)
+  })
+
   it('links home to the dashboard and labels the preview toggle', async () => {
     localStorage.clear()
     const host = document.createElement('div')

@@ -70,27 +70,76 @@ export function useWide() {
   return wide
 }
 
+// Where the owner left the minimised editor, kept in this browser for every
+// site: { x, y } of its top-left corner, or null for the default spot along
+// the bottom.
+const BAR_POS = 'eotm:bar-pos'
+const readBarPos = () => {
+  try { return JSON.parse(localStorage.getItem(BAR_POS)) } catch { return null }
+}
+// Keeps the whole bar on screen, however the window has changed since.
+const clampPos = (pos, el) => {
+  if (!pos || !el) return pos
+  const { width, height } = el.getBoundingClientRect()
+  return {
+    x: Math.max(4, Math.min(innerWidth - width - 4, pos.x)),
+    y: Math.max(4, Math.min(innerHeight - height - 4, pos.y)),
+  }
+}
+
 function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) {
   const drag = useRef(null)
+  const sheet = useRef(null)
+  const bar = size === 'bar'
+  // Minimised, the editor floats: drag its grip anywhere on the page, so it is
+  // never parked over the part being looked at. A tap on the grip opens it.
+  const [pos, setPos] = useState(readBarPos)
+  useEffect(() => {
+    if (!bar) return undefined
+    const fit = () => setPos((p) => clampPos(p, sheet.current))
+    fit()
+    addEventListener('resize', fit)
+    return () => removeEventListener('resize', fit)
+  }, [bar])
+
   const onDown = (e) => {
-    if (wide) return
-    drag.current = { y: e.clientY, size }
-    e.currentTarget.setPointerCapture(e.pointerId)
+    if (wide && !bar) return
+    const rect = sheet.current.getBoundingClientRect()
+    drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  const onMove = (e) => {
+    const d = drag.current
+    if (!d || !bar) return
+    const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
+    if (!d.moved && Math.hypot(dx, dy) < 8) return
+    d.moved = true
+    setPos(clampPos({ x: d.left + dx, y: d.top + dy }, sheet.current))
   }
   const onUp = (e) => {
-    if (!drag.current) return
-    const dy = e.clientY - drag.current.y
-    const order = ['bar', 'half', 'full']
-    const i = order.indexOf(drag.current.size)
+    const d = drag.current
+    if (!d) return
     drag.current = null
-    if (Math.abs(dy) < 8) return setSize(size === 'bar' ? 'half' : size)
+    if (bar) {
+      if (!d.moved) return setSize(wide ? 'full' : 'half')
+      try { localStorage.setItem(BAR_POS, JSON.stringify(clampPos({ x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y }, sheet.current))) } catch { /* private mode */ }
+      return
+    }
+    const dy = e.clientY - d.y
+    const order = ['bar', 'half', 'full']
+    const i = order.indexOf(d.size)
+    if (Math.abs(dy) < 8) return
     setSize(order[Math.max(0, Math.min(2, i + (dy < 0 ? 1 : -1) * (Math.abs(dy) > 220 ? 2 : 1)))])
   }
+  const floating = bar && pos
   return (
-    <section className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}`} style={style} aria-label="Site editor">
-      <div className="eotm-grip" onPointerDown={onDown} onPointerUp={onUp} aria-hidden="true"><span /></div>
+    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}`}
+      style={floating ? { ...style, left: pos.x, top: pos.y } : style} aria-label="Site editor">
+      <div className="eotm-grip" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
+        title={bar ? 'Drag to move the editor; tap to open it' : undefined} aria-hidden="true"><span /></div>
       {header}
-      {size !== 'bar' && <div className="eotm-scroll">{children}</div>}
+      {!bar && <div className="eotm-scroll">{children}</div>}
     </section>
   )
 }

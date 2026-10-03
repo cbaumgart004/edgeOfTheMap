@@ -55,11 +55,19 @@
   border-top: 0; border-left: 1px solid var(--eotm-line); border-radius: 0;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.22);
 }
-.eotm-sheet.is-wide.is-bar { top: auto; height: 60px; border-radius: 12px 0 0 0; }
+.eotm-sheet.is-wide.is-bar { top: auto; height: auto; border-radius: 12px 0 0 0; }
 
 .eotm-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
 .eotm-grip span { display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--eotm-line); }
 .eotm-sheet.is-wide .eotm-grip { display: none; }
+.eotm-sheet.is-bar .eotm-grip { display: flex; cursor: grab; }
+.eotm-sheet.is-bar .eotm-grip:active { cursor: grabbing; }
+/* Moved by the owner (App.jsx, Sheet): a free-floating card at left/top. */
+.eotm-sheet.is-bar.is-floating {
+  right: auto; bottom: auto; width: min(420px, calc(100vw - 8px)); height: auto;
+  border: 1px solid var(--eotm-line); border-radius: 14px; padding-bottom: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); transition: none;
+}
 
 .eotm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 10px 8px; border-bottom: 1px solid var(--eotm-line); min-height: 52px; }
 .eotm-logo { height: 30px; width: auto; border-radius: 4px; }
