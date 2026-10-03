@@ -29,6 +29,7 @@ function fakeControl({ operators = [{ user_id: 'op-1', email: 'op@example.com' }
         comments.push(c)
         return { rows: [c] }
       }
+      if (sql.startsWith('SELECT 1 FROM change_request_comments')) return { rows: comments.filter((c) => c.request_id === p[0] && c.user_id === p[1] && c.body === p[2]) }
       if (sql.includes('FROM change_request_comments')) return { rows: comments.filter((c) => p[0].includes(c.request_id)) }
       if (sql.startsWith('UPDATE change_requests SET status = CASE')) {
         const r = requests.find((x) => x.id === p[0])
@@ -66,6 +67,24 @@ function setup(opts = {}) {
 }
 
 describe('change requests', () => {
+  it('Request update: a line in the thread, operators emailed and pushed, once an hour, own open tickets only', async () => {
+    const { control, mail, pushes, requests } = setup()
+    await requests.subscribe({ id: 'op-1' }, SUB)
+    const { id } = await requests.submit(SITE, USER, { body: 'Bigger footer' })
+    mail.length = 0
+    pushes.length = 0
+    await requests.nudge(id, USER)
+    expect(control.comments).toEqual([expect.objectContaining({ request_id: id, user_id: USER.id, body: 'Asked for an update.' })])
+    expect(mail).toEqual([expect.objectContaining({ to: 'op@example.com', subject: 'Update requested: StoryShaped Studios' })])
+    expect(mail[0].text).toMatch(/whitney@example.com asks for an update \(ticket New\):\n\nBigger footer/)
+    expect(pushes).toEqual([expect.objectContaining({ title: 'Update requested: StoryShaped Studios' })])
+    await expect(requests.nudge(id, USER)).rejects.toMatchObject({ status: 429 })
+    await expect(requests.nudge(id, { id: 'someone-else' })).rejects.toMatchObject({ status: 404 })
+    control.requests[0].status = 'closed'
+    control.comments.length = 0
+    await expect(requests.nudge(id, USER)).rejects.toMatchObject({ status: 400 })
+  })
+
   it('saves a request, emails every operator and pushes to their browsers', async () => {
     const { control, mail, pushes, requests } = setup()
     await requests.subscribe({ id: 'op-1' }, SUB)

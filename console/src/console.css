@@ -57,7 +57,19 @@
 }
 .eotm-sheet.is-wide.is-bar { top: auto; height: auto; border-radius: 12px 0 0 0; }
 
-.eotm-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
+.eotm-grip { display: flex; justify-content: center; align-items: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
+.eotm-sheet.is-bar .eotm-grip { justify-content: space-between; padding: 2px 4px 0; }
+.eotm-sheet.is-bar { touch-action: none; } /* the whole bar drags */
+.eotm-tuck { min-width: 30px; min-height: 22px; padding: 0 8px; border-radius: 8px; font-size: 16px; line-height: 1; color: var(--eotm-muted); cursor: pointer; }
+.eotm-tuck:hover { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); color: var(--eotm-ink); }
+/* Tucked against an edge (App.jsx, Sheet): a small tab that brings the bar back. */
+.eotm-tab {
+  position: fixed; z-index: 2; bottom: calc(80px + env(safe-area-inset-bottom)); width: 26px; height: 64px;
+  display: grid; place-items: center; font-size: 20px; cursor: pointer;
+  background: var(--eotm-accent); color: var(--eotm-accent-ink); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.eotm-tab.is-left { left: 0; border-radius: 0 12px 12px 0; }
+.eotm-tab.is-right { right: 0; border-radius: 12px 0 0 12px; }
 .eotm-grip span { display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--eotm-line); }
 .eotm-sheet.is-wide .eotm-grip { display: none; }
 .eotm-sheet.is-bar .eotm-grip { display: flex; cursor: grab; }
@@ -159,6 +171,22 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-doc { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--eotm-line); }
 .eotm-doc-open { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 4px; cursor: pointer; }
 .eotm-doc-open strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Home: the Design group under the content. */
+.eotm-menu-head { margin: 18px 0 8px; font: 600 13px var(--eotm-font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--eotm-muted); }
+/* Page › Section: a page's sections listed under it, and where the pane is. */
+.eotm-doc-wrap { border-bottom: 1px solid var(--eotm-line); }
+.eotm-doc-wrap > .eotm-doc { border-bottom: 0; }
+.eotm-fold-btn { min-width: 30px; min-height: 30px; font-size: 13px; }
+.eotm-sections { list-style: none; margin: 0 0 8px 34px; padding: 0; border-left: 2px solid var(--eotm-line); }
+.eotm-section-open { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; font-size: 14px; cursor: pointer; text-align: left; }
+.eotm-section-open:hover { background: color-mix(in srgb, var(--eotm-accent) 10%, transparent); }
+.eotm-trail { font-size: 13px; color: var(--eotm-muted); margin: 0 0 12px; overflow-wrap: anywhere; }
+.eotm-link { color: var(--eotm-accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+/* A section or row not live yet. */
+.eotm-badge { flex: none; margin-left: 8px; font: 600 11px var(--eotm-font); padding: 2px 7px; border-radius: 999px;
+  background: color-mix(in srgb, #d97706 18%, transparent); color: var(--eotm-ink); border: 1px solid #d97706; }
+.eotm-badge.is-new { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); border-color: var(--eotm-accent); }
+.eotm-item-save { margin-top: 4px; }
 .eotm-chip { flex-shrink: 0; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--eotm-line); color: var(--eotm-muted); }
 .eotm-chip.is-published { border-color: var(--eotm-accent); color: var(--eotm-ink); }
 .eotm-chip.is-changed { border-style: dashed; border-color: var(--eotm-accent); color: var(--eotm-ink); }
@@ -358,3 +386,18 @@ select.eotm-input[multiple] { min-height: 120px; }
 /* The field a click on the page opened (App.jsx, Editor): marked for a moment. */
 .eotm-root .is-picked { outline: 3px solid var(--eotm-accent, #2b6cb0); outline-offset: 4px; border-radius: 6px; transition: outline-color 1.2s; }
 .eotm-root .eotm-template-name { margin: 6px 0; }
+
+/* ------------------------------------------------------------ phones */
+/* Every control a little smaller than on a desktop; text boxes keep 16px so
+   iOS does not zoom into them. */
+@media (max-width: 1023px) {
+  .eotm-icon { min-width: 34px; min-height: 34px; font-size: 15px; }
+  .eotm-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
+  .eotm-pill { min-height: 32px; padding: 0 10px; font-size: 13px; }
+  .eotm-head { min-height: 44px; gap: 4px; padding: 2px 8px 6px; }
+  .eotm-title strong { font-size: 16px; }
+  .eotm-logo { height: 26px; }
+  .eotm-card { padding: 12px; }
+  .eotm-card strong { font-size: 16px; }
+  .eotm-sheet.is-bar { height: auto; }
+}

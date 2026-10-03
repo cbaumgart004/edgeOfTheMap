@@ -274,6 +274,16 @@
     .thread { gap: 6px; }
     .thread li { padding: 8px 12px; border-left: 3px solid var(--line); background: var(--surface); border-radius: 0 8px 8px 0; font-size: 14px; }
     .thread li p { margin: 2px 0 0; white-space: pre-wrap; }
+    /* A site's pages and connections (the editor's settings button opens it). */
+    details.status { margin: 6px 0 2px 14px; }
+    details.status > summary { font-weight: 500; color: var(--muted); }
+    .status-body { display: grid; gap: 12px; margin-top: 8px; }
+    .status-body h3 { margin: 0 0 4px; font-size: 14px; }
+    .status-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+    .status-body li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+    .dot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+    .dot::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--dot, #9ca3af); }
+    .dot.is-ok { --dot: #16a34a; } .dot.is-warn { --dot: #d97706; } .dot.is-bad { --dot: #dc2626; }
     .comment-form .row { margin-top: 8px; }
     .comment-form label.check { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-weight: 500; }
     .comment-form input[type=checkbox] { width: 18px; min-height: 18px; }
@@ -412,7 +422,8 @@
           <input id="current-password" type="password" autocomplete="current-password" required />
           <label for="changed-password">New password</label>
           <input id="changed-password" type="password" autocomplete="new-password" minlength="8" required />
-          <div class="row"><button type="submit">Change password</button></div>
+          <div class="row"><button type="submit">Change password</button>
+            <button type="button" id="reset-me" class="link">Forgot it? Email me a link</button></div>
         </form>
       </details>
       <div class="row">

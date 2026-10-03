@@ -37,6 +37,17 @@ export function checkSchema(schema) {
   for (const t of schema.tools ?? []) {
     if (!t?.label || typeof t.path !== 'string' || !t.path.startsWith('/')) errors.push('tools: each needs a label and a path starting with /')
   }
+  // What the site is wired to, on the owner's status page: a label, and the
+  // settings field (on `type`, default settings) whose value means connected.
+  for (const c of schema.connections ?? []) {
+    if (!c?.label) errors.push('connections: each needs a label')
+    if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
+    if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
+  }
+  // Where a type is listed in the editor's menu: with the content, or under Design.
+  for (const [n, t] of Object.entries(types)) {
+    if ('group' in t && !['content', 'design'].includes(t.group)) errors.push(`types.${n}: group is content or design`)
+  }
 
   const checkFields = (fields, where) => {
     if (!Array.isArray(fields)) return errors.push(`${where}: fields must be an array`)

@@ -68,6 +68,22 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
 - **Editing on the page and in the pane, mirrored (1.1.9+).** Double-clicking marked text (`data-eotm-text`,
   `data-eotm-richtext`) makes it editable where it stands; each keystroke reaches the pane, and the pane already
   redraws the page. Leaving the text (or Escape) hands the page back.
+- **Page › Section › Object (1.3.0+).** A page in a list folds open to its sections, each marked **Not live**
+  or **New, not live** against the published copy; a tap opens the page at that section. In the editor a trail
+  (Home › Content section: Values › …) names where the pane is, each step a way back up, and the same badges sit
+  on every section and row. Opening a section in the pane brings it into view on the page and outlines it. A
+  changed section offers **Save** and **Save as custom template**.
+- **Content and Design (1.3.0+).** The home menu lists pages and entries first, then a Design group: the look's
+  types (a type's `group`, else any named for a theme, layout, setting or menu), **Section templates** (rename or
+  remove a saved template) and Types and names.
+- **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
+  against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
+- **Settings (1.3.0+).** The gear in the editor's header opens the admin page at `?site=<slug>`: that site's
+  **Pages and connections** (every page and whether it is live; each address with its UptimeRobot uptime; what
+  the schema's `connections` say the site is wired to, set or not, from the published settings), the login
+  (change password, or email a reset link), and the owner's requests, each open one with **Request update**,
+  which adds a line to its thread and emails and pushes every operator, at most once an hour
+  (`POST /api/me/requests/<id>/nudge`; `GET /api/sites/<site>/status`).
 - **One click opens what was clicked (1.2.3+).** A click on marked text makes it typeable in place (no double-click)
   and opens the document in the pane at that field, scrolled to and outlined; nothing in the pane takes focus, so
   typing carries on on the page. A click anywhere else in a marked part opens it at its nearest `data-eotm-field`,

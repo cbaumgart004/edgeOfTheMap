@@ -77,6 +77,12 @@ const BAR_POS = 'eotm:bar-pos'
 const readBarPos = () => {
   try { return JSON.parse(localStorage.getItem(BAR_POS)) } catch { return null }
 }
+// A phone's minimised editor tucked against one edge, a small tab left
+// showing: 'left', 'right' or null. Kept in this browser for every site.
+const BAR_TUCK = 'eotm:bar-tuck'
+const readTuck = () => {
+  try { const t = localStorage.getItem(BAR_TUCK); return t === 'left' || t === 'right' ? t : null } catch { return null }
+}
 // Keeps the whole bar on screen, however the window has changed since.
 const clampPos = (pos, el) => {
   if (!pos || !el) return pos
@@ -91,9 +97,17 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   const drag = useRef(null)
   const sheet = useRef(null)
   const bar = size === 'bar'
-  // Minimised, the editor floats: drag its grip anywhere on the page, so it is
-  // never parked over the part being looked at. A tap on the grip opens it.
+  // Minimised, the editor floats: drag it by its grip or its title anywhere on
+  // the page, so it is never parked over the part being looked at. A tap on
+  // the grip opens it. On a phone ‹ and › tuck it against that edge, leaving a
+  // tab; a tap on the tab brings the bar back.
   const [pos, setPos] = useState(readBarPos)
+  const [tuck, setTuckState] = useState(readTuck)
+  const setTuck = (side) => {
+    setTuckState(side)
+    try { if (side) localStorage.setItem(BAR_TUCK, side); else localStorage.removeItem(BAR_TUCK) } catch { /* private mode */ }
+  }
+  const dragged = useRef(false)
   useEffect(() => {
     if (!bar) return undefined
     const fit = () => setPos((p) => clampPos(p, sheet.current))
@@ -104,8 +118,10 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
 
   const onDown = (e) => {
     if (wide && !bar) return
+    // The bar's own controls stay buttons; anywhere else on it starts a drag.
+    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, a, input, select')) return
     const rect = sheet.current.getBoundingClientRect()
-    drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false }
+    drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false, grip: !!e.target.closest?.('.eotm-grip') }
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
   const onMove = (e) => {
@@ -122,7 +138,9 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     if (!d) return
     drag.current = null
     if (bar) {
-      if (!d.moved) return setSize(wide ? 'full' : 'half')
+      // A tap on the grip opens the editor; a tap on the title does that itself.
+      if (!d.moved) return d.grip ? setSize(wide ? 'full' : 'half') : undefined
+      dragged.current = true // the click that ends a drag is not a tap
       try { localStorage.setItem(BAR_POS, JSON.stringify(clampPos({ x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y }, sheet.current))) } catch { /* private mode */ }
       return
     }
@@ -133,11 +151,24 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     setSize(order[Math.max(0, Math.min(2, i + (dy < 0 ? 1 : -1) * (Math.abs(dy) > 220 ? 2 : 1)))])
   }
   const floating = bar && pos
+  if (bar && !wide && tuck) return (
+    <button type="button" className={`eotm-tab is-${tuck}`} style={{ ...style, ...(pos ? { top: pos.y, bottom: 'auto' } : null) }}
+      aria-label="Show the editor" title="Show the editor" onClick={() => setTuck(null)}>
+      {tuck === 'left' ? '›' : '‹'}
+    </button>
+  )
+  // Minimised, the whole bar drags (not its buttons); open, only the grip.
+  const dragOn = { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp }
   return (
     <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}`}
-      style={floating ? { ...style, left: pos.x, top: pos.y } : style} aria-label="Site editor">
-      <div className="eotm-grip" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
-        title={bar ? 'Drag to move the editor; tap to open it' : undefined} aria-hidden="true"><span /></div>
+      style={floating ? { ...style, left: pos.x, top: pos.y } : style} aria-label="Site editor"
+      {...(bar ? dragOn : null)}
+      onClickCapture={(e) => { if (dragged.current) { dragged.current = false; e.preventDefault(); e.stopPropagation() } }}>
+      <div className="eotm-grip" {...(bar ? null : dragOn)} title={bar ? 'Drag to move the editor; tap to open it' : undefined}>
+        {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the left edge" title="Tuck to the left" onClick={() => setTuck('left')}>‹</button>}
+        <span aria-hidden="true" />
+        {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the right edge" title="Tuck to the right" onClick={() => setTuck('right')}>›</button>}
+      </div>
       {header}
       {!bar && <div className="eotm-scroll">{children}</div>}
     </section>
@@ -190,7 +221,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   const style = brandStyle(schema.brand, mode)
   const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
-    : view.name === 'types' ? 'Types and names' : schema.brand.name
+    : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates' : schema.brand.name
 
   const header = (
     <header className="eotm-head">
@@ -206,6 +237,15 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         {view.saveState && <span className={`eotm-save is-${view.saveState}`}>{view.saveState === 'saving' ? 'Saving…' : view.saveState === 'saved' ? 'Saved' : view.saveState === 'error' ? 'Not saved' : ''}</span>}
       </button>
       {!wide && <button type="button" className="eotm-icon" aria-label={size === 'full' ? 'Shrink editor' : 'Expand editor'} onClick={() => setSize(size === 'full' ? 'half' : 'full')}>{size === 'full' ? '▾' : '▴'}</button>}
+      {dashboard && (
+        <a className="eotm-icon" href={`${dashboard.replace(/\/$/, '')}/?site=${encodeURIComponent(schema.site)}`}
+          aria-label="Your account, pages and requests" title="Your account, pages and requests">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
+        </a>
+      )}
       <button type="button" className="eotm-icon" aria-label="Close editor" onClick={close}>✕</button>
       {/* Two ways to look at the page, named for what each shows: the owner's
           changes before they are live, or the live site as customers get it. */}
@@ -312,16 +352,18 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
-    onTypes={() => setView({ name: 'types' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
+    onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
   else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
+  else if (view.name === 'templates') body = <Templates schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'list') body = (
     <DocList schema={schema} store={store} type={view.type} notify={notify}
-      open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })} />)
+      open={(doc, item) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), focus: item ?? null, focusAt: Date.now() })} />)
   else body = (
     <Editor key={view.id} schema={schema} store={store} bridge={bridge} id={view.id} ctxBase={ctxBase} notify={notify}
       onState={(patch) => setView((v) => ({ ...v, ...patch }))}
       onGone={() => setView({ name: 'list', type: view.type })}
       onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
+      onFocus={(item) => setView((v) => ({ ...v, focus: item, focusField: null, focusAt: Date.now() }))}
       focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
 
   if (customer) return (
@@ -471,7 +513,11 @@ function ToDeveloper({ schema, store, notify, refreshKey, onCount }) {
 // More than this many types on a phone become a dropdown instead of cards.
 const CARD_LIMIT = 6
 
-function Home({ schema, store, wide, open, onTypes, onTool }) {
+// Where a type sits on the home menu: with the content, or under Design (its
+// look: themes, layouts, settings, menus). The schema can say (`group`).
+export const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
+
+function Home({ schema, store, wide, open, onTypes, onTemplates, onTool }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -491,40 +537,96 @@ function Home({ schema, store, wide, open, onTypes, onTool }) {
       </button>
     </li>
   ))
-  const extra = (
+  const templates = schema.custom?.templates ?? []
+  const card = ([name, t]) => (
+    <li key={name}>
+      <button type="button" className="eotm-card" onClick={() => open(name)}>
+        <strong>{t.plural ?? t.label}</strong>
+        <span>{countOf(name) ?? '…'}</span>
+      </button>
+    </li>
+  )
+  const design = types.filter(([n, t]) => isDesign(n, t))
+  const content = types.filter(([n, t]) => !isDesign(n, t))
+  // Design: the site's look, and the owner's section templates and types,
+  // listed apart from the pages and entries.
+  const designList = (
     <>
-      {tools}
-      <li>
-        <button type="button" className="eotm-card is-request" onClick={onTypes}>
-          <strong>Types and names</strong>
-          <span>Design your own, rename the rest</span>
-        </button>
-      </li>
+      <h3 className="eotm-menu-head">Design</h3>
+      <ul className="eotm-types">
+        {design.map(card)}
+        <li>
+          <button type="button" className="eotm-card" onClick={onTemplates}>
+            <strong>Section templates</strong>
+            <span>{templates.length ? `${templates.length} saved` : 'None saved yet'}</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" className="eotm-card is-request" onClick={onTypes}>
+            <strong>Types and names</strong>
+            <span>Design your own, rename the rest</span>
+          </button>
+        </li>
+      </ul>
     </>
   )
+  const extra = <>{tools}</>
   if (!wide && types.length > CARD_LIMIT) {
     return (
       <div className="eotm-types-picker">
         <label className="eotm-label" htmlFor="eotm-type-pick">What would you like to edit?</label>
         <select id="eotm-type-pick" className="eotm-input" value="" onChange={(e) => e.target.value && open(e.target.value)}>
           <option value="">Choose…</option>
-          {types.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{countOf(name) != null ? ` (${countOf(name)})` : ''}</option>)}
+          {content.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{countOf(name) != null ? ` (${countOf(name)})` : ''}</option>)}
         </select>
         <ul className="eotm-types">{extra}</ul>
+        {designList}
       </div>
     )
   }
   return (
-    <ul className="eotm-types">
-      {types.map(([name, t]) => (
-        <li key={name}>
-          <button type="button" className="eotm-card" onClick={() => open(name)}>
-            <strong>{t.plural ?? t.label}</strong>
-            <span>{countOf(name) ?? '…'}</span>
-          </button>
+    <>
+      <ul className="eotm-types">
+        {content.map(card)}
+        {extra}
+      </ul>
+      {designList}
+    </>
+  )
+}
+
+// The owner's saved section templates, apart from the pages they are used on:
+// rename or remove one. Adding a section offers them (Fields.jsx, Repeater).
+function Templates({ schema, store, notify, onSaved }) {
+  const custom = schema.custom ?? {}
+  const list = custom.templates ?? []
+  const [renaming, setRenaming] = useState(null)
+  const save = async (templates, msg) => {
+    try { const { schema: next } = await store.saveCustom({ ...custom, templates }); onSaved(next); notify(msg) } catch (e) { notify(e.message) }
+  }
+  if (!list.length) return <p className="eotm-empty">No templates yet. On a page, open a section and choose ☆ Save as template.</p>
+  return (
+    <ul className="eotm-list eotm-templates">
+      {list.map((t, i) => (
+        <li key={`${t.name}:${i}`} className="eotm-doc">
+          <span className="eotm-doc-open">
+            <strong>{t.name}</strong>
+            <span className="eotm-chip">{schema.blocks[t.block?._type]?.label ?? t.block?._type}</span>
+          </span>
+          {renaming === i ? (
+            <form className="eotm-row" onSubmit={(e) => {
+              e.preventDefault()
+              const name = e.currentTarget.elements.name.value.trim()
+              setRenaming(null)
+              if (name && name !== t.name) save(list.map((x, j) => (j === i ? { ...x, name } : x)), 'Renamed.')
+            }}>
+              <input name="name" className="eotm-input" defaultValue={t.name} maxLength={60} autoFocus aria-label="Template name" />
+              <button className="eotm-btn is-primary">Rename</button>
+            </form>
+          ) : <button type="button" className="eotm-icon" aria-label={`Rename ${t.name}`} onClick={() => setRenaming(i)}>✎</button>}
+          <button type="button" className="eotm-icon" aria-label={`Remove ${t.name}`} onClick={() => save(list.filter((_, j) => j !== i), 'Removed. Sections already on pages are kept.')}>✕</button>
         </li>
       ))}
-      {extra}
     </ul>
   )
 }
@@ -534,6 +636,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   const children = nested ? [] : Object.entries(schema.types).filter(([, c]) => c.menuUnder === type).map(([n]) => n)
   const [docs, setDocs] = useState(null)
   const [q, setQ] = useState('')
+  const [unfolded, setUnfolded] = useState(() => new Set())
   useEffect(() => { store.list(type).then(setDocs).catch((e) => notify(e.message)) }, [store, type, notify])
   const shown = useMemo(() => (docs ?? []).filter((d) => titleOf(schema, d).toLowerCase().includes(q.toLowerCase())), [docs, q, schema])
   const create = async () => {
@@ -550,15 +653,39 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
       </div>
       {docs === null ? <p className="eotm-empty">Loading…</p> : shown.length === 0 ? <p className="eotm-empty">Nothing here yet.</p> : (
         <ul>
-          {shown.map((d) => (
-            <li key={d.id} className="eotm-doc">
-              <button type="button" className="eotm-doc-open" onClick={() => open(d)}>
-                <strong>{titleOf(schema, d)}</strong>
-                <span className={`eotm-chip is-${d.status}`}>{STATUS_TEXT[d.status]}</span>
-              </button>
-              <button type="button" className="eotm-icon" aria-label={`Duplicate ${titleOf(schema, d)}`} onClick={() => duplicate(d)}>⧉</button>
-            </li>
-          ))}
+          {shown.map((d) => {
+            // Page › Section: a document made of sections lists them under it,
+            // each marked when it is not live yet; a tap opens it there.
+            const sections = sectionsOf(schema, d)
+            const changed = sections.filter((s) => s.state).length
+            return (
+              <li key={d.id} className="eotm-doc-wrap">
+                <div className="eotm-doc">
+                  {sections.length > 0 && (
+                    <button type="button" className="eotm-icon eotm-fold-btn" aria-expanded={unfolded.has(d.id)} aria-label={`Sections of ${titleOf(schema, d)}`}
+                      onClick={() => setUnfolded((s) => { const n = new Set(s); n.has(d.id) ? n.delete(d.id) : n.add(d.id); return n })}>{unfolded.has(d.id) ? '▾' : '▸'}</button>
+                  )}
+                  <button type="button" className="eotm-doc-open" onClick={() => open(d)}>
+                    <strong>{titleOf(schema, d)}</strong>
+                    <span className={`eotm-chip is-${d.status}`}>{STATUS_TEXT[d.status]}{changed && d.status === 'changed' ? ` · ${changed}` : ''}</span>
+                  </button>
+                  <button type="button" className="eotm-icon" aria-label={`Duplicate ${titleOf(schema, d)}`} onClick={() => duplicate(d)}>⧉</button>
+                </div>
+                {unfolded.has(d.id) && (
+                  <ul className="eotm-sections">
+                    {sections.map((s) => (
+                      <li key={s.id}>
+                        <button type="button" className="eotm-section-open" onClick={() => open(d, s.id)}>
+                          <span>{s.label}</span>
+                          {s.state && <span className={`eotm-badge is-${s.state}`}>{BADGE_TEXT[s.state]}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
       {children.map((c) => (
@@ -571,7 +698,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   )
 }
 
-function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, focus, focusField, focusAt, editorApi, pendingSize }) {
+function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, onFocus, focus, focusField, focusAt, editorApi, pendingSize }) {
   const [doc, setDoc] = useState(null)
   const [conflict, setConflict] = useState(null)
   const [serverErrors, setServerErrors] = useState([])
@@ -718,7 +845,12 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
   if (!doc) return <p className="eotm-empty">Loading…</p>
   const type = schema.types[doc.type]
   const draftErrors = checkDocument(schema, doc.type, doc.data, { draft: true })
-  const ctx = { ...ctxBase, docId: doc.id, docType: doc.type, docData: doc.data, focus, focusAt, errors: [...draftErrors, ...serverErrors] }
+  // What is live of each section and row, by _id, for the "not live" badges.
+  const live = doc.status === 'changed' ? liveById(doc.publishedData) : null
+  const stateOf = (item) => (!live || !item?._id ? null : !live.has(item._id) ? 'new' : live.get(item._id) !== JSON.stringify(item) ? 'changed' : null)
+  const ctx = { ...ctxBase, docId: doc.id, docType: doc.type, docData: doc.data, focus, focusAt, errors: [...draftErrors, ...serverErrors],
+    stateOf, saveNow, onPick: onFocus }
+  const trail = trailTo(schema, doc.data, focus)
 
   return (
     <div className="eotm-editor">
@@ -741,6 +873,18 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
       </div>
+      {/* Page › Section › Object: where the pane is, each step a way back up. */}
+      {trail.length > 0 && (
+        <nav className="eotm-trail" aria-label="Where you are">
+          <button type="button" className="eotm-link" onClick={() => onFocus(null)}>{titleOf(schema, doc)}</button>
+          {trail.map((t, i) => (
+            <React.Fragment key={t.id}>
+              <span aria-hidden="true"> › </span>
+              {i === trail.length - 1 ? <strong>{t.label}</strong> : <button type="button" className="eotm-link" onClick={() => onFocus(t.id)}>{t.label}</button>}
+            </React.Fragment>
+          ))}
+        </nav>
+      )}
       <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} />
       <div className="eotm-danger">
         <button type="button" className="eotm-btn is-quiet" onClick={async () => { try { onOpen(await store.duplicate(id)) } catch (e) { notify(e.message) } }}>Duplicate</button>
@@ -748,6 +892,65 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------- nesting
+
+const BADGE_TEXT = { new: 'New, not live', changed: 'Not live' }
+
+// Every object with an _id in a document's live copy, as JSON, by _id.
+function liveById(data) {
+  const out = new Map()
+  const walk = (v) => {
+    if (!v || typeof v !== 'object') return
+    if (Array.isArray(v)) return v.forEach(walk)
+    if (v._id) out.set(v._id, JSON.stringify(v))
+    Object.values(v).forEach(walk)
+  }
+  walk(data)
+  return out
+}
+
+// What to call a section or a row of one: its own title, else its kind.
+export function labelOf(schema, obj) {
+  const own = obj.title || obj.heading || obj.label || obj.name || obj.text
+  const kind = schema.blocks?.[obj._type]?.label
+  if (own && kind) return `${kind}: ${own}`
+  return own || kind || 'Item'
+}
+
+// The sections of a document (its `blocks` fields), each with whether it is
+// live: 'new', 'changed' or null.
+function sectionsOf(schema, doc) {
+  const fields = schema.types[doc.type]?.fields ?? []
+  const live = doc.status === 'changed' ? liveById(doc.publishedData) : null
+  const out = []
+  for (const f of fields) {
+    if (f.kind !== 'blocks') continue
+    for (const b of doc.data?.[f.name] ?? []) {
+      if (!b?._id) continue
+      const state = !live ? null : !live.has(b._id) ? 'new' : live.get(b._id) !== JSON.stringify(b) ? 'changed' : null
+      out.push({ id: b._id, label: labelOf(schema, b), state })
+    }
+  }
+  return out
+}
+
+// The objects from the document down to the one with `id`: [{ id, label }].
+function trailTo(schema, data, id) {
+  if (!id) return []
+  const path = []
+  const walk = (v) => {
+    if (!v || typeof v !== 'object') return false
+    if (Array.isArray(v)) return v.some(walk)
+    const mine = v._id ? { id: v._id, label: labelOf(schema, v) } : null
+    if (mine) path.push(mine)
+    if (v._id === id) return true
+    if (Object.values(v).some(walk)) return true
+    if (mine) path.pop()
+    return false
+  }
+  return walk(data) ? path : []
 }
 
 // Publish, or, when the document has something worth a second look (a Listing

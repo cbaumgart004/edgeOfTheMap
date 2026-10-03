@@ -1,5 +1,12 @@
 {
   "site": "spiritseeds",
+  "connections": [
+    {"label": "Newsletter (Kit)", "field": "newsletterFormId", "help": "Signups from the site and the Connect window go to this Kit form."},
+    {"label": "Teaching schedule", "detail": "Collected every night from the studios' booking pages.", "help": "Classes appear on the site without being typed in."},
+    {"label": "Facebook", "field": "facebookUrl", "switch": "showFacebook", "show": true},
+    {"label": "Instagram", "field": "instagramUrl", "switch": "showInstagram", "show": true},
+    {"label": "Contact email", "field": "contactEmail", "show": true}
+  ],
   "version": 2,
   "brand": {
     "name": "Spirit Seeds Wellness",

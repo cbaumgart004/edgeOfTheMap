@@ -121,3 +121,12 @@ schema lists the site's own admin pages in the editor's menu. They are not docum
 shows that page of the site under the editor (the bridge's `navigate`). The page guards itself; the
 console only offers the way there.
 
+
+## Status page and menu groups (1.3.0+)
+
+- **`connections`** (top level): what the site is wired to, on the owner's status page (admin page, Pages and
+  connections). Each `{ "label", "field"?, "type"?, "switch"?, "show"?, "detail"?, "help"? }`: connected when the
+  published `type` document (default `settings`) has `field` set (a list: not empty) and, with `switch`, that
+  boolean on; `show` prints the value, `detail` a fixed line. No `field`: always connected.
+- **`group`** on a type: `"content"` or `"design"`, where the editor's home menu lists it. Unset, a type named for
+  a theme, layout, setting or menu is Design.

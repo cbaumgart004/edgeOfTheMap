@@ -209,6 +209,13 @@ export function createHandler(deps) {
         return json(200, await requests.mine(user), { 'cache-control': 'private, no-store' })
       }
 
+      // "Request update" on one of the signed-in user's own open tickets.
+      const nudge = path.match(/^\/api\/me\/requests\/([\w-]+)\/nudge$/)
+      if (method === 'POST' && nudge) {
+        const user = await verified(event)
+        return json(200, await requests.nudge(nudge[1], user), { 'cache-control': 'no-store' })
+      }
+
       // Anyone signed in on the admin page can be told about their tickets on
       // this device; an editor token (bound to one site) cannot subscribe.
       if (path === '/api/me/push' && (method === 'POST' || method === 'DELETE')) {
@@ -317,6 +324,30 @@ export function createHandler(deps) {
         await deps.control.query('UPDATE sites SET custom_schema = $2, updated_at = now() WHERE id = $1', [site.id, custom])
         siteCache.delete(site.slug)
         return json(200, { schema: mergeCustom(site.base_schema ?? site.schema, custom) }, headers)
+      }
+      // The owner's status page (admin page, account view): each address of
+      // the site with its uptime monitor, and what the site is wired to
+      // (schema `connections`), each set or not from the published settings.
+      if (method === 'GET' && rest === '/status') {
+        let monitors = []
+        try { monitors = deps.monitors ? (await deps.monitors.list()).monitors ?? [] : [] } catch { /* shown as unknown */ }
+        const hostOf = (u) => { try { return new URL(u).host } catch { return null } }
+        const origins = site.allowed_origins.map((url) => {
+          const m = monitors.find((x) => hostOf(x.url) === hostOf(url))
+          return { url, monitor: m ? { status: m.status, uptimeMonth: m.uptimeMonth, uptimeDay: m.uptimeDay } : null }
+        })
+        const conns = site.schema.connections ?? []
+        const svc = await serviceFor(site)
+        const settingsOf = {}
+        for (const type of new Set(conns.map((c) => c.type ?? 'settings'))) {
+          settingsOf[type] = site.schema.types[type] ? (await svc.listPublished(type))[0]?.data ?? {} : {}
+        }
+        const connections = conns.map((c) => {
+          const value = c.field ? settingsOf[c.type ?? 'settings']?.[c.field] : null
+          const on = c.field ? (Array.isArray(value) ? value.length > 0 : Boolean(value)) &&(!c.switch || settingsOf[c.type ?? 'settings']?.[c.switch] === true) : true
+          return { label: c.label, help: c.help ?? null, connected: on, detail: on ? (c.show ? String(value) : c.detail ?? null) : null }
+        })
+        return json(200, { origins, connections }, headers)
       }
       // "Request a change" from the editor on the site itself.
       if (method === 'POST' && rest === '/requests') return json(201, await requests.submit(site, user, parseBody(event)), headers)

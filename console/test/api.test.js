@@ -47,7 +47,7 @@ function fakeSiteDb() {
   }
 }
 
-function setup({ member = true, site = SITE, media } = {}) {
+function setup({ member = true, site = SITE, media, monitors } = {}) {
   const db = fakeSiteDb()
   const handle = createHandler({
     control: {
@@ -61,6 +61,7 @@ function setup({ member = true, site = SITE, media } = {}) {
     verifyToken: async (t) => { if (t !== 'good') throw new Error('bad'); return { id: 'user-1' } },
     presign: async ({ bucket, key }) => `https://${bucket}.s3.amazonaws.com/${key}?sig`,
     media,
+    monitors,
     sanitize: (s) => (type, data) => sanitizeDocumentData(s, type, data, purify),
   })
   const call = (method, path, { body, token = 'good', origin = ORIGIN, query } = {}) =>
@@ -74,6 +75,23 @@ const base = '/api/sites/spiritseeds'
 const event = { title: 'New moon circle', startsAt: '2026-10-21T18:30:00-06:00', description: '<p onclick="x()">Join <a href="javascript:bad()">us</a> <span class="text-gradient evil">here</span></p>' }
 
 describe('console API', () => {
+  it('status: each address with its monitor, and each connection set or not', async () => {
+    const site = { ...SITE, allowed_origins: [ORIGIN, 'https://preview.spiritseedswellness.com'],
+      schema: { ...schema, connections: [{ label: 'Teaching schedule', detail: 'Nightly' }, { label: 'Newsletter', field: 'newsletterFormId' }] } }
+    const monitors = { list: async () => ({ configured: true, monitors: [{ url: `${ORIGIN}/`, status: 'up', uptimeMonth: 99.9, uptimeDay: 100 }] }) }
+    const r = await setup({ site, monitors }).call('GET', `${base}/status`)
+    expect(r.statusCode).toBe(200)
+    expect(r.json.origins).toEqual([
+      { url: ORIGIN, monitor: { status: 'up', uptimeMonth: 99.9, uptimeDay: 100 } },
+      { url: 'https://preview.spiritseedswellness.com', monitor: null },
+    ])
+    expect(r.json.connections).toEqual([
+      { label: 'Teaching schedule', help: null, connected: true, detail: 'Nightly' },
+      { label: 'Newsletter', help: null, connected: false, detail: null },
+    ])
+    expect((await setup({ member: false }).call('GET', `${base}/status`)).statusCode).toBe(403)
+  })
+
   it('serves boot data without a login, open to any origin', async () => {
     const r = await setup().call('GET', `${base}/boot`, { token: null })
     expect(r.statusCode).toBe(200)

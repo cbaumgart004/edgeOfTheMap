@@ -237,6 +237,68 @@ describe('console in a page', () => {
     page.remove()
   })
 
+  it('lists a page\'s sections with what is not live, opens one there, and shows Page › Section', async () => {
+    localStorage.clear()
+    const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+    const store = localStore({ schema: ss })
+    const doc = await store.create({ type: 'page', data: { title: 'Home', blocks: [
+      { _id: 'intro', _type: 'contentSection', layout: 'centered', title: 'Welcome' },
+      { _id: 'vals', _type: 'contentSection', layout: 'values', title: 'Our Core Values' },
+    ] } })
+    const live = await store.publish(doc.id, doc.version)
+    // One section edited and one added since: both marked, the third not.
+    await store.save(doc.id, { baseVersion: live.version, data: { ...live.data, blocks: [
+      { _id: 'intro', _type: 'contentSection', layout: 'centered', title: 'Welcome' },
+      { _id: 'vals', _type: 'contentSection', layout: 'values', title: 'Values' },
+      { _id: 'more', _type: 'contentSection', layout: 'centered', title: 'More' },
+    ] } })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+
+    // Home: Site settings sits under Design, beside the templates.
+    const head = byText(host, '.eotm-menu-head', 'Design')
+    expect(head).toBeTruthy()
+    expect(byText(host, 'ul.eotm-types:last-of-type button.eotm-card', 'Site settings')).toBeTruthy()
+    expect(byText(host, 'button.eotm-card', 'Section templates')).toBeTruthy()
+
+    await act(async () => byText(host, 'button.eotm-card', 'Pages').click())
+    await tick(10)
+    await act(async () => host.querySelector('button.eotm-fold-btn').click())
+    const rows = [...host.querySelectorAll('.eotm-section-open')].map((b) => b.textContent)
+    expect(rows).toEqual(['Content section: Welcome', 'Content section: ValuesNot live', 'Content section: MoreNew, not live'])
+
+    await act(async () => byText(host, '.eotm-section-open', 'Values').click())
+    await tick(20)
+    expect(host.querySelector('[data-eotm-item="vals"]').classList.contains('is-open')).toBe(true)
+    expect(host.querySelector('.eotm-trail').textContent).toBe('Home › Content section: Values')
+    expect(host.querySelector('[data-eotm-item="vals"] .eotm-badge').textContent).toBe('Not live')
+    expect(byText(host, '[data-eotm-item="vals"] button', 'Save as custom template')).toBeTruthy()
+    expect(host.querySelector('[data-eotm-item="intro"] .eotm-badge')).toBeNull()
+    await act(async () => root.unmount())
+  })
+
+  it('tucks the minimised editor against an edge, leaving a tab that brings it back', async () => {
+    localStorage.clear()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+    await act(async () => host.querySelector('.eotm-title').click())
+    await act(async () => host.querySelector('button[aria-label="Tuck the editor to the right edge"]').click())
+    expect(host.querySelector('.eotm-sheet')).toBeNull()
+    const tab = host.querySelector('button.eotm-tab.is-right')
+    expect(tab).toBeTruthy()
+    expect(localStorage.getItem('eotm:bar-tuck')).toBe('right')
+    await act(async () => tab.click())
+    expect(host.querySelector('.eotm-sheet.is-bar')).toBeTruthy()
+    expect(localStorage.getItem('eotm:bar-tuck')).toBeNull()
+    await act(async () => root.unmount())
+  })
+
   it('lets the owner design a section type and then place it on a page', async () => {
     localStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))

@@ -20,6 +20,8 @@ const MANAGE_URL = 'https://admin.theedgeofthemap.com/?manage'
 const HOME_URL = 'https://admin.theedgeofthemap.com/'
 // Azure DevOps' Basic process: New, Active, Resolved, Closed.
 export const STATES = ['new', 'active', 'resolved', 'closed']
+// The thread line a "Request update" leaves (nudge), also its rate key.
+const NUDGE = 'Asked for an update.'
 const LABEL = { new: 'New', active: 'Active', resolved: 'Resolved', closed: 'Closed' }
 
 export function createRequests(deps) {
@@ -147,7 +149,7 @@ export function createRequests(deps) {
     // The signed-in user's own tickets and their threads, for the admin page.
     async mine(user) {
       const { rows } = await q(
-        `SELECT r.id, r.status, r.page, r.body, r.created_at, r.updated_at, COALESCE(s.name, 'Sign-in help') AS site_name
+        `SELECT r.id, r.status, r.page, r.body, r.created_at, r.updated_at, COALESCE(s.name, 'Sign-in help') AS site_name, s.slug AS site
          FROM change_requests r LEFT JOIN sites s ON s.id = r.site_id
          WHERE r.user_id = $1 ORDER BY r.created_at DESC LIMIT 30`, [user.id])
       const comments = await commentsFor(rows.map((r) => r.id))
@@ -192,6 +194,27 @@ export function createRequests(deps) {
       await q(`UPDATE change_requests SET status = CASE WHEN status = 'new' THEN 'active' ELSE status END, updated_at = now() WHERE id = $1`, [id])
       if (notify) await tell(ticket, `Reply to your request (${ticket.site_name})`, `${operator.email ?? 'Edge of the Map'}:\n\n${body}`)
       return { id: saved.id, created_at: saved.created_at }
+    },
+
+    // "Request update" on an open ticket of the requester's own: a line in its
+    // thread, and an email and push to every operator. Once an hour at most.
+    async nudge(id, user) {
+      const ticket = await load(id)
+      if (!ticket.user_id || ticket.user_id !== user.id) throw new ServiceError(404, 'No such request.')
+      if (ticket.status === 'closed') throw new ServiceError(400, 'That request is closed. Send a new one if something is still wrong.')
+      const { rows: recent } = await q(
+        `SELECT 1 FROM change_request_comments WHERE request_id = $1 AND user_id = $2 AND body = $3 AND created_at > now() - interval '1 hour'`,
+        [id, user.id, NUDGE])
+      if (recent.length) throw new ServiceError(429, 'You asked for an update within the last hour. Edge of the Map has been told.')
+      const { rows: [saved] } = await q(
+        `INSERT INTO change_request_comments (request_id, user_id, email, body, notified) VALUES ($1, $2, $3, $4, false)
+         RETURNING created_at`, [id, user.id, user.email ?? null, NUDGE])
+      await announce({
+        subject: `Update requested: ${ticket.site_name}`,
+        text: `${user.email ?? 'An editor'} asks for an update (ticket ${LABEL[ticket.status] ?? ticket.status}):\n\n${ticket.body.slice(0, 600)}`,
+        url: MANAGE_URL,
+      })
+      return { ok: true, created_at: saved.created_at }
     },
 
     publicKey: async () => (await vapidKeys()).publicKey,

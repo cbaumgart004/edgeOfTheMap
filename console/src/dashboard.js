@@ -117,8 +117,12 @@ async function loadSites() {
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a>${
       // A site with a preview (or a second domain): open that one instead.
-      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}</li>`).join('')
+      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}<details class="status" data-status="${esc(s.slug)}"><summary>Pages and connections</summary><div class="status-body"><p class="meta">Loading…</p></div></details></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
+  // ?site=<slug> (the editor's settings button): that site's status, open.
+  const asked = new URLSearchParams(location.search).get('site')
+  const box = asked && [...document.querySelectorAll('#sites details.status')].find((d) => d.dataset.status === asked)
+  if (box) { box.open = true; requestAnimationFrame(() => box.scrollIntoView({ block: 'start' })) }
   $('#request').hidden = !data.sites.length
   loadMine().catch(() => { $('#mine').hidden = true })
   $('#rq-site').innerHTML = data.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
@@ -563,6 +567,7 @@ async function loadMine() {
         <span class="meta">${esc(r.site_name)} · ${esc(when(r.created_at))}</span></div>
       <p class="request">${esc(r.body)}</p>
       ${thread(r.comments, false)}
+      ${r.status === 'closed' ? '' : `<div class="row" style="margin-top:0"><button type="button" class="link" data-nudge="${esc(r.id)}">Request update</button></div>`}
     </li>`).join('')
   mePushStatus().catch(() => {})
 }
@@ -594,6 +599,73 @@ const run = (fn) => async (e) => {
   }
   setTimeout(() => mark(label, ''), 2500)
 }
+
+// "Request update" on an open ticket: Edge of the Map gets an email and a push.
+$('#mine-list').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-nudge]')
+  if (!btn) return
+  btn.disabled = true
+  try {
+    await api('POST', `/api/me/requests/${encodeURIComponent(btn.dataset.nudge)}/nudge`)
+    say('Edge of the Map has been asked for an update.')
+    await loadMine()
+  } catch (err) {
+    say(err.message, true)
+    btn.disabled = false
+  }
+})
+
+// A link to set a new password, sent to the signed-in email.
+$('#reset-me').addEventListener('click', async () => {
+  if (!myEmail) return say('Sign in again first.', true)
+  say('Sending…')
+  try {
+    const res = await fetch('/api/password-reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: myEmail }) })
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) say(`Sent to ${myEmail}. It comes from auth@mail.myneon.app; check spam if it is not there in a few minutes.`)
+    else say(data.error ?? 'Could not send the link. Try again shortly.', true)
+  } catch {
+    say('Could not reach the server. Try again shortly.', true)
+  }
+})
+
+// A site's pages and connections, read when its fold is opened: every page
+// (each type with an address on the site that is content, not design) with
+// whether it is live, each address with its uptime, and what the site is
+// wired to. The editor's settings button lands here with ?site=<slug>.
+const DOC_STATE = { published: ['Live', 'is-ok'], changed: ['Changes not live yet', 'is-warn'], draft: ['Not published', ''] }
+const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
+const bare = (url) => url.replace(/^https:\/\//, '')
+async function loadStatus(box) {
+  const slug = box.dataset.status
+  const body = box.querySelector('.status-body')
+  try {
+    const boot = await (await fetch(`/api/sites/${slug}/boot`)).json()
+    const types = Object.entries(boot.schema?.types ?? {}).filter(([n, t]) => t.previewPath && !t.singleton && !isDesign(n, t))
+    const [status, ...lists] = await Promise.all([
+      api('GET', `/api/sites/${slug}/status`),
+      ...types.map(([n]) => api('GET', `/api/sites/${slug}/documents?type=${encodeURIComponent(n)}`)),
+    ])
+    const title = (d) => d.data?.title ?? d.data?.name ?? d.slug ?? 'Untitled'
+    const pages = types.map(([, t], i) => `<h3>${esc(t.plural ?? t.label)}</h3><ul>${lists[i].length ? lists[i].map((d) => {
+      const [label, cls] = DOC_STATE[d.status] ?? [d.status, '']
+      return `<li><span>${esc(title(d))}</span><span class="dot ${cls}">${esc(label)}</span></li>`
+    }).join('') : '<li class="meta">None yet</li>'}</ul>`).join('')
+    const up = (m) => (!m ? ['Not monitored', ''] : m.status === 'up' ? [`Up${m.uptimeMonth != null ? ` · ${m.uptimeMonth}% this month` : ''}`, 'is-ok'] : [m.status, /down/.test(m.status) ? 'is-bad' : 'is-warn'])
+    const origins = `<h3>Addresses</h3><ul>${status.origins.map((o) => {
+      const [label, cls] = up(o.monitor)
+      return `<li><a href="${esc(o.url)}" target="_blank" rel="noreferrer">${esc(bare(o.url))}</a><span class="dot ${cls}">${esc(label)}</span></li>`
+    }).join('')}</ul>`
+    const conns = status.connections.length ? `<h3>Connections</h3><ul>${status.connections.map((c) => `<li><span>${esc(c.label)}${c.detail ? `<span class="meta"> · ${esc(c.detail)}</span>` : ''}</span><span class="dot ${c.connected ? 'is-ok' : ''}">${c.connected ? 'Connected' : 'Not set up'}</span></li>`).join('')}</ul>` : ''
+    body.innerHTML = pages + origins + conns
+  } catch (err) {
+    body.innerHTML = `<p class="meta">Could not load this: ${esc(err.message)}</p>`
+  }
+}
+$('#sites').addEventListener('toggle', (e) => {
+  const box = e.target
+  if (box.matches?.('details.status') && box.open && !box.dataset.loaded) { box.dataset.loaded = '1'; loadStatus(box) }
+}, true)
 
 $('#manage-open').addEventListener('click', run(loadManage))
 $('#manage-back').addEventListener('click', run(async () => { say(''); history.replaceState({}, '', '/'); await loadSites() }))

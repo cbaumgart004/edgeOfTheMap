@@ -361,7 +361,19 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
     // inside it scrolls.
     if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
   }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
-  const toggle = (key) => setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
+  // Opening a row selects it: the trail above follows, and a section on the
+  // page is brought into view and outlined, so the pane and page agree.
+  const toggle = (key) => {
+    const opening = !open.has(key)
+    setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
+    if (!opening) return
+    ctx.onPick?.(key)
+    const el = [...document.querySelectorAll(`[data-eotm-item="${key}"]`)].find((n) => !n.closest('.eotm-root'))
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    el.classList.add('eotm-just-added')
+    setTimeout(() => el.classList.remove('eotm-just-added'), 1200)
+  }
   const update = (i, v) => onChange(items.map((x, j) => (j === i ? v : x)))
   const move = (i, d) => {
     const next = [...items]
@@ -402,11 +414,13 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
           const key = item._id ?? i
           const isOpen = open.has(key)
           const hasError = ctx.errors?.some((e) => e.startsWith(`${path}[${i}]`))
+          const state = ctx.stateOf?.(item)
           return (
             <li key={key} data-eotm-item={key} className={`eotm-item${isOpen ? ' is-open' : ''}${hasError ? ' has-error' : ''}`}>
               <div className="eotm-item-head">
                 <button type="button" className="eotm-item-title" aria-expanded={isOpen} onClick={() => toggle(key)}>
                   {itemTitle(item, i)}
+                  {state && <span className={`eotm-badge is-${state}`}>{state === 'new' ? 'New, not live' : 'Not live'}</span>}
                 </button>
                 <div className="eotm-row">
                   <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
@@ -430,6 +444,13 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
               {isOpen && (
                 <div className="eotm-item-body">
                   <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} />
+                  {/* A changed section: keep it as it is, or keep its look as a template too. */}
+                  {sections && state && (
+                    <div className="eotm-row eotm-item-save">
+                      <button type="button" className="eotm-btn is-quiet" onClick={() => ctx.saveNow?.()}>Save</button>
+                      {ctx.saveTemplate && <button type="button" className="eotm-btn is-quiet" onClick={() => setNaming(key)}>Save as custom template</button>}
+                    </div>
+                  )}
                 </div>
               )}
             </li>
