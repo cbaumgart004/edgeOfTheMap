@@ -12,7 +12,51 @@
     "fonts": { "body": "system-ui, sans-serif", "heading": "'Cormorant Garamond', Georgia, serif" },
     "radius": "10px"
   },
+  "buttonStyles": [
+    { "value": "primary", "label": "Filled", "className": "btn btn-primary" },
+    { "value": "ghost", "label": "Outline", "className": "btn btn-ghost" }
+  ],
+  "styleColors": [
+    { "value": "accent", "label": "Accent (follows the face)", "css": "var(--accent)" },
+    { "value": "ink", "label": "Text", "css": "var(--ink)" },
+    { "value": "muted", "label": "Quiet text", "css": "var(--ink-muted)" },
+    { "value": "ember", "label": "Ember", "css": "var(--ember)" },
+    { "value": "surface", "label": "Card", "css": "var(--surface)" },
+    { "value": "background", "label": "Background", "css": "var(--bg)" }
+  ],
+  "classes": [
+    { "name": "btn", "label": "Buttons", "selector": ".btn" },
+    { "name": "headings", "label": "Section headings", "selector": ".face h2" },
+    { "name": "card", "label": "Craft cards", "selector": ".card" },
+    { "name": "eyebrow", "label": "Small headings above a heading", "selector": ".eyebrow" },
+    { "name": "sectionSub", "label": "Section introductions", "selector": ".section-sub" },
+    { "name": "footer", "label": "Footer", "selector": ".site-footer" }
+  ],
   "types": {
+    "pageEdits": {
+      "label": "Page",
+      "plural": "Pages",
+      "titleField": "page",
+      "previewPath": "/",
+      "overrides": "edits",
+      "help": "Your changes to one page of the site, each kept against the element it changes. The site's own wording shows wherever nothing is changed.",
+      "fields": [
+        { "name": "page", "kind": "select", "label": "Page", "required": true, "options": [
+          { "value": "home", "label": "Home" }, { "value": "keeper", "label": "The Keeper" },
+          { "value": "storyteller", "label": "The Storyteller" }, { "value": "shell", "label": "Header and footer (every page)" } ] },
+        { "name": "edits", "kind": "list", "label": "Changed elements", "itemLabel": "text",
+          "help": "One row per element you changed on the page. Blank keeps the site's own, for every field.",
+          "fields": [
+            { "name": "text", "kind": "textarea", "label": "Words" },
+            { "name": "html", "kind": "richtext", "label": "Formatted words", "help": "For a paragraph with links or emphasis; over Words when set." },
+            { "name": "href", "kind": "url", "label": "Link" },
+            { "name": "image", "kind": "image", "label": "Photo" },
+            { "name": "class", "kind": "select", "label": "Class", "optionsFrom": "classes", "blankLabel": "None" },
+            { "name": "style", "kind": "style", "label": "Style" },
+            { "name": "hidden", "kind": "boolean", "label": "Hide it on the site" }
+          ] }
+      ]
+    },
     "craft": {
       "label": "Craft",
       "plural": "Crafts",

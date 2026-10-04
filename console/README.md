@@ -78,6 +78,10 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   remove a saved template) and Types and names.
 - **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
   against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
+- **Overrides (1.8.0+).** For a site whose content is its code (Edge of the Map), a page of overrides
+  (`overrides` on a type; SCHEMA.md "Overrides"): every element has a stable id, the code is its default, and an
+  edit (typed, arranged, styled, hidden) starts that element's row on the first change. Edge of the Map's pages
+  are `pageEdits` documents, `home`, `keeper`, `storyteller` and `shell`, with Classes and button styles.
 - **Classes and elements (1.7.0+).** Design › **Classes** holds a Style for each of the site's named looks (its
   buttons, headings, body text: schema `classes`) and for classes the owner adds; the site applies each everywhere
   it appears. Arrange adds **+ Text, + Photo, + Button, + Box** to any section, row or document, and **from a

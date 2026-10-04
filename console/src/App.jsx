@@ -457,6 +457,9 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       // A one-of-a-kind type (a home page, a theme) the owner has not started
       // yet: start it, filled with the schema's defaults (the page as shipped).
       if (!doc && schema.types[type].singleton) doc = await store.create({ type, data: {} })
+      // A page of overrides the owner has not edited yet: start it, named as
+      // the page names it (data-eotm-edit="<type>:<key>").
+      if (!doc && schema.types[type].overrides) doc = await store.create({ type, slug: key, data: { page: key } })
       if (!doc) return notify('That part of the page is not in the editor yet.')
       setPeek(false)
       if (size === 'bar') setSize('half')
@@ -989,7 +992,14 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       const cur = docRef.current
       // An image inside rich text keeps its size in the HTML, as width="n%".
       const write = imageIndex == null ? value : (html) => imageWidthIn(html, imageIndex, value)
-      const data = setItemField(cur.data, item, field, write)
+      let data = setItemField(cur.data, item, field, write)
+      // A type of overrides (schema `overrides`: Edge of the Map's pages) has a
+      // row per element only once it is edited: the first edit starts the row,
+      // named by the element's id.
+      const list = schema.types[cur.type]?.overrides
+      if (data === cur.data && item && list && !(cur.data?.[list] ?? []).some((r) => r?._id === item)) {
+        data = setItemField({ ...cur.data, [list]: [...(cur.data?.[list] ?? []), { _id: item }] }, item, field, write)
+      }
       if (data !== cur.data) change(data, { quiet })
     }
     // After typing on the page: let the page catch up with the document.

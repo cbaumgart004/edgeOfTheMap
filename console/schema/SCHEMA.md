@@ -121,6 +121,17 @@ content and the site's code do not, so a rename never needs a migration.
 - **`previewScope`** (top level): `{ "className" }`, the class the site's variables live under (StoryShaped's
   `sss-home`), so samples in the editor (a button style, a font, a Style field) are drawn with the site's own CSS.
 
+## Overrides (1.8.0+)
+
+For a site whose content is its code (Edge of the Map), a type can be a page of **overrides**:
+`"overrides": "<list field>"` names a list whose rows are named by the element they change, `_id` being the
+element's stable id (`"hero:title"`). The code's content is the default; a row exists only once its element is
+edited, and the editor starts it on the first edit (typed on the page, dragged in Arrange, opened in the panel).
+Opening an element of a page with no document yet starts the document, its slug the page's key
+(`data-eotm-edit="pageEdits:home"`). Rows take any fields (Edge of the Map: words, formatted words, link,
+photo, class, Style, hidden) and, like any row, `_layout` and `_elements`. A select may take its options from
+the site's classes with `"optionsFrom": "classes"`.
+
 ## Classes and elements (1.7.0+)
 
 - **`classes`** (top level): the site's named looks, `[{ "name", "label", "selector" }]` ("Buttons", `.btn`).

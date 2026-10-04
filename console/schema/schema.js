@@ -27,6 +27,8 @@ function checkClassList(list, errors) {
 // named by `optionsFrom` (the site's buttonStyles), so every select offering
 // the site's button classes offers the same ones.
 export function optionsOf(schema, field) {
+  // "classes": the site's classes and the owner's (schema/classes.js), by name.
+  if (field.optionsFrom === 'classes') return [...(schema?.classes ?? []), ...(schema?.custom?.classes ?? [])].map((c) => ({ value: c.name, label: c.label }))
   return field.optionsFrom ? schema?.[field.optionsFrom] ?? [] : field.options ?? []
 }
 
@@ -92,6 +94,8 @@ export function checkSchema(schema) {
   // Where a type is listed in the editor's menu: with the content, or under Design.
   for (const [n, t] of Object.entries(types)) {
     if ('group' in t && !['content', 'design'].includes(t.group)) errors.push(`types.${n}: group is content or design`)
+    // Overrides: a list field whose rows are named by the element they change.
+    if ('overrides' in t && (t.fields ?? []).find((f) => f.name === t.overrides)?.kind !== 'list') errors.push(`types.${n}.overrides: names a list field`)
     // Views: one document shown as several cards, each with some of its fields.
     if ('views' in t) {
       if (!t.singleton) errors.push(`types.${n}.views: only a singleton has views`)
@@ -121,7 +125,7 @@ export function checkSchema(schema) {
       seen.add(f.name)
       if (!FIELD_KINDS.includes(f.kind)) errors.push(`${at}: unknown kind "${f.kind}"`)
       if (f.kind === 'select' && f.optionsFrom) {
-        if (!Array.isArray(schema[f.optionsFrom])) errors.push(`${at}: optionsFrom names no list at the top of the schema`)
+        if (f.optionsFrom !== 'classes' && !Array.isArray(schema[f.optionsFrom])) errors.push(`${at}: optionsFrom names no list at the top of the schema`)
       } else if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
       if (f.kind === 'relation' && !types[f.to]) errors.push(`${at}: relation to unknown type "${f.to}"`)
       if ('wide' in f && (!['image', 'photos'].includes(f.kind) || typeof f.wide !== 'boolean')) {
