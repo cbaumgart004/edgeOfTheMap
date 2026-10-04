@@ -39,6 +39,7 @@
 // conclude that eight is the offer.
 
 import React, { useMemo, useState } from 'react'
+import { E } from './edits.jsx'
 import './Studio.css'
 
 /* Structural skeletons. Deliberately three, not the four Live Spirit Seeds runs
@@ -307,7 +308,7 @@ function BleedLayout() {
    declarations hoist, so those references resolve even though the components are
    defined below it. */
 
-function Ratio({ label, a, b }) {
+function Ratio({ id, label, a, b }) {
   const value = contrast(a, b)
   // 4.5:1 is AA for body copy; 3:1 is the large-text allowance, which is why a
   // near-miss is flagged rather than failed outright.
@@ -319,7 +320,7 @@ function Ratio({ label, a, b }) {
   const shown = (Math.floor(value * 100) / 100).toFixed(2)
   return (
     <li className={`studio-ratio is-${state}`}>
-      <span>{label}</span>
+      <E id={`studio:ratio:${id}`} as="span" place={false}>{label}</E>
       <strong>{shown}:1</strong>
       <em>{state === 'pass' ? 'AA' : state === 'warn' ? 'large text only' : 'too low'}</em>
     </li>
@@ -366,7 +367,7 @@ export default function StudioDemo() {
     <div className="studio">
       <div className="studio-controls">
         <fieldset className="studio-group">
-          <legend>Structure</legend>
+          <E id="studio:legend:structure" as="legend" place={false}>Structure</E>
           <div className="studio-segmented">
             {STRUCTURES.map((option) => (
               <button
@@ -380,15 +381,15 @@ export default function StudioDemo() {
               </button>
             ))}
           </div>
-          <p className="studio-hint">{active.note}</p>
+          <E id={`studio:hint:structure:${active.id}`} as="p" place={false} className="studio-hint">{active.note}</E>
         </fieldset>
 
         <fieldset className="studio-group">
-          <legend>Type</legend>
+          <E id="studio:legend:type" as="legend" place={false}>Type</E>
           <div className="studio-fonts">
             {ROLES.map((role) => (
               <label key={role.id} className="studio-field">
-                <span>{role.label}</span>
+                <E id={`studio:role:${role.id}`} as="span" place={false}>{role.label}</E>
                 <select
                   value={fonts[role.id]}
                   onChange={(event) => setFont(role.id, event.target.value)}
@@ -403,15 +404,15 @@ export default function StudioDemo() {
               </label>
             ))}
           </div>
-          <p className="studio-hint">
+          <E id="studio:hint:type" as="p" rich place={false} className="studio-hint">
             Every face here is already on your machine or already in this
             page&rsquo;s bundle, so the demo costs nothing to load. A real build
             draws on a wider catalogue and fetches only the faces you choose.
-          </p>
+          </E>
         </fieldset>
 
         <fieldset className="studio-group">
-          <legend>Colour</legend>
+          <E id="studio:legend:colour" as="legend" place={false}>Colour</E>
           <div className="studio-presets">
             {PRESETS.map((preset) => (
               <button
@@ -447,7 +448,7 @@ export default function StudioDemo() {
                   onChange={(event) => setColor(key, event.target.value)}
                   aria-label={label}
                 />
-                <span>{label}</span>
+                <E id={`studio:swatch:${key}`} as="span" place={false}>{label}</E>
                 <code>{colors[key]}</code>
               </label>
             ))}
@@ -455,8 +456,8 @@ export default function StudioDemo() {
 
           {/* The part a template gallery never shows you. */}
           <ul className="studio-ratios">
-            <Ratio label="Text on background" a={colors.ink} b={colors.bg} />
-            <Ratio label="Accent on background" a={colors.accent} b={colors.bg} />
+            <Ratio id="text" label="Text on background" a={colors.ink} b={colors.bg} />
+            <Ratio id="accent" label="Accent on background" a={colors.accent} b={colors.bg} />
           </ul>
         </fieldset>
 

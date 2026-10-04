@@ -20,6 +20,7 @@
 // but unplayable rather than as a player that does nothing when pressed.
 
 import React, { useEffect, useRef, useState } from 'react'
+import { E } from './edits.jsx'
 
 /** mm:ss, and `--:--` until the metadata says otherwise. `Math.floor` on a NaN
  *  duration would print `NaN:NaN` for the whole time a file is loading. */
@@ -36,7 +37,12 @@ function clock(seconds) {
 // switching happens in the tokens around it. If a field here ever needs a
 // mystic variant, it takes the `blurb`/`loreBlurb` pairing like the rest of the
 // site — not a branch in here.
-export default function SamplePlayer({ samples }) {
+//
+// The page places the whole player as one part of its edits (StorytellerPage,
+// `samples:player:<source>`), so the marks it is given land on the root here.
+// The copy inside (titles, tags, notes) is editable in place under
+// `samples:sample:<id>:…`; the transport is not.
+export default function SamplePlayer({ samples, className, ...marks }) {
   const audioRef = useRef(null)
   // The sample currently loaded into the one audio element — not the one
   // playing. A paused sample stays selected so its scrubber keeps its position.
@@ -114,7 +120,7 @@ export default function SamplePlayer({ samples }) {
   }
 
   return (
-    <div className="samples">
+    <div {...marks} className={className ? `samples ${className}` : 'samples'}>
       {/* Headless: every control below drives this. No `controls` attribute,
           so it is not focusable and does not appear in the tab order twice. */}
       <audio ref={audioRef} preload="none" />
@@ -159,7 +165,7 @@ export default function SamplePlayer({ samples }) {
               </button>
 
               <div className="sample-body">
-                <p className="sample-title">
+                <E id={`samples:sample:${sample.id}:title`} as="p" rich place={false} className="sample-title">
                   {sample.title}
                   {/* The work it is drawn from, where the title is not itself
                       the work. Cited rather than folded into the title so the
@@ -167,28 +173,28 @@ export default function SamplePlayer({ samples }) {
                   {sample.work && (
                     <span className="sample-work"> — {sample.work}</span>
                   )}
-                </p>
+                </E>
 
                 {/* Casting metadata, in the order a producer reads it: what it
                     sounds like first, what shelf it belongs on last. `gender`
                     is in the data but not here — it is an ACX filter field, and
                     on his own site it is a tag nobody is searching by. */}
                 <ul className="sample-tags">
-                  <li>{sample.accent}</li>
-                  <li>{sample.voiceAge}</li>
-                  <li>{sample.style}</li>
-                  <li className="sample-tag-genre">{sample.genre}</li>
+                  <E id={`samples:sample:${sample.id}:accent`} as="li" place={false}>{sample.accent}</E>
+                  <E id={`samples:sample:${sample.id}:age`} as="li" place={false}>{sample.voiceAge}</E>
+                  <E id={`samples:sample:${sample.id}:style`} as="li" place={false}>{sample.style}</E>
+                  <E id={`samples:sample:${sample.id}:genre`} as="li" place={false} className="sample-tag-genre">{sample.genre}</E>
                   {/* The declared runtime, shown until the file itself is
                       loaded — at which point the transport's own clock takes
                       over, because that is the truth about what is playing. */}
-                  {!isCurrent && sample.duration && <li>{sample.duration}</li>}
+                  {!isCurrent && sample.duration && <E id={`samples:sample:${sample.id}:duration`} as="li" place={false}>{sample.duration}</E>}
                 </ul>
 
                 {sample.notes && (
                   // The owner's own performance notes, verbatim and in both
                   // faces — see the header of narration.js for why these are
                   // the one thing here without a mystic variant.
-                  <p className="sample-notes">{sample.notes}</p>
+                  <E id={`samples:sample:${sample.id}:notes`} as="p" place={false} className="sample-notes">{sample.notes}</E>
                 )}
 
                 {isCurrent && (
@@ -212,7 +218,7 @@ export default function SamplePlayer({ samples }) {
                 )}
 
                 {!playable && (
-                  <p className="sample-pending">Sample not yet posted.</p>
+                  <E id={`samples:sample:${sample.id}:pending`} as="p" place={false} className="sample-pending">Sample not yet posted.</E>
                 )}
               </div>
             </li>

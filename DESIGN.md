@@ -176,6 +176,31 @@ ancestor, so a clone with a bare `.face` renders light even while sitting inside
 `.mystic-mode .foo` — the looser form would match through the body class and drag the
 clone into the new face with it.
 
+### The owner's edits (console 1.8.0+)
+
+Every element of every page has a stable id, and the code is its default. The owner's changes are kept
+against those ids in the console, one `pageEdits` document per page (`home`, `keeper`, `storyteller`, and
+`shell` for the header and footer every route shares; the console's SCHEMA.md "Overrides"). `src/edits.jsx`
+is the whole contract:
+
+- `<EditsPage page>` reads that page's document (drafts included while the editor is open).
+- `<Region id domId? as>` marks an area: it is arranged as a whole in the console's Arrange (Free on a desktop
+  and on a phone, `_layout`; `src/Frame.jsx`, `src/frame.css`, StoryShaped ADR-0010), holds the owner's own
+  elements (`_elements`), takes a class and a Style, and can be hidden.
+- `<E id domId? as text rich group place>` marks an element: its words are typed where they stand, its link,
+  photo, class and Style are changed in the panel, and it can be hidden. `rich` takes formatted text over the
+  code's children; `place={false}` keeps an element editable but moving with its parent part.
+- `id` is the edit id (`region:name`, a mapped row by its data's own id or slug); `domId` is the element's
+  own id attribute, so anchors (`#about`, `#layouts`) stay. Copy that differs between the faces has its own id
+  (`-lore`, `about:lore:*`).
+- Interactive pieces (the demos, the API console, the sample player's transport, the runes) move as one part;
+  only their static copy is marked.
+- `src/ClassStyles.jsx` applies the owner's Classes (the schema's `classes`: buttons, section headings, cards,
+  small headings, section introductions, footer); `src/look.js` turns a Style into CSS, its named colours
+  being face tokens.
+
+A page nobody has edited has no document and renders exactly as the code does.
+
 ### Site modes
 
 **A site mode is a named axis of presentation that reskins the whole page**, and it is

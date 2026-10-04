@@ -27,7 +27,12 @@ import {
   PROFILE,
   samplesBySource,
 } from './narration.js'
+import { EditsPage, Region, E } from './edits.jsx'
 import './Storyteller.css'
+
+
+// A stable edit id from data that has no id of its own (a point, a label).
+const slugOf = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 // This page's own row in the crafts table. Looked up rather than duplicated, so
 // the hero's trust row and the home page's card cannot drift apart.
@@ -47,36 +52,37 @@ export default function StorytellerPage({ isMystic }) {
   const bio = isMystic ? PROFILE.loreBio : PROFILE.bio
 
   return (
+    <EditsPage page="storyteller">
     <main id="top" className="story">
-      <section className="story-hero">
-        <div className="story-hero-inner">
-          <p className="eyebrow">
+      <Region id="hero" as="section" label="Hero" className="story-hero">
+        <div className="story-hero-inner" data-eotm-wrap="">
+          <E id="hero:eyebrow" as="p" rich className="eyebrow">
             <Rune name="ansuz" /> The Storyteller — Audio Narration
-          </p>
-          <h1>
+          </E>
+          <E id={isMystic ? 'hero:title-lore' : 'hero:title'} as="h1">
             {isMystic
               ? 'Ink, until someone says it aloud.'
               : 'Your book, in your characters’ voices.'}
-          </h1>
+          </E>
 
           {/* The owner's own ACX tagline in the light face, unedited — it is his
               line about his own work. Mystic gets the Ansuz reading rather than
               a second attempt at the same sentence, because restating a good
               line in a grander register is how the Lore voice goes wrong. */}
-          <p className="hero-sub">
+          <E id={isMystic ? 'hero:sub-lore' : 'hero:sub'} as="p" className="hero-sub">
             {isMystic
               ? 'Ansuz is the god-rune of speech — the breath that turns a mark on a page into a thing that happened to someone. A book read aloud is not a copy of the book. It is the book, arriving a second way.'
               : PROFILE.tagline}
-          </p>
+          </E>
 
-          <div className="hero-actions">
-            <a className="btn btn-primary" href={BOOKING_ENQUIRY}>
+          <E id="hero:actions" as="div" text={false} className="hero-actions">
+            <E id="hero:actions:demo" as="a" place={false} className="btn btn-primary" href={BOOKING_ENQUIRY}>
               Request a demo
-            </a>
-            <a className="btn btn-ghost" href="#samples">
+            </E>
+            <E id="hero:actions:samples" as="a" place={false} className="btn btn-ghost" href="#samples">
               Hear the samples
-            </a>
-          </div>
+            </E>
+          </E>
 
           {/* Read from the Storyteller's own `points` rather than retyped. The
               first draft of this row invented four claims — ACX compliance, a
@@ -84,26 +90,26 @@ export default function StorytellerPage({ isMystic }) {
               had made anywhere. These three are already shipped on the home
               page's card, so they are his, and pulling them from the table
               means the page and the card cannot come to disagree. */}
-          <ul className="story-hero-trust">
+          <E id="hero:trust" as="ul" text={false} className="story-hero-trust">
             {STORYTELLER.points.map((point) => (
-              <li key={point}>{point}</li>
+              <E key={point} id={`hero:trust:${slugOf(point)}`} as="li" place={false}>{point}</E>
             ))}
-          </ul>
+          </E>
         </div>
-      </section>
+      </Region>
 
       {/* The evidence, and so the first section rather than a gallery at the
           bottom: a narrator who makes you read three paragraphs before you can
           hear anything has buried the only thing you came to check. */}
-      <section className="story-section" id="samples" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Samples</p>
-          <h2>{isMystic ? 'Listen, then.' : 'Hear it before you ask.'}</h2>
-          <p className="section-sub">
+      <Region id="samples" as="section" domId="samples" label="Samples" className="story-section" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="samples:eyebrow" as="p" className="eyebrow">Samples</E>
+          <E id={isMystic ? 'samples:title-lore' : 'samples:title'} as="h2">{isMystic ? 'Listen, then.' : 'Hear it before you ask.'}</E>
+          <E id={isMystic ? 'samples:sub-lore' : 'samples:sub'} as="p" className="section-sub">
             {isMystic
               ? 'Four registers, and the same throat behind all of them. A voice is not one thing; it is what it does when the page asks it to change.'
               : 'Four registers, each a different job. Play them in any order — one at a time, wherever you are on the page.'}
-          </p>
+          </E>
         </div>
 
         {/* One group per source. The heading only appears once there is more
@@ -111,15 +117,17 @@ export default function StorytellerPage({ isMystic }) {
             distinction without a difference, and the whole point of grouping is
             that a second listing can arrive without this markup changing. */}
         {groups.map((group) => (
-          <div key={group.source.id} className="sample-group">
+          <div key={group.source.id} className="sample-group" data-eotm-wrap="">
             {groups.length > 1 && (
-              <div className="sample-group-head">
-                <h3>{group.source.name}</h3>
-                <p>{group.source.blurb}</p>
-              </div>
+              <E id={`samples:group:${group.source.id}`} as="div" text={false} className="sample-group-head">
+                <E id={`samples:group:${group.source.id}:name`} as="h3" place={false}>{group.source.name}</E>
+                <E id={`samples:group:${group.source.id}:blurb`} as="p" place={false}>{group.source.blurb}</E>
+              </E>
             )}
 
-            <SamplePlayer samples={group.samples} />
+            {/* The player is a widget, so it moves as one part; its titles,
+                tags and notes are editable in place (SamplePlayer.jsx). */}
+            <E id={`samples:player:${group.source.id}`} as={SamplePlayer} text={false} samples={group.samples} />
 
             {/* The link-out is deliberate and it is *not* the data source: a
                 listing is where a producer can act on what they just heard, so
@@ -128,7 +136,7 @@ export default function StorytellerPage({ isMystic }) {
                 it opens a new tab, and a new tab because leaving the page
                 mid-audition is the one thing this section must not cause. */}
             {group.source.url && (
-              <p className="story-note">
+              <E id={isMystic ? `samples:note-lore:${group.source.id}` : `samples:note:${group.source.id}`} as="p" rich className="story-note">
                 {isMystic
                   ? `The full listing lives on ${group.source.name}, where a producer can put a book in front of me.`
                   : `These are the short versions. The full profile and its samples live on ${group.source.name} — ${group.source.blurb}`}{' '}
@@ -140,101 +148,102 @@ export default function StorytellerPage({ isMystic }) {
                   View the full {group.source.name} profile
                 </a>
                 .
-              </p>
+              </E>
             )}
           </div>
         ))}
-      </section>
+      </Region>
 
-      <section className="story-section" id="narrator" data-reveal>
-        <div className="story-split">
-          <div className="story-split-copy">
-            <p className="eyebrow">{isMystic ? 'The voice' : 'The narrator'}</p>
-            <h2>
+      <Region id="narrator" as="section" domId="narrator" label="Narrator" className="story-section" data-reveal>
+        <div className="story-split" data-eotm-wrap="">
+          <div className="story-split-copy" data-eotm-wrap="">
+            <E id={isMystic ? 'narrator:eyebrow-lore' : 'narrator:eyebrow'} as="p" className="eyebrow">{isMystic ? 'The voice' : 'The narrator'}</E>
+            <E id={isMystic ? 'narrator:title-lore' : 'narrator:title'} as="h2">
               {isMystic ? 'Whoever is speaking, it is me.' : 'Who is reading your book.'}
-            </h2>
+            </E>
 
             {/* The professional credit, in the full form the ACX listing uses —
                 the name a rights holder would put in the credits, which is not
                 the familiar one the home page's About copy uses. */}
-            <p className="story-credit">
-              <strong>{PROFILE.name}</strong>
-              <span className="story-credit-role">{PROFILE.title}</span>
-            </p>
+            <E id="narrator:credit" as="p" text={false} className="story-credit">
+              <E id="narrator:credit:name" as="strong" place={false}>{PROFILE.name}</E>
+              <E id="narrator:credit:role" as="span" place={false} className="story-credit-role">{PROFILE.title}</E>
+            </E>
 
             {bio.map((para, i) => (
               // Index keys are safe here and only here: this is a fixed array
               // of prose from a constant, never reordered and never filtered.
-              <p key={i} className="story-bio">
+              <E key={i} id={isMystic ? `narrator:bio-lore:${i}` : `narrator:bio:${i}`} as="p" className="story-bio">
                 {para}
-              </p>
+              </E>
             ))}
           </div>
 
-          <div className="story-split-aside">
-            <dl className="story-credentials">
+          <div className="story-split-aside" data-eotm-wrap="">
+            <E id="narrator:credentials" as="dl" text={false} className="story-credentials">
               {PROFILE.credentials.map((item) => (
                 <div key={item.label} className="story-credential">
-                  <dt>{item.label}</dt>
-                  <dd>{item.value}</dd>
+                  <E id={`narrator:credentials:${slugOf(item.label)}:label`} as="dt" place={false}>{item.label}</E>
+                  <E id={`narrator:credentials:${slugOf(item.label)}:value`} as="dd" place={false}>{item.value}</E>
                 </div>
               ))}
-            </dl>
+            </E>
           </div>
         </div>
-      </section>
+      </Region>
 
       {SHOW_PROCESS && (
-      <section className="story-section" id="process" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">How it goes</p>
-          <h2>{isMystic ? 'The bargain.' : 'What working together looks like.'}</h2>
-          <p className="section-sub">
+      <Region id="process" as="section" domId="process" label="Process" className="story-section" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="process:eyebrow" as="p" className="eyebrow">How it goes</E>
+          <E id={isMystic ? 'process:title-lore' : 'process:title'} as="h2">{isMystic ? 'The bargain.' : 'What working together looks like.'}</E>
+          <E id={isMystic ? 'process:sub-lore' : 'process:sub'} as="p" className="section-sub">
             {isMystic
               ? 'Ask first, read second. Most of what goes wrong in a recording went wrong before anyone pressed record.'
               : 'The expensive mistakes in an audiobook are all made early, so this front-loads the asking.'}
-          </p>
+          </E>
         </div>
 
         {/* An ordered list because the order is the content — these are steps,
             not features, and a screen reader should be told they are numbered. */}
-        <ol className="story-process">
+        <E id="process:steps" as="ol" text={false} className="story-process">
           {PROFILE.process.map((item) => (
             <li key={item.step} className="story-step">
-              <p className="story-step-name">{item.step}</p>
-              <p className="story-step-detail">{item.detail}</p>
+              <E id={`process:steps:${slugOf(item.step)}:name`} as="p" place={false} className="story-step-name">{item.step}</E>
+              <E id={`process:steps:${slugOf(item.step)}:detail`} as="p" place={false} className="story-step-detail">{item.detail}</E>
             </li>
           ))}
-        </ol>
-      </section>
+        </E>
+      </Region>
       )}
 
-      <section className="cta-band" data-reveal>
-        <div className="cta-band-inner">
-          <div>
-            <h2>
+      <Region id="cta" as="section" label="Closing ask" className="cta-band" data-reveal>
+        <div className="cta-band-inner" data-eotm-wrap="">
+          <div data-eotm-wrap="">
+            <E id={isMystic ? 'cta:title-lore' : 'cta:title'} as="h2">
               {isMystic
                 ? 'Send me the pages. I will tell you who I hear.'
                 : 'Send a chapter and a note about your characters.'}
-            </h2>
+            </E>
             {/* An ask, not a promise. An earlier draft committed to auditioning
                 from the author's own text — a service guarantee the owner has
                 not made anywhere, invented to make the band read better. */}
-            <p>
+            <E id={isMystic ? 'cta:body-lore' : 'cta:body'} as="p">
               {isMystic
                 ? 'No commitment in it. An audition is only a voice, offered, and either it is theirs or it is not.'
                 : 'Tell me what the book is and how you hear the people in it, and we will find out together whether I am the right voice for it.'}
-            </p>
+            </E>
           </div>
-          <a className="btn btn-primary btn-lg" href={AUDITION_ENQUIRY}>
+          <E id="cta:button" as="a" className="btn btn-primary btn-lg" href={AUDITION_ENQUIRY}>
             Request an audition
-          </a>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <p className="story-back">
-        <Link href="/">← Back to all three crafts</Link>
-      </p>
+      <Region id="back" as="p" label="Back link" className="story-back">
+        <E id="back:link" as={Link} href="/">← Back to all three crafts</E>
+      </Region>
     </main>
+    </EditsPage>
   )
 }

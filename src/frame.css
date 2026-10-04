@@ -1,0 +1,127 @@
+/* Free regions (Frame.jsx; StoryShaped ADR-0010). A Flow section is untouched:
+   a group is no box of its own, so marking parts changes nothing. */
+[data-eotm-group] {
+  display: contents;
+}
+
+/* A wrapper between a Free section and its parts gives up its box, so the
+   parts are placed against the section itself (and, on a phone, ordered). */
+[data-eotm-frame='free'] [data-eotm-wrap] {
+  display: contents;
+}
+
+/* The canvas its parts are placed on. Zero specificity, so a region the site
+   pins (a fixed menu bar, which already places what is inside it) keeps its
+   own position. */
+:where([data-eotm-frame='free'], [data-eotm-phone='free']) {
+  position: relative;
+}
+
+/* A part's own text size (a corner drag or a pinch in Arrange), % of the site's. */
+[data-eotm-frame='free'] [data-eotm-placed] {
+  font-size: calc(var(--fs, 100) * 1%);
+}
+
+/* Placed: on a desktop, and on a phone for a section that keeps its desktop
+   arrangement (ScaleBox draws it at desktop width and zooms it down). */
+/* A Free section has no padding: its parts sit anywhere on it, measured from
+   its edges (Arrange measures them so, in units of its width). The doubled
+   attribute outranks the site's own .section padding. */
+@media (min-width: 820px) {
+  [data-eotm-frame='free'][data-eotm-frame] {
+    container-type: inline-size;
+    aspect-ratio: 100 / var(--frame-h, 50);
+    padding: 0;
+  }
+  [data-eotm-frame='free'] [data-eotm-group][data-eotm-placed] {
+    display: block;
+  }
+  [data-eotm-frame='free'] [data-eotm-placed] {
+    position: absolute;
+    left: calc(var(--x) * 1%);
+    top: calc(var(--y) * 1cqw);
+    width: calc(var(--w) * 1%);
+    height: var(--ph, auto);
+    z-index: var(--z, auto);
+    opacity: var(--o, 1);
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+  }
+}
+[data-eotm-scaled] [data-eotm-frame='free'][data-eotm-frame] {
+  display: block;
+  container-type: inline-size;
+  aspect-ratio: 100 / var(--frame-h, 50);
+  padding: 0;
+}
+[data-eotm-scaled] [data-eotm-frame='free'] [data-eotm-group][data-eotm-placed] {
+  display: block;
+}
+[data-eotm-scaled] [data-eotm-frame='free'] [data-eotm-placed] {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1cqw);
+  width: calc(var(--w) * 1%);
+  height: var(--ph, auto);
+  z-index: var(--z, auto);
+  opacity: var(--o, 1);
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Otherwise a phone stacks a Free section: one column, its parts top to bottom. */
+@media (max-width: 819.98px) {
+  [data-eotm-frame='free']:not([data-eotm-phone='scale']):not([data-eotm-phone='free']) {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  [data-eotm-frame='free']:not([data-eotm-phone='scale']):not([data-eotm-phone='free']) [data-eotm-group][data-eotm-placed] {
+    display: block;
+  }
+  [data-eotm-frame='free']:not([data-eotm-phone='scale']):not([data-eotm-phone='free']) [data-eotm-placed] {
+    order: var(--order, 0);
+    opacity: var(--o, 1);
+  }
+
+  /* The phone's own arrangement (phoneParts, the --q* variables), whether or
+     not the desktop layout is Free. */
+  [data-eotm-phone='free'][data-eotm-phone] {
+    display: block;
+    container-type: inline-size;
+    aspect-ratio: 100 / var(--frame-qh, 150);
+    padding: 0;
+  }
+  [data-eotm-phone='free'] [data-eotm-wrap] {
+    display: contents;
+  }
+  [data-eotm-phone='free'] [data-eotm-group][data-eotm-qplaced] {
+    display: block;
+  }
+  [data-eotm-phone='free'] [data-eotm-qplaced] {
+    position: absolute;
+    left: calc(var(--qx) * 1%);
+    top: calc(var(--qy) * 1cqw);
+    width: calc(var(--qw) * 1%);
+    height: var(--qph, auto);
+    z-index: var(--qz, auto);
+    opacity: var(--qo, 1);
+    font-size: calc(var(--qfs, 100) * 1%);
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+  }
+}
+
+/* The owner's own elements (edits.jsx, Elements). A box is empty until its
+   class or Style gives it a background, so it keeps some height. */
+.eotm-el--box {
+  min-height: 4rem;
+}
+img.eotm-el--image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}

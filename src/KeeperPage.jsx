@@ -23,7 +23,12 @@ import { Link } from './router.jsx'
 import ApiConsole from './ApiConsole.jsx'
 import StudioDemo from './StudioDemo.jsx'
 import { CONTACT_EMAIL, SITE_HOST, SITE_URL, mailto } from './content.js'
+import { EditsPage, Region, E } from './edits.jsx'
 import './Keeper.css'
+
+// A stable edit id from data that carries no id of its own (a name or title).
+const slug = (s) =>
+  s.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 // The two shipped projects the page argues *from*. Both owners have given their
 // yes to being named — and both gave it with the same caveat, which shapes how
@@ -291,52 +296,61 @@ function LiveEditDemo() {
 
 export default function KeeperPage({ isMystic }) {
   return (
+    <EditsPage page="keeper">
     <main id="top" className="keeper">
-      <section className="keeper-hero">
-        <div className="keeper-hero-inner">
-          <p className="eyebrow">
+      <Region id="hero" as="section" label="Hero" className="keeper-hero">
+        <div className="keeper-hero-inner" data-eotm-wrap="">
+          <E id="hero:eyebrow" as="p" rich className="eyebrow">
             <Rune name="othala" /> The Keeper — Web &amp; Systems
-          </p>
-          <h1>{isMystic ? 'The homestead you keep.' : 'Websites you own outright.'}</h1>
-          <p className="hero-sub">
-            {isMystic
-              ? 'Othala is the inherited ground — the thing that is yours because someone kept it, and stays yours because you do. A system is the same bargain. I build ground you can stand on and hand to somebody else.'
-              : 'Built, branded and hosted by one person. Your content stays yours, there is a real API underneath it, and you can edit the live page yourself without going through me.'}
-          </p>
+          </E>
+          {isMystic ? (
+            <E id="hero:title-lore" as="h1">The homestead you keep.</E>
+          ) : (
+            <E id="hero:title" as="h1">Websites you own outright.</E>
+          )}
+          {isMystic ? (
+            <E id="hero:sub-lore" as="p" className="hero-sub">
+              Othala is the inherited ground — the thing that is yours because someone kept it, and stays yours because you do. A system is the same bargain. I build ground you can stand on and hand to somebody else.
+            </E>
+          ) : (
+            <E id="hero:sub" as="p" className="hero-sub">
+              Built, branded and hosted by one person. Your content stays yours, there is a real API underneath it, and you can edit the live page yourself without going through me.
+            </E>
+          )}
 
-          <div className="hero-actions">
-            <a className="btn btn-primary" href={PROJECT_ENQUIRY}>
+          <E id="hero:actions" as="div" text={false} className="hero-actions">
+            <E id="hero:actions:start" as="a" place={false} className="btn btn-primary" href={PROJECT_ENQUIRY}>
               Start a project
-            </a>
-            <a className="btn btn-ghost" href="#layouts">
+            </E>
+            <E id="hero:actions:layouts" as="a" place={false} className="btn btn-ghost" href="#layouts">
               See the layouts
-            </a>
-          </div>
+            </E>
+          </E>
 
-          <ul className="keeper-hero-trust">
-            <li>Your data, exportable</li>
-            <li>Documented API</li>
-            <li>Edit it yourself</li>
-            <li>Hosted and kept</li>
-          </ul>
+          <E id="hero:trust" as="ul" text={false} className="keeper-hero-trust">
+            <E id="hero:trust:data" as="li" place={false}>Your data, exportable</E>
+            <E id="hero:trust:api" as="li" place={false}>Documented API</E>
+            <E id="hero:trust:edit" as="li" place={false}>Edit it yourself</E>
+            <E id="hero:trust:hosted" as="li" place={false}>Hosted and kept</E>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <section className="keeper-section" id="ownership" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Ownership</p>
-          <h2>Your data is your own.</h2>
-          <p className="section-sub">
+      <Region id="ownership" as="section" label="Ownership" className="keeper-section" domId="ownership" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="ownership:eyebrow" as="p" className="eyebrow">Ownership</E>
+          <E id="ownership:title" as="h2">Your data is your own.</E>
+          <E id="ownership:sub" as="p" className="section-sub">
             Every host says this. Here is the version with specifics, which is
             the only version that means anything.
-          </p>
+          </E>
         </div>
 
         {/* A table, and deliberately a real one: this is tabular data, and a
             grid of divs would read the same to a sighted visitor and as noise
             to a screen reader. The mobile layout is handled in CSS by turning
             each row into a stacked block — the markup does not change. */}
-        <div className="compare-wrap">
+        <E id="ownership:table" as="div" text={false} className="compare-wrap">
           <table className="compare">
             <caption className="visually-hidden">
               How a build here compares with a hosted page-builder
@@ -344,331 +358,392 @@ export default function KeeperPage({ isMystic }) {
             <thead>
               <tr>
                 <th scope="col">&nbsp;</th>
-                <th scope="col">Built here</th>
-                <th scope="col">Typical hosted builder</th>
+                <E id="ownership:table:here" as="th" place={false} scope="col">Built here</E>
+                <E id="ownership:table:else" as="th" place={false} scope="col">Typical hosted builder</E>
               </tr>
             </thead>
             <tbody>
               {OWNERSHIP.map((row) => (
                 <tr key={row.label}>
-                  <th scope="row">{row.label}</th>
+                  <E id={`ownership:table:${slug(row.label)}:label`} as="th" place={false} scope="row">{row.label}</E>
                   {/* data-label is what the stacked mobile layout prints above
                       each cell — with the thead hidden, the cells would
                       otherwise be two unlabelled paragraphs. */}
-                  <td className="compare-here" data-label="Built here">
+                  <E id={`ownership:table:${slug(row.label)}:here`} as="td" place={false} className="compare-here" data-label="Built here">
                     {row.here}
-                  </td>
-                  <td className="compare-else" data-label="Typical hosted builder">
+                  </E>
+                  <E id={`ownership:table:${slug(row.label)}:else`} as="td" place={false} className="compare-else" data-label="Typical hosted builder">
                     {row.elsewhere}
-                  </td>
+                  </E>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </E>
 
-        <p className="keeper-note">
-          {isMystic
-            ? 'A thing you cannot carry out is not a thing you own. It is a thing you are being allowed to hold.'
-            : 'The test is simple: if you and I stopped working together tomorrow, could you walk away with everything and stand it up somewhere else? The answer here is yes, and I will show you how before you ask.'}
-        </p>
-      </section>
+        {isMystic ? (
+          <E id="ownership:note-lore" as="p" className="keeper-note">
+            A thing you cannot carry out is not a thing you own. It is a thing you are being allowed to hold.
+          </E>
+        ) : (
+          <E id="ownership:note" as="p" className="keeper-note">
+            The test is simple: if you and I stopped working together tomorrow, could you walk away with everything and stand it up somewhere else? The answer here is yes, and I will show you how before you ask.
+          </E>
+        )}
+      </Region>
 
-      <section className="keeper-section" id="editing" data-reveal>
-        <div className="keeper-split">
-          <div className="keeper-split-copy">
-            <p className="eyebrow">Real-time editing</p>
-            <h2>Change the page on the page.</h2>
-            <p className="section-sub">
-              {isMystic
-                ? 'The word and the thing it names, in the same place at the same moment. No incantation typed into one window to alter another.'
-                : 'Sign in and the site becomes editable in place. Click a heading and type. Prices, hours, a paragraph that went out of date — you change what you can see, and it is live when you stop typing.'}
-            </p>
-            <ul className="keeper-list">
-              <li>No separate admin panel to learn or keep in sync</li>
-              <li>What you are editing is the page itself, at its real size</li>
-              <li>Revision history, so a bad edit is undone rather than retyped</li>
-              <li>Roles, so a receptionist can change hours but not pricing</li>
-            </ul>
-            <p className="keeper-aside">
+      <Region id="editing" as="section" label="Real-time editing" className="keeper-section" domId="editing" data-reveal>
+        <div className="keeper-split" data-eotm-wrap="">
+          <div className="keeper-split-copy" data-eotm-wrap="">
+            <E id="editing:eyebrow" as="p" className="eyebrow">Real-time editing</E>
+            <E id="editing:title" as="h2">Change the page on the page.</E>
+            {isMystic ? (
+              <E id="editing:sub-lore" as="p" className="section-sub">
+                The word and the thing it names, in the same place at the same moment. No incantation typed into one window to alter another.
+              </E>
+            ) : (
+              <E id="editing:sub" as="p" className="section-sub">
+                Sign in and the site becomes editable in place. Click a heading and type. Prices, hours, a paragraph that went out of date — you change what you can see, and it is live when you stop typing.
+              </E>
+            )}
+            <E id="editing:list" as="ul" text={false} className="keeper-list">
+              <E id="editing:list:panel" as="li" place={false}>No separate admin panel to learn or keep in sync</E>
+              <E id="editing:list:size" as="li" place={false}>What you are editing is the page itself, at its real size</E>
+              <E id="editing:list:history" as="li" place={false}>Revision history, so a bad edit is undone rather than retyped</E>
+              <E id="editing:list:roles" as="li" place={false}>Roles, so a receptionist can change hours but not pricing</E>
+            </E>
+            <E id="editing:aside" as="p" rich className="keeper-aside">
               Try it — the panel is real. Nothing is saved; it is a
               demonstration. On <Work of="spiritSeeds" /> the same idea goes
               further: every page is a content file the owner edits herself, so
               adding a page to that site is not a job she has to send me.
-            </p>
+            </E>
           </div>
 
-          <div className="keeper-split-visual">
+          <E id="editing:demo" as="div" text={false} className="keeper-split-visual">
             <LiveEditDemo />
-          </div>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <section className="keeper-section" id="api" data-reveal>
-        <div className="keeper-split is-reversed">
-          <div className="keeper-split-copy">
-            <p className="eyebrow">API access</p>
-            <h2>A real API, documented, included.</h2>
-            <p className="section-sub">
-              {isMystic
-                ? 'A door in the side of the thing, with a key that is yours, because one day you will want in and I may not be reachable.'
-                : 'Everything the site stores is reachable over HTTP with a token you hold. Pull your bookings into a spreadsheet, push products from your own system, wire it to whatever you already use.'}
-            </p>
-            <ul className="keeper-list">
-              <li>REST over JSON, with cursor pagination and honest error codes</li>
-              <li>Tokens you issue and revoke yourself, scoped per integration</li>
-              <li>Webhooks out, so other systems hear about changes as they happen</li>
-              <li>Written docs for your data, not a generic schema dump</li>
-            </ul>
+      <Region id="api" as="section" label="API access" className="keeper-section" domId="api" data-reveal>
+        <div className="keeper-split is-reversed" data-eotm-wrap="">
+          <div className="keeper-split-copy" data-eotm-wrap="">
+            <E id="api:eyebrow" as="p" className="eyebrow">API access</E>
+            <E id="api:title" as="h2">A real API, documented, included.</E>
+            {isMystic ? (
+              <E id="api:sub-lore" as="p" className="section-sub">
+                A door in the side of the thing, with a key that is yours, because one day you will want in and I may not be reachable.
+              </E>
+            ) : (
+              <E id="api:sub" as="p" className="section-sub">
+                Everything the site stores is reachable over HTTP with a token you hold. Pull your bookings into a spreadsheet, push products from your own system, wire it to whatever you already use.
+              </E>
+            )}
+            <E id="api:list" as="ul" text={false} className="keeper-list">
+              <E id="api:list:rest" as="li" place={false}>REST over JSON, with cursor pagination and honest error codes</E>
+              <E id="api:list:tokens" as="li" place={false}>Tokens you issue and revoke yourself, scoped per integration</E>
+              <E id="api:list:webhooks" as="li" place={false}>Webhooks out, so other systems hear about changes as they happen</E>
+              <E id="api:list:docs" as="li" place={false}>Written docs for your data, not a generic schema dump</E>
+            </E>
             {/* The StoryShaped citation is pulled for now — its inventory API
                 has no auth on the admin routes yet, so pointing at it as the
                 production proof invites a look nobody wants taken. The claim
                 stands on the console beside it, which is real code. Put the
                 sentence back once that endpoint is gated. */}
-            <p className="keeper-aside">
+            <E id="api:aside" as="p" className="keeper-aside">
               The panel is live — every response is computed when you press the
               button, not written out in advance. The write really does change
               the data, so press it twice.
-            </p>
+            </E>
           </div>
 
-          <div className="keeper-split-visual">
+          <E id="api:console" as="div" text={false} className="keeper-split-visual">
             <ApiConsole />
-          </div>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <section className="keeper-section" id="layouts" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Layouts</p>
-          <h2>Structure to start from. Never a look to share.</h2>
-          <p className="section-sub">
-            {isMystic
-              ? 'Bones are bones. Every creature that ever walked had four limbs and a spine and not one of them was mistaken for another. What is shared is the frame. What is yours is everything laid over it.'
-              : 'A layout is the skeleton — what the site has to keep track of, what a visitor can do, and in what order. It is not the appearance. The appearance is made for you, once, and it is the part I will not reuse.'}
-          </p>
+      <Region id="layouts" as="section" label="Layouts" className="keeper-section" domId="layouts" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="layouts:eyebrow" as="p" className="eyebrow">Layouts</E>
+          <E id="layouts:title" as="h2">Structure to start from. Never a look to share.</E>
+          {isMystic ? (
+            <E id="layouts:sub-lore" as="p" className="section-sub">
+              Bones are bones. Every creature that ever walked had four limbs and a spine and not one of them was mistaken for another. What is shared is the frame. What is yours is everything laid over it.
+            </E>
+          ) : (
+            <E id="layouts:sub" as="p" className="section-sub">
+              A layout is the skeleton — what the site has to keep track of, what a visitor can do, and in what order. It is not the appearance. The appearance is made for you, once, and it is the part I will not reuse.
+            </E>
+          )}
         </div>
 
         {/* The promise this section exists to make, and it is a promise to real
             people: both owners named on this page said yes on the condition
             that their site does not become a look someone else can order. */}
-        <p className="keeper-pledge">
+        <E id="layouts:pledge" as="p" rich className="keeper-pledge">
           Two of the sites behind this page — a bodywork practice and a uranium
           glass marketplace — share a builder and nothing else. Not a palette,
           not a typeface, not a grid. Their owners are proud of having a site
           that looks like <em>theirs</em>, and that is the whole job. You are
           buying the structure below and a look that stops with you.
-        </p>
+        </E>
 
-        <div className="layout-grid">
+        <E id="layouts:grid" as="div" text={false} className="layout-grid">
           {LAYOUTS.map((layout, i) => (
             /* `card` as well as `layout-card`: these are the same object as the
                home page's filing cards — same keyline, same hover, same
                wholesale removal of the affordance in mystic — so they reuse
                that class rather than restating it and drifting from it. */
-            <article
+            <E
               key={layout.name}
+              id={`layouts:grid:${slug(layout.name)}`}
+              as="article"
+              text={false}
+              place={false}
               className="card layout-card"
               data-reveal
               style={{ '--reveal-index': i }}
             >
-              <h3>{layout.name}</h3>
-              <p className="layout-suits">{layout.suits}</p>
-              <p className="layout-note">{layout.note}</p>
-            </article>
+              <E id={`layouts:grid:${slug(layout.name)}:name`} as="h3" place={false}>{layout.name}</E>
+              <E id={`layouts:grid:${slug(layout.name)}:suits`} as="p" place={false} className="layout-suits">{layout.suits}</E>
+              <E id={`layouts:grid:${slug(layout.name)}:note`} as="p" place={false} className="layout-note">{layout.note}</E>
+            </E>
           ))}
-        </div>
+        </E>
 
-        <p className="keeper-note">
+        <E id="layouts:note" as="p" rich className="keeper-note">
           Not sure which fits?{' '}
           <a href={LAYOUT_ENQUIRY}>Describe the business</a> and I will tell you
           which one I would start from, and what I would change about it.
-        </p>
-      </section>
+        </E>
+      </Region>
 
-      <section className="keeper-section" id="studio" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Try it</p>
-          <h2>Structure, type and colour — three separate choices.</h2>
-          <p className="section-sub">
-            {isMystic
-              ? 'The same words, three times, and three different pages. Turn the dials and watch one assemble itself. It is not a picture of a page. It is a page, deciding what it is.'
-              : 'This is the chooser, working. One practice, one set of words, three structures — and the structures move the furniture, not just the paint: where the picture goes, whether there is one, how the nav sits, how the services line up. Set a face per level of type and take the colour anywhere. Nothing here is a screenshot.'}
-          </p>
+      <Region id="studio" as="section" label="Try it" className="keeper-section" domId="studio" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="studio:eyebrow" as="p" className="eyebrow">Try it</E>
+          <E id="studio:title" as="h2">Structure, type and colour — three separate choices.</E>
+          {isMystic ? (
+            <E id="studio:sub-lore" as="p" className="section-sub">
+              The same words, three times, and three different pages. Turn the dials and watch one assemble itself. It is not a picture of a page. It is a page, deciding what it is.
+            </E>
+          ) : (
+            <E id="studio:sub" as="p" className="section-sub">
+              This is the chooser, working. One practice, one set of words, three structures — and the structures move the furniture, not just the paint: where the picture goes, whether there is one, how the nav sits, how the services line up. Set a face per level of type and take the colour anywhere. Nothing here is a screenshot.
+            </E>
+          )}
         </div>
 
-        <StudioDemo />
+        {/* StudioDemo takes no props, so it moves as one part inside a plain
+            block of its own; in flow that box renders exactly as before. */}
+        <E id="studio:demo" as="div" text={false}>
+          <StudioDemo />
+        </E>
 
-        <p className="keeper-note">
+        <E id="studio:note" as="p" className="keeper-note">
           Three structures here; a real build starts from one and then stops
           being a structure. What you cannot do in this panel — and what most of
           the work actually is — is everything after: your photography, your
           words, the shape your business needs that no skeleton anticipated.
-        </p>
-      </section>
+        </E>
+      </Region>
 
-      <section className="keeper-section" id="branding-range" data-reveal>
-        <div className="keeper-split">
-          <div className="keeper-split-copy">
-            <p className="eyebrow">Branding</p>
-            <h2>A look that belongs to one business.</h2>
-            <p className="section-sub">
-              {isMystic
-                ? 'A name is a small spell, and a mark is the same trick done with ink. It should fit the one who carries it and no one else, or it is not a mark, only a label.'
-                : 'A wordmark, a palette that survives a screen and a printed card, and type that is chosen rather than defaulted. If you already have a brand, the build matches it. If you do not, this is where it starts.'}
-            </p>
-            <ul className="keeper-list">
-              <li>
+      <Region id="branding" as="section" label="Branding" className="keeper-section" domId="branding-range" data-reveal>
+        <div className="keeper-split" data-eotm-wrap="">
+          <div className="keeper-split-copy" data-eotm-wrap="">
+            <E id="branding:eyebrow" as="p" className="eyebrow">Branding</E>
+            <E id="branding:title" as="h2">A look that belongs to one business.</E>
+            {isMystic ? (
+              <E id="branding:sub-lore" as="p" className="section-sub">
+                A name is a small spell, and a mark is the same trick done with ink. It should fit the one who carries it and no one else, or it is not a mark, only a label.
+              </E>
+            ) : (
+              <E id="branding:sub" as="p" className="section-sub">
+                A wordmark, a palette that survives a screen and a printed card, and type that is chosen rather than defaulted. If you already have a brand, the build matches it. If you do not, this is where it starts.
+              </E>
+            )}
+            <E id="branding:list" as="ul" text={false} className="keeper-list">
+              <E id="branding:list:seasons" as="li" rich place={false}>
                 On <Work of="spiritSeeds" />: four seasonal palettes crossed with
                 four distinct looks, switchable by the owner, with a preview mode
                 for trying one against live content before publishing it
-              </li>
-              <li>
+              </E>
+              <E id="branding:list:tagline" as="li" rich place={false}>
                 Her tagline artwork arrived as a 26 MB export with the lettering
                 flattened to outlines. It ships as three separate layers under
                 150 KB, with the lettering as real paths that take the page&rsquo;s
                 own colour — so it re-tints with every season instead of being a
                 picture of one
-              </li>
-              <li>
+              </E>
+              <E id="branding:list:uv" as="li" rich place={false}>
                 On <Work of="storyShaped" />: a daylight and blacklight mode,
                 because the glass itself only does its trick under UV. The site
                 does what the product does
-              </li>
-            </ul>
+              </E>
+            </E>
           </div>
 
-          <div className="keeper-split-visual">
+          <E id="branding:quote" as="div" text={false} className="keeper-split-visual">
             <div className="keeper-quote">
-              <p>
+              <E id="branding:quote:text" as="p" place={false}>
                 Neither of those two ideas would transplant. A season switcher
                 would be noise on a glass shop, and a UV mode would be strange in
                 a treatment room. That is the argument for building the look
                 rather than picking it.
-              </p>
+              </E>
             </div>
-          </div>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <section className="keeper-section keeper-vertical" id="healing" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Built for healing spaces</p>
-          <h2>Massage, bodywork, and the quiet trades.</h2>
-          <p className="section-sub">
-            {isMystic
-              ? 'These are rooms where people put themselves in someone else’s hands for an hour. The page in front of that hour should be as careful as the room is.'
-              : 'A practice does not need the same site as a restaurant, and it very much does not need the same site as a startup. This is the layout I have thought hardest about, because I have built it — Live Spirit Seeds is a working bodywork practice, and everything below is a thing that came up while making it.'}
-          </p>
+      <Region id="healing" as="section" label="Healing spaces" className="keeper-section keeper-vertical" domId="healing" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="healing:eyebrow" as="p" className="eyebrow">Built for healing spaces</E>
+          <E id="healing:title" as="h2">Massage, bodywork, and the quiet trades.</E>
+          {isMystic ? (
+            <E id="healing:sub-lore" as="p" className="section-sub">
+              These are rooms where people put themselves in someone else’s hands for an hour. The page in front of that hour should be as careful as the room is.
+            </E>
+          ) : (
+            <E id="healing:sub" as="p" className="section-sub">
+              A practice does not need the same site as a restaurant, and it very much does not need the same site as a startup. This is the layout I have thought hardest about, because I have built it — Live Spirit Seeds is a working bodywork practice, and everything below is a thing that came up while making it.
+            </E>
+          )}
         </div>
 
-        <div className="healing-grid">
+        <E id="healing:grid" as="div" text={false} className="healing-grid">
           {HEALING.map((item, i) => (
-            <article
+            <E
               key={item.title}
+              id={`healing:grid:${slug(item.title)}`}
+              as="article"
+              text={false}
+              place={false}
               className="healing-item"
               data-reveal
               style={{ '--reveal-index': i }}
             >
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
+              <E id={`healing:grid:${slug(item.title)}:title`} as="h3" place={false}>{item.title}</E>
+              <E id={`healing:grid:${slug(item.title)}:body`} as="p" place={false}>{item.body}</E>
+            </E>
           ))}
-        </div>
+        </E>
 
-        <div className="keeper-callout">
-          <p>
+        <E id="healing:callout" as="div" text={false} className="keeper-callout">
+          <E id="healing:callout:text" as="p" rich place={false}>
             <strong>On records and compliance:</strong> intake answers living in
             your own database rather than a third party&rsquo;s is the
             structural half of the problem, and it is the half I can solve in
             the build. Whether your practice needs more than that depends on
             your jurisdiction and what you record — bring it up early and we
             will scope it honestly rather than putting a badge on the footer.
-          </p>
-          <a className="btn btn-primary" href={HEALING_ENQUIRY}>
+          </E>
+          <E id="healing:callout:cta" as="a" place={false} className="btn btn-primary" href={HEALING_ENQUIRY}>
             Talk about a practice site
-          </a>
-        </div>
-      </section>
+          </E>
+        </E>
+      </Region>
 
-      <section className="keeper-section" id="capabilities" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Also</p>
-          <h2>The rest of what this covers.</h2>
+      <Region id="capabilities" as="section" label="Also" className="keeper-section" domId="capabilities" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="capabilities:eyebrow" as="p" className="eyebrow">Also</E>
+          <E id="capabilities:title" as="h2">The rest of what this covers.</E>
         </div>
 
-        <div className="cards">
+        <E id="capabilities:cards" as="div" text={false} className="cards">
           {CAPABILITIES.map((cap, i) => (
-            <article
+            <E
               key={cap.id}
-              id={cap.id}
+              id={`capabilities:cards:${cap.id}`}
+              as="article"
+              domId={cap.id}
+              text={false}
+              place={false}
               className="card"
               data-reveal
               style={{ '--reveal-index': i }}
             >
-              <h3>{cap.title}</h3>
-              <p className="card-blurb">
-                {isMystic ? cap.loreBlurb : cap.blurb}
-              </p>
-            </article>
+              <E id={`capabilities:cards:${cap.id}:title`} as="h3" place={false}>{cap.title}</E>
+              {isMystic ? (
+                <E id={`capabilities:cards:${cap.id}:blurb-lore`} as="p" place={false} className="card-blurb">
+                  {cap.loreBlurb}
+                </E>
+              ) : (
+                <E id={`capabilities:cards:${cap.id}:blurb`} as="p" place={false} className="card-blurb">
+                  {cap.blurb}
+                </E>
+              )}
+            </E>
           ))}
-        </div>
-      </section>
+        </E>
+      </Region>
 
       {SHOW_HOSTED && (
-      <section className="keeper-section" id="hosting" data-reveal>
-        <div className="section-head">
-          <p className="eyebrow">Currently hosting</p>
-          <h2>Sites running on this, right now.</h2>
-          <p className="section-sub">
+      <Region id="hosting" as="section" label="Currently hosting" className="keeper-section" domId="hosting" data-reveal>
+        <div className="section-head" data-eotm-wrap="">
+          <E id="hosting:eyebrow" as="p" className="eyebrow">Currently hosting</E>
+          <E id="hosting:title" as="h2">Sites running on this, right now.</E>
+          <E id="hosting:sub" as="p" className="section-sub">
             A short list rather than a long one. Every site here is one I built,
             brand and all, and still keep running.
-          </p>
+          </E>
         </div>
 
-        <ul className="hosted-list">
+        <E id="hosting:list" as="ul" text={false} className="hosted-list">
           {HOSTED.map((site, i) => (
-            <li
+            <E
               key={site.name}
+              id={`hosting:list:${slug(site.name)}`}
+              as="li"
+              text={false}
+              place={false}
               className="hosted-item"
               data-reveal
               style={{ '--reveal-index': i }}
             >
-              <h3>{site.name}</h3>
-              <p>{site.note}</p>
+              <E id={`hosting:list:${slug(site.name)}:name`} as="h3" place={false}>{site.name}</E>
+              <E id={`hosting:list:${slug(site.name)}:note`} as="p" place={false}>{site.note}</E>
               {site.href && (
-                <a className="hosted-link" href={site.href}>
+                <E id={`hosting:list:${slug(site.name)}:link`} as="a" rich place={false} className="hosted-link" href={site.href}>
                   {site.label ?? site.href}
                   <span aria-hidden="true">→</span>
-                </a>
+                </E>
               )}
-            </li>
+            </E>
           ))}
-        </ul>
-      </section>
+        </E>
+      </Region>
       )}
 
-      <section className="cta-band" data-reveal>
-        <div className="cta-band-inner">
-          <div>
-            <h2>
-              {isMystic ? 'Ground to stand on.' : 'Tell me what you need built.'}
-            </h2>
-            <p>
-              {isMystic
-                ? 'Say what it must do, and who inherits it, and we will begin there.'
-                : 'What the business does, what the site has to handle, and roughly when. No pricing pages here — the number depends on the work, and I would rather quote the real thing.'}
-            </p>
+      <Region id="cta" as="section" label="Closing ask" className="cta-band" data-reveal>
+        <div className="cta-band-inner" data-eotm-wrap="">
+          <div data-eotm-wrap="">
+            {isMystic ? (
+              <E id="cta:title-lore" as="h2">Ground to stand on.</E>
+            ) : (
+              <E id="cta:title" as="h2">Tell me what you need built.</E>
+            )}
+            {isMystic ? (
+              <E id="cta:sub-lore" as="p">
+                Say what it must do, and who inherits it, and we will begin there.
+              </E>
+            ) : (
+              <E id="cta:sub" as="p">
+                What the business does, what the site has to handle, and roughly when. No pricing pages here — the number depends on the work, and I would rather quote the real thing.
+              </E>
+            )}
           </div>
-          <a className="btn btn-primary btn-lg" href={PROJECT_ENQUIRY}>
+          <E id="cta:button" as="a" className="btn btn-primary btn-lg" href={PROJECT_ENQUIRY}>
             {CONTACT_EMAIL}
-          </a>
+          </E>
         </div>
-      </section>
+      </Region>
 
-      <p className="keeper-back">
-        <Link href="/">← Back to all three crafts</Link>
-      </p>
+      <Region id="back" as="p" label="Back link" className="keeper-back">
+        <E id="back:link" as={Link} href="/">← Back to all three crafts</E>
+      </Region>
     </main>
+    </EditsPage>
   )
 }

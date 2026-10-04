@@ -20,6 +20,8 @@ import KeeperPage from './KeeperPage.jsx'
 import StorytellerPage from './StorytellerPage.jsx'
 import { Link, navigate, useRoute } from './router.jsx'
 import { CONSOLE_SIGN_IN, SiteTheme, usePaths } from './siteConsole.jsx'
+import { EditsPage, Region, E } from './edits.jsx'
+import ClassStyles from './ClassStyles.jsx'
 import { useSiteMode } from './useSiteMode.js'
 import {
   BANNER,
@@ -314,17 +316,28 @@ function App() {
           The plate is not lazy and not deprioritised: it is the largest thing
           above the fold, so it is the LCP element, and index.html preloads it by
           the same stable URL. */}
-      <header className="site-header">
+      {/* The header and the footer are the `shell` page of the owner's edits
+          (edits.jsx): every element below has an id, so the console edits,
+          restyles, hides and arranges it, and the code is its default. */}
+      <EditsPage page="shell">
+      <Region id="header" as="header" label="Header" className="site-header">
         {/* `/#top` rather than `#top`: the header renders on every route, and a
             bare fragment from /keeper would look for an anchor on the page it is
             already on. Both pages carry id="top", so this is a scroll at home
             and a route change from anywhere else. */}
-        <Link
+        <E
+          id="header:plate"
+          as={Link}
+          text={false}
           className="brand"
           href="/#top"
           aria-label="Edge of the Map LLC — back to top"
         >
-          <img
+          <E
+            id="header:plate:image"
+            as="img"
+            place={false}
+            text={false}
             className="masthead-plate"
             src={BANNER}
             alt="Edge of the Map LLC"
@@ -333,30 +346,33 @@ function App() {
             fetchPriority="high"
             decoding="async"
           />
-        </Link>
+        </E>
 
-        <div className="header-bar">
+        <div className="header-bar" data-eotm-wrap="">
           {/* The nav wears the same button as Contact rather than a nav-link
               style of its own — one shape for every control on the plate. The
               classes are reused, not restyled: `.header-bar` re-declares the
               accent tokens so `.btn-primary` resolves to the plate's neon. */}
-          <nav className="site-nav" aria-label="Sections">
+          <E id="header:nav" as="nav" text={false} className="site-nav" aria-label="Sections">
             {paths.map((path) => (
-              <Link
+              <E
                 key={path.id}
+                id={`header:nav:${path.id}`}
+                as={Link}
+                place={false}
                 className="btn btn-primary btn-sm"
                 href={navHref(path)}
                 aria-current={route === path.href ? 'page' : undefined}
               >
                 {path.title}
-              </Link>
+              </E>
             ))}
-            <Link className="btn btn-primary btn-sm" href="/#about">
+            <E id={isMystic ? 'header:nav:lore' : 'header:nav:about'} as={Link} place={false} className="btn btn-primary btn-sm" href="/#about">
               {isMystic ? 'Lore' : 'About'}
-            </Link>
-          </nav>
+            </E>
+          </E>
 
-          <div className="header-actions">
+          <E id="header:actions" as="div" text={false} className="header-actions">
             <button
               className="btn btn-primary btn-sm header-toggle"
               onClick={toggleMystic}
@@ -366,12 +382,13 @@ function App() {
               <Rune name="raido" />
               <span className="visually-hidden">{toggleLabel}</span>
             </button>
-            <a className="btn btn-primary btn-sm" href={GENERAL_ENQUIRY}>
+            <E id="header:contact" as="a" place={false} className="btn btn-primary btn-sm" href={GENERAL_ENQUIRY}>
               Contact
-            </a>
-          </div>
+            </E>
+          </E>
         </div>
-      </header>
+      </Region>
+      </EditsPage>
 
       {/* A table rather than a ternary chain, for the reason PATHS is a table:
           the second craft page turned the branch into a nest, and a third would
@@ -387,14 +404,20 @@ function App() {
       />
 
       <SiteTheme />
+      <ClassStyles />
 
-      <footer className="site-footer">
+      <EditsPage page="shell">
+      <Region id="footer" as="footer" label="Footer" className="site-footer">
         {/* The same plate that opens the page, closing it — full width, so the
             two bookend the document. It carries the wordmark itself, which is
             why the copyright row below no longer repeats the signature mark.
             Lazy here: it is the last thing on the page, not the first. */}
-        <div className="footer-banner">
-          <img
+        <E id="footer:plate" as="div" text={false} className="footer-banner">
+          <E
+            id="footer:plate:image"
+            as="img"
+            place={false}
+            text={false}
             src={BANNER}
             alt=""
             width="2048"
@@ -402,18 +425,18 @@ function App() {
             loading="lazy"
             decoding="async"
           />
-        </div>
+        </E>
 
-        <div className="footer-inner">
-          <nav className="footer-nav" aria-label="Footer">
+        <div className="footer-inner" data-eotm-wrap="">
+          <E id="footer:nav" as="nav" text={false} className="footer-nav" aria-label="Footer">
             {paths.map((path) => (
-              <Link key={path.id} href={navHref(path)}>
+              <E key={path.id} id={`footer:nav:${path.id}`} as={Link} place={false} href={navHref(path)}>
                 {path.title}
-              </Link>
+              </E>
             ))}
-            <a href={GENERAL_ENQUIRY}>Contact</a>
-            <a href={CONSOLE_SIGN_IN}>Client sign-in</a>
-          </nav>
+            <E id="footer:contact" as="a" place={false} href={GENERAL_ENQUIRY}>Contact</E>
+            <E id="footer:signin" as="a" place={false} href={CONSOLE_SIGN_IN}>Client sign-in</E>
+          </E>
         </div>
 
         {/* The maker's mark: the same seven-rune binding carved into the
@@ -421,15 +444,16 @@ function App() {
             face's colour and lights in mystic mode. Laid on its side and set
             last, so it signs the page off along the bottom edge rather than
             standing as a column above the footer text. */}
-        <div className="footer-mark">
+        <E id="footer:mark" as="div" text={false} className="footer-mark">
           <Bindrune orientation="horizontal" title="The Edge of the Map bindrune" />
-        </div>
+        </E>
 
         {/* Last line on the page, under the mark that signs it. */}
-        <p className="footer-legal">
+        <E id="footer:legal" as="p" className="footer-legal">
           &copy; 2025 Edge of the Map LLC. All rights reserved.
-        </p>
-      </footer>
+        </E>
+      </Region>
+      </EditsPage>
       </div>
     </>
   )
