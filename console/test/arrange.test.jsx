@@ -90,7 +90,7 @@ describe('Arrange on the page', () => {
     document.body.append(host)
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    await act(async () => byText(host, 'button', 'Arrange').click())
+    await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
     await act(async () => section.querySelector('[data-eotm-part="heading"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
     await tick(20)
     await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())

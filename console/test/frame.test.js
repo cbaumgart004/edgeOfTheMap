@@ -21,8 +21,14 @@ describe('a Free section (StoryShaped ADR-0010)', () => {
   it('may keep the desktop arrangement on a phone, and size a part’s text', () => {
     expect(checkDocument(schema, 'page', page({ mode: 'free', phone: 'scale', parts: { heading: { x: 0, y: 0, w: 40, fs: 180 } } }))).toEqual([])
     expect(checkDocument(schema, 'page', page({ mode: 'free', phone: 'shrink', parts: { heading: { x: 0, y: 0, w: 40, fs: 900 } } }))).toEqual([
-      'sections[0]._layout.phone: stack or scale', 'sections[0]._layout.parts.heading.fs: 10 to 500',
+      'sections[0]._layout.phone: stack, scale or free', 'sections[0]._layout.parts.heading.fs: 10 to 500',
     ])
+  })
+
+  it('may have its own arrangement on a phone, checked as the desktop one is', () => {
+    const own = { mode: 'flow', phone: 'free', phoneHeight: 140, phoneParts: { heading: { x: 5, y: 5, w: 90, fs: 80 } } }
+    expect(checkDocument(schema, 'page', page(own))).toEqual([])
+    expect(checkDocument(schema, 'page', page({ ...own, phoneParts: { heading: { x: 5, w: 90 } } }))).toEqual(['sections[0]._layout.phoneParts.heading.y: required'])
   })
 
   it('travels with a duplicated section, as a saved template does', () => {

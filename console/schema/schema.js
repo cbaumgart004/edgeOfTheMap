@@ -7,6 +7,13 @@ export const FIELD_KINDS = [
   'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout', 'color', 'style',
 ]
 
+// A select's choices: its own `options`, or a list at the top of the schema
+// named by `optionsFrom` (the site's buttonStyles), so every select offering
+// the site's button classes offers the same ones.
+export function optionsOf(schema, field) {
+  return field.optionsFrom ? schema?.[field.optionsFrom] ?? [] : field.options ?? []
+}
+
 // A `style` field: how one element looks, each part blank for the site's own.
 // Colours are the site's named colours (schema `styleColors`, which follow its
 // themes and modes) or a fixed #rrggbb. The site turns it into CSS.
@@ -55,6 +62,11 @@ export function checkSchema(schema) {
     if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
     if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
   }
+  // The site's button classes, offered by a select with optionsFrom
+  // "buttonStyles": [{ value, label, className }].
+  for (const b of schema.buttonStyles ?? []) {
+    if (!b?.value || !NAME.test(b.value) || !b.label || typeof b.className !== 'string') errors.push('buttonStyles: each needs a plain value, a label and its className')
+  }
   // The site's named colours for style fields: [{ value, label, css }].
   for (const c of schema.styleColors ?? []) {
     if (!c?.value || !NAME.test(c.value) || !c.label || typeof c.css !== 'string') errors.push('styleColors: each needs a plain value, a label and its css')
@@ -90,7 +102,9 @@ export function checkSchema(schema) {
       if (seen.has(f.name)) errors.push(`${at}: duplicate field`)
       seen.add(f.name)
       if (!FIELD_KINDS.includes(f.kind)) errors.push(`${at}: unknown kind "${f.kind}"`)
-      if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
+      if (f.kind === 'select' && f.optionsFrom) {
+        if (!Array.isArray(schema[f.optionsFrom])) errors.push(`${at}: optionsFrom names no list at the top of the schema`)
+      } else if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
       if (f.kind === 'relation' && !types[f.to]) errors.push(`${at}: relation to unknown type "${f.to}"`)
       if ('wide' in f && (!['image', 'photos'].includes(f.kind) || typeof f.wide !== 'boolean')) {
         errors.push(`${at}: wide is true or false, on an image or photos field`)
@@ -280,7 +294,7 @@ function checkValue(field, value, at, schema, errors, opts) {
       if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) errors.push(`${at}: must be a colour like #1a2b3c`)
       break
     case 'select':
-      if (!field.options.some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
+      if (!optionsOf(schema, field).some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
       break
     case 'image':
       checkImage(value, at, errors)
@@ -343,9 +357,10 @@ function checkFields(fields, data, at, schema, errors, opts) {
 // every width. A part with no h grows to fit what is in it.
 export const FRAME = {
   modes: ['flow', 'free'],
-  // On a phone a Free section stacks its parts, or keeps the desktop
-  // arrangement scaled down whole ("scale").
-  phones: ['stack', 'scale'],
+  // On a phone a section stacks its parts, keeps the desktop arrangement
+  // scaled down whole ("scale"), or has its own arrangement ("free":
+  // phoneParts and phoneHeight, edited in Arrange on a phone).
+  phones: ['stack', 'scale', 'free'],
   maxParts: 60,
   x: [-50, 150], y: [0, 1000], w: [1, 200], h: [1, 1000], height: [1, 1000], z: [0, 100], opacity: [10, 100],
   // A part's text size, % of the site's own: what a corner drag or a pinch changes.
@@ -356,19 +371,25 @@ const PART = /^[\w:-]{1,100}$/
 export function checkFrame(v, at, errors) {
   if (typeof v !== 'object' || Array.isArray(v)) return errors.push(`${at}: must be an object`)
   if (v.mode != null && !FRAME.modes.includes(v.mode)) errors.push(`${at}.mode: flow or free`)
-  if (v.phone != null && !FRAME.phones.includes(v.phone)) errors.push(`${at}.phone: stack or scale`)
+  if (v.phone != null && !FRAME.phones.includes(v.phone)) errors.push(`${at}.phone: stack, scale or free`)
   const num = (x, [lo, hi], where, int = false) => {
     if (x == null) return
     if (typeof x !== 'number' || !Number.isFinite(x) || (int && !Number.isInteger(x)) || x < lo || x > hi) errors.push(`${where}: ${lo} to ${hi}`)
   }
   num(v.height, FRAME.height, `${at}.height`)
-  if (v.parts == null) return
-  if (typeof v.parts !== 'object' || Array.isArray(v.parts)) return errors.push(`${at}.parts: must be an object`)
-  const names = Object.keys(v.parts)
-  if (names.length > FRAME.maxParts) errors.push(`${at}.parts: at most ${FRAME.maxParts}`)
+  num(v.phoneHeight, FRAME.height, `${at}.phoneHeight`)
+  checkParts(v.parts, `${at}.parts`, num, errors)
+  checkParts(v.phoneParts, `${at}.phoneParts`, num, errors)
+}
+
+function checkParts(parts, at, num, errors) {
+  if (parts == null) return
+  if (typeof parts !== 'object' || Array.isArray(parts)) return errors.push(`${at}: must be an object`)
+  const names = Object.keys(parts)
+  if (names.length > FRAME.maxParts) errors.push(`${at}: at most ${FRAME.maxParts}`)
   for (const name of names) {
-    const p = v.parts[name]
-    const where = `${at}.parts.${name}`
+    const p = parts[name]
+    const where = `${at}.${name}`
     if (!PART.test(name)) { errors.push(`${where}: not a part name`); continue }
     if (!p || typeof p !== 'object' || Array.isArray(p)) { errors.push(`${where}: must be an object`); continue }
     for (const k of Object.keys(p)) if (!['x', 'y', 'w', 'h', 'z', 'opacity', 'fs'].includes(k)) errors.push(`${where}.${k}: not a position`)

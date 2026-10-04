@@ -38,8 +38,9 @@ import React, { useEffect, useRef, useState } from 'react'
 // Clicking anywhere else in a marked element opens it in the pane at its
 // nearest data-eotm-field, or at the section. Pointing at (or tapping) one
 // outlines it and shows an Edit button and its size handles. The page's own
-// links and buttons keep working: a click on one is the page's, not the
-// console's, unless the link's text is itself marked.
+// links and buttons are edited, not followed (App's Edit mode; View mode
+// leaves the page its own clicks): a click on one opens its row and field, or,
+// on marked text, types in it.
 
 const MARK = '[data-eotm-edit]'
 const SIZE = '[data-eotm-size]'
@@ -158,7 +159,18 @@ export default function Targets({ onOpen, onResize, onText }) {
         open({ ...targetOf(owner), item: node.dataset.eotmIn || targetOf(owner).item, field, typing: true })
         return
       }
-      if (t.closest(CONTROL)?.closest(MARK) === owner) return // the page's own link or button
+      // A link or button of the page is edited, not followed or pressed (Edit
+      // mode; View mode has no Targets): it opens at its own row (a button in a
+      // list marks it with data-eotm-in) and the field around it.
+      const control = t.closest(CONTROL)
+      if (control?.closest(MARK) === owner) {
+        e.preventDefault()
+        e.stopPropagation()
+        const at = fieldAt(control, owner)
+        const row = control.closest('[data-eotm-in]')?.dataset.eotmIn
+        open({ ...targetOf(owner), item: row || at.item || targetOf(owner).item, field: at.field })
+        return
+      }
       const at = fieldAt(t, owner)
       open({ ...targetOf(owner), item: at.item || targetOf(owner).item, field: at.field })
     }

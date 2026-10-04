@@ -13,7 +13,8 @@
   -webkit-text-size-adjust: 100%;
 }
 .eotm-root *, .eotm-root *::before, .eotm-root *::after { box-sizing: border-box; }
-.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i) {
+/* Not inside a Preview (Fields.jsx): a sample there is drawn by the site's own CSS. */
+.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i):not(.eotm-preview *) {
   all: unset; box-sizing: border-box;
 }
 .eotm-root :where(ul, ol, section, header, form, fieldset, p, li) { display: block; }
@@ -450,3 +451,29 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 /* The parts of a Free section are dragged, not scrolled, while arranging. */
 html.eotm-arranging [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; cursor: move; user-select: none; }
 html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: default; }
+
+/* View / Edit / Arrange: what a click on the page does (App.jsx). */
+.eotm-modes { flex: 0 0 auto; }
+.eotm-modes button { padding: 5px 12px; font-size: 13px; }
+
+/* Samples drawn with the site's own CSS (Fields.jsx, Preview): a button class,
+   a font, a style. Reset what the console's own styles would add. */
+.eotm-preview { margin-top: 6px; padding: 10px; border: 1px dashed var(--eotm-line); border-radius: var(--eotm-radius); overflow: hidden; }
+.eotm-preview > div { all: revert; display: block; }
+.eotm-preview p { margin: 0; }
+.eotm-preview-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.eotm-style-sample { grid-column: 1 / -1; }
+
+/* The open panel moved by its grip (App.jsx, Sheet): a card where it was put,
+   on any device; Dock returns it. Docked to the right, it still has its grip. */
+.eotm-sheet.is-wide .eotm-grip { display: flex; padding: 4px 0 0; }
+.eotm-sheet.is-loose {
+  right: auto; bottom: auto; width: min(420px, calc(100vw - 8px)); height: min(72dvh, calc(100dvh - 16px));
+  border: 1px solid var(--eotm-line); border-radius: 14px; padding-bottom: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); transition: none;
+}
+.eotm-sheet.is-loose .eotm-grip { justify-content: space-between; padding: 4px 8px 0; }
+.eotm-dock { padding: 2px 10px; border-radius: 8px; font: 600 12px var(--eotm-font); color: var(--eotm-ink); border: 1px solid var(--eotm-line); cursor: pointer; }
+/* The page's width while editing on a narrow screen. */
+.eotm-pagewidth { display: inline-flex; align-items: center; gap: 4px; font: 600 12px var(--eotm-font); color: var(--eotm-muted); }
+.eotm-pagewidth .eotm-input { min-height: 30px; padding: 2px 6px; font-size: 13px; width: auto; }

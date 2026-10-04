@@ -78,6 +78,15 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   remove a saved template) and Types and names.
 - **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
   against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
+- **View, Edit and Arrange (1.6.0+).** A switch in the header says what a click on the page does. View: the
+  page's own (links go, buttons press). Edit: opens what was clicked; a button is edited (text, link, icon, style
+  from the schema's `buttonStyles`), not pressed. Arrange: below. On a phone, Arrange edits the phone's own
+  layout (`phone: "free"`) and says so; a tablet held upright is asked to turn sideways. On a screen narrower
+  than a desktop, **Page** sets the width the page is laid out at (This screen, Tablet 1024, Desktop 1280) by
+  rewriting the viewport tag, so the desktop layout shows and is arranged whole; held sideways it takes
+  Desktop unless chosen, and pinching zooms as on any page. The panel docks right on a desktop and on any
+  screen held sideways, and its grip moves it anywhere on any device (Dock returns it). Button styles, fonts
+  and Style fields show a sample drawn with the site's own CSS (`previewScope`).
 - **Arrange (1.5.0+).** A toggle in the editor's header (`src/Arrange.jsx`; StoryShaped ADR-0010). While on, a
   tap on the page selects a section instead of opening it: switch it between Flow and Free, choose Phone: stack or
   Keep layout, and drag a Free section's height. In a Free section, drag a part to move it, a corner to scale it

@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf } from '../schema/schema.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
@@ -159,12 +159,30 @@ function Field({ field, value, onChange, ctx, path, at }) {
       return wrap(<input id={id} className="eotm-input" type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />)
     case 'datetime':
       return wrap(<DateTime id={id} value={value} onChange={onChange} />)
-    case 'select':
-      return wrap(
+    case 'select': {
+      const options = optionsOf(ctx.schema, field)
+      const picked = options.find((o) => o.value === value)
+      return wrap(<>
         <select id={id} className="eotm-input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-          {!field.required && <option value="">None</option>}
-          {field.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>)
+          {!field.required && <option value="">{field.blankLabel ?? 'None'}</option>}
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {/* What the choice looks like on the site: a button class drawn with the
+            site's own CSS, a font set in that font. */}
+        {field.optionsFrom === 'buttonStyles' && (
+          <Preview schema={ctx.schema}>
+            <span className="eotm-preview-row">
+              {(picked ? [picked] : options).map((o) => <span key={o.value} className={o.className}>{o.label}</span>)}
+            </span>
+          </Preview>
+        )}
+        {field.preview === 'font' && (
+          <Preview schema={ctx.schema}>
+            <span style={{ fontFamily: fontCss(value, field.previewDefault), fontSize: '1.4em' }}>{field.previewText ?? 'The quick brown fox, 123'}</span>
+          </Preview>
+        )}
+      </>)
+    }
     case 'image':
       return wrap(<ImageField id={id} field={field} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'photos':
@@ -594,6 +612,28 @@ function Placement({ id, field, value, onChange, ctx }) {
   )
 }
 
+// A sample drawn the way the site draws it. The console shares the page's
+// document, so the site's own classes and variables apply; `previewScope` in
+// the schema names the class its variables live under (StoryShaped's
+// .sss-home), and the page's current light or dark mode comes along.
+export function Preview({ schema, children }) {
+  const scope = schema.previewScope ?? {}
+  const mode = document.documentElement.dataset.mode
+  return (
+    <div className="eotm-preview" aria-hidden="true">
+      <div className={scope.className ?? ''} {...(mode ? { 'data-mode': mode } : {})}>{children}</div>
+    </div>
+  )
+}
+
+// A font choice as CSS: a role (the site's --font-heading and so on) or a name.
+const ROLES = ['heading', 'subheading', 'body']
+function fontCss(v, fallback) {
+  const f = v || fallback
+  if (!f) return undefined
+  return ROLES.includes(f) ? `var(--font-${f})` : `'${f}', serif`
+}
+
 // How one element looks (the `style` kind): size, font, weight, alignment, its
 // text and background colours, and its width. Colours offer the site's named
 // ones first (schema `styleColors`, which follow its themes and modes), then a
@@ -627,8 +667,17 @@ function StyleField({ id, value, onChange, ctx }) {
       </div>
     )
   }
+  // The sample takes the style the way the site will (StoryShaped's Extras.jsx,
+  // lookToCss): a named colour is the site's own variable.
+  const colourCss = (c) => (!c ? undefined : named.find((n) => n.value === c)?.css ?? c)
+  const sample = {
+    fontSize: { small: '0.875em', large: '1.25em', xlarge: '1.6em' }[v.size], fontFamily: v.font ? `var(--font-${v.font})` : undefined,
+    fontWeight: v.weight === 'bold' ? 700 : v.weight === 'normal' ? 400 : undefined, textAlign: v.align,
+    color: colourCss(v.color), background: colourCss(v.background), padding: v.background ? '0.5em 0.75em' : undefined,
+  }
   return (
     <div id={id} className="eotm-style">
+      <div className="eotm-style-sample"><Preview schema={ctx.schema}><p style={sample}>Sample text in this style</p></Preview></div>
       {Object.entries(STYLE_PARTS).map(([k, [label, names]]) => (
         <div key={k} className="eotm-style-part">
           <label className="eotm-label" htmlFor={`${id}-${k}`}>{label}</label>

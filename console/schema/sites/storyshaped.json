@@ -99,6 +99,21 @@
       "css": "var(--void)"
     }
   ],
+  "buttonStyles": [
+    {
+      "value": "primary",
+      "label": "Primary",
+      "className": "btn btn-primary"
+    },
+    {
+      "value": "ghost",
+      "label": "Outline",
+      "className": "btn btn-ghost"
+    }
+  ],
+  "previewScope": {
+    "className": "sss-home"
+  },
   "types": {
     "libraryArticle": {
       "label": "Library entry",
@@ -1313,6 +1328,20 @@
               "name": "url",
               "kind": "url",
               "label": "Goes to"
+            },
+            {
+              "name": "look",
+              "kind": "select",
+              "label": "Button style",
+              "optionsFrom": "buttonStyles",
+              "blankLabel": "First is Primary, the rest Outline",
+              "help": "How the button looks, from the site’s own button styles."
+            },
+            {
+              "name": "icon",
+              "kind": "image",
+              "label": "Icon",
+              "help": "Optional: a small picture before the text."
             }
           ]
         },

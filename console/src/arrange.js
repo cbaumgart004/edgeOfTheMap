@@ -36,27 +36,40 @@ export function clampPart(p) {
   return out
 }
 
+// Where a layout keeps the desktop arrangement or the phone's own (`phone`:
+// arranging on a phone, StoryShaped ADR-0010).
+const keys = (phone) => (phone ? { parts: 'phoneParts', height: 'phoneHeight' } : { parts: 'parts', height: 'height' })
+
 // The section switching to Free: every part where it is now drawn, unless the
 // section was Free before and kept the part's place; its height as it stands.
-// `measured` is { name: { x, y, w, h } } from the page.
-export function toFree(old, measured, height) {
+// `measured` is { name: { x, y, w, h } } from the page. On a phone it is the
+// phone's own arrangement that starts, from the parts as the phone stacks them.
+export function toFree(old, measured, height, { phone = false } = {}) {
+  const k = keys(phone)
   const parts = {}
   for (const [name, m] of Object.entries(measured)) {
-    const kept = old?.parts?.[name]
+    const kept = old?.[k.parts]?.[name]
     // Height is measured but not kept: a part without one grows to fit, so
     // text never gets cut off by a box drawn for different words.
     parts[name] = kept ?? clampPart({ x: m.x, y: m.y, w: m.w })
   }
-  return { ...old, mode: 'free', height: old?.height ?? round(clamp(height, 1, 1000)), parts: { ...old?.parts, ...parts } }
+  return {
+    ...old, ...(phone ? { phone: 'free' } : { mode: 'free' }),
+    [k.height]: old?.[k.height] ?? round(clamp(height, 1, 1000)), [k.parts]: { ...old?.[k.parts], ...parts },
+  }
 }
 
 // One part changed: the rest of the layout as it was.
-export function setPart(old, name, patch) {
-  const cur = old?.parts?.[name] ?? {}
+export function setPart(old, name, patch, { phone = false } = {}) {
+  const k = keys(phone).parts
+  const cur = old?.[k]?.[name] ?? {}
   const next = clampPart({ ...cur, ...patch })
-  for (const k of Object.keys(next)) if (next[k] == null) delete next[k]
-  return { ...old, parts: { ...old?.parts, [name]: next } }
+  for (const key of Object.keys(next)) if (next[key] == null) delete next[key]
+  return { ...old, [k]: { ...old?.[k], [name]: next } }
 }
+
+// The section's height, desktop or phone.
+export const setHeight = (old, h, { phone = false } = {}) => ({ ...old, [keys(phone).height]: round(clamp(h, 1, 1000)) })
 
 // A drag from `start` (a part position) by (dx, dy) screen pixels on a section
 // `width` px wide, by handle: 'move', or a side or corner ('n', 'e', 'se'...).
@@ -122,8 +135,8 @@ export function pinchPart(start, factor, { text = false } = {}) {
 }
 
 // Layering: to the front or back of the section's other parts.
-export function restack(old, name, toFront) {
-  const zs = Object.entries(old?.parts ?? {}).filter(([n]) => n !== name).map(([, p]) => p.z ?? 0)
+export function restack(old, name, toFront, { phone = false } = {}) {
+  const zs = Object.entries(old?.[keys(phone).parts] ?? {}).filter(([n]) => n !== name).map(([, p]) => p.z ?? 0)
   const z = toFront ? Math.min(100, Math.max(0, ...zs) + 1) : Math.max(0, Math.min(0, ...zs) - 1)
-  return setPart(old, name, { z })
+  return setPart(old, name, { z }, { phone })
 }

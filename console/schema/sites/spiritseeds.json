@@ -8,6 +8,18 @@
     {"label": "Contact email", "field": "contactEmail", "show": true}
   ],
   "version": 2,
+  "buttonStyles": [
+    { "value": "standard", "label": "Standard", "className": "btn" },
+    { "value": "shimmer", "label": "Shimmer", "className": "btn btn--shimmer" }
+  ],
+  "styleColors": [
+    { "value": "primary", "label": "Primary (follows the season)", "css": "var(--primary-color)" },
+    { "value": "secondary", "label": "Secondary", "css": "var(--secondary-color)" },
+    { "value": "accent", "label": "Accent", "css": "var(--accent-color)" },
+    { "value": "highlight", "label": "Highlight", "css": "var(--highlight-color)" },
+    { "value": "text", "label": "Text", "css": "var(--text-color)" },
+    { "value": "background", "label": "Background", "css": "var(--bg-color)" }
+  ],
   "brand": {
     "name": "Spirit Seeds Wellness",
     "logo": "/uploads/SpiritSeedsLogo.jpg",
@@ -79,7 +91,11 @@
           "help": "The row of buttons just below the menu bar, on every page. A Connect button is added at the end.",
           "fields": [
             { "name": "label", "kind": "text", "label": "Button text" },
-            { "name": "url", "kind": "url", "label": "Button link" } ] },
+            { "name": "url", "kind": "url", "label": "Button link" },
+            { "name": "look", "kind": "select", "label": "Button style", "optionsFrom": "buttonStyles", "blankLabel": "The site’s usual", "help": "How the button looks, from the site’s own button styles." },
+            { "name": "icon", "kind": "image", "label": "Icon", "help": "Optional: a small picture before the text." } ] },
+        { "name": "actionBarLook", "kind": "style", "label": "Look of the buttons under the menu bar",
+          "help": "Width (Site’s own is the full width), alignment, colours and text size of that row." },
         { "name": "actionButtonsPerRow", "kind": "select", "label": "Buttons per row on a phone", "default": "2",
           "help": "How the buttons under the menu bar sit on a narrow screen. Two per row puts four buttons in a 2 by 2 square.",
           "options": [ { "value": "2", "label": "Two per row" }, { "value": "1", "label": "One per row" }, { "value": "all", "label": "All in one row" } ] },
@@ -179,12 +195,12 @@
         { "name": "taglineLine", "kind": "textarea", "label": "Tagline line", "maxLength": 240, "help": "Blank: the artwork’s line, ending “Lasting Health”. Longer text wraps." },
         { "name": "taglineSize", "kind": "number", "label": "Tagline text size", "integer": true, "min": 50, "max": 200, "step": 5, "slider": true, "unit": "%", "sliderDefault": 100,
           "help": "Grows or shrinks all the tagline’s lettering together. 100% is the artwork’s." },
-        { "name": "taglineHeadingFont", "kind": "select", "label": "Tagline heading font",
+        { "name": "taglineHeadingFont", "kind": "select", "label": "Tagline heading font", "blankLabel": "The site’s heading font", "preview": "font", "previewDefault": "heading", "previewText": "Your Integrative Healer;",
           "help": "Blank follows the site’s heading font (Euphoria Script, the artwork’s, unless the look changes it). Pick a role to follow that, or a font to fix it.", "options": [
           { "value": "subheading", "label": "The site’s subheading font" }, { "value": "body", "label": "The site’s body font" },
           { "value": "Euphoria Script", "label": "Euphoria Script, always" }, { "value": "Caveat", "label": "Caveat" }, { "value": "Playfair Display", "label": "Playfair Display" },
           { "value": "Cormorant Garamond", "label": "Cormorant Garamond" }, { "value": "Fraunces", "label": "Fraunces" } ] },
-        { "name": "taglineLineFont", "kind": "select", "label": "Tagline line font",
+        { "name": "taglineLineFont", "kind": "select", "label": "Tagline line font", "blankLabel": "The site’s subheading font", "preview": "font", "previewDefault": "subheading", "previewText": "Guiding you to Release mental, emotional and physical pain",
           "help": "Blank follows the site’s subheading font (Farsan, the artwork’s, unless the look changes it). Pick a role to follow that, or a font to fix it.", "options": [
           { "value": "heading", "label": "The site’s heading font" }, { "value": "body", "label": "The site’s body font" },
           { "value": "Farsan", "label": "Farsan, always" }, { "value": "Merriweather Sans", "label": "Merriweather Sans" }, { "value": "Assistant", "label": "Assistant" },
@@ -212,7 +228,9 @@
           { "name": "status", "kind": "select", "label": "Status", "default": "active", "help": "Ignored when a linked service is set: that service's status is used.", "options": [
             { "value": "active", "label": "Active" }, { "value": "coming-soon", "label": "Coming soon" } ] },
           { "name": "service", "kind": "text", "label": "Linked service (optional)", "suggest": { "block": "service", "field": "title" },
-            "help": "The heading of a Service on this page. The button then shows Available or Coming soon from that service's status." } ] },
+            "help": "The heading of a Service on this page. The button then shows Available or Coming soon from that service's status." },
+          { "name": "look", "kind": "select", "label": "Button style", "optionsFrom": "buttonStyles", "blankLabel": "The site’s usual", "help": "How the button looks, from the site’s own button styles." },
+          { "name": "icon", "kind": "image", "label": "Icon", "help": "Optional: a small picture before the text." } ] },
         { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button", "default": true }
       ]
     },
@@ -244,7 +262,9 @@
           { "name": "url", "kind": "url", "label": "Button link" },
           { "name": "status", "kind": "select", "label": "Status", "default": "active", "help": "Ignored when a linked service is set.", "options": [
             { "value": "active", "label": "Active" }, { "value": "coming-soon", "label": "Coming soon" } ] },
-          { "name": "service", "kind": "text", "label": "Linked service (optional)", "suggest": { "block": "service", "field": "title" } } ] },
+          { "name": "service", "kind": "text", "label": "Linked service (optional)", "suggest": { "block": "service", "field": "title" } },
+          { "name": "look", "kind": "select", "label": "Button style", "optionsFrom": "buttonStyles", "blankLabel": "The site’s usual", "help": "How the button looks, from the site’s own button styles." },
+          { "name": "icon", "kind": "image", "label": "Icon", "help": "Optional: a small picture before the text." } ] },
         { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button", "default": true }
       ]
     },

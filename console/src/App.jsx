@@ -73,6 +73,71 @@ export function useWide() {
   return wide
 }
 
+// The panel docks to the right of the page on a desktop and on any screen
+// held sideways (a phone or tablet in landscape), so the page stays in view
+// beside it; upright, it is a sheet from the bottom.
+export function useDocked(wide) {
+  const q = '(orientation: landscape) and (min-width: 560px)'
+  const [side, setSide] = useState(() => matchMedia(q).matches)
+  useEffect(() => {
+    const mq = matchMedia(q)
+    const on = () => setSide(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return wide || side
+}
+
+// The width the page is laid out at while editing, on a screen narrower than
+// a desktop: "fit" (the device's own), "tablet" (1024) or "desktop" (1280).
+// It rewrites the page's viewport tag, so the site's own media queries see that
+// width and the browser scales the page to fit: a phone shows the desktop
+// layout whole, and pinching zooms in as on any page. The editor's own panel is
+// zoomed back up by the same factor so it stays readable. Turned sideways, a
+// narrow screen takes Desktop unless the owner chose; upright, Fit. Closing the
+// editor puts the tag back.
+export const PAGE_WIDTHS = { fit: null, tablet: 1024, desktop: 1280 }
+export function usePageWidth() {
+  const meta = useRef(null)
+  const original = useRef(null)
+  const base = useRef(typeof innerWidth === 'number' ? innerWidth : 1280) // the device's own width, measured at Fit
+  const [chosen, setChosen] = useState(null) // the owner's pick, this visit
+  const [landscape, setLandscape] = useState(() => matchMedia('(orientation: landscape)').matches)
+  useEffect(() => {
+    const mq = matchMedia('(orientation: landscape)')
+    const on = () => setLandscape(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  const narrow = base.current < 1280
+  const width = chosen ?? (narrow && landscape && matchMedia('(pointer: coarse)').matches ? 'desktop' : 'fit')
+  const px = PAGE_WIDTHS[width]
+  const scale = px && base.current < px ? base.current / px : 1
+  useEffect(() => {
+    meta.current ??= document.querySelector('meta[name="viewport"]')
+    if (!meta.current) return undefined
+    original.current ??= meta.current.getAttribute('content')
+    if (!px || base.current >= px) {
+      meta.current.setAttribute('content', original.current)
+      const remeasure = () => { base.current = innerWidth }
+      remeasure()
+      addEventListener('resize', remeasure)
+      return () => removeEventListener('resize', remeasure)
+    }
+    meta.current.setAttribute('content', `width=${px}, initial-scale=${Math.round(scale * 1000) / 1000}`)
+    return undefined
+  }, [px, scale])
+  useEffect(() => () => { if (meta.current && original.current != null) meta.current.setAttribute('content', original.current) }, [])
+  return { width, setWidth: setChosen, scale, narrow }
+}
+
+// The open editor moved off its dock by the owner: { x, y } of its top-left
+// corner, or null where it docks. Kept in this browser for every site.
+const PANEL_POS = 'eotm:panel-pos'
+const readPanelPos = () => {
+  try { return JSON.parse(localStorage.getItem(PANEL_POS)) } catch { return null }
+}
+
 // Where the owner left the minimised editor, kept in this browser for every
 // site: { x, y } of its top-left corner, or null for the default spot along
 // the bottom.
@@ -100,6 +165,13 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   const drag = useRef(null)
   const sheet = useRef(null)
   const bar = size === 'bar'
+  // The open panel, dragged by its grip, floats where it is put on any device,
+  // so whatever it covers can be seen; Dock puts it back.
+  const [panelPos, setPanelPos] = useState(readPanelPos)
+  const dock = () => {
+    setPanelPos(null)
+    try { localStorage.removeItem(PANEL_POS) } catch { /* private mode */ }
+  }
   // Minimised, the editor floats: drag it by its grip or its title anywhere on
   // the page, so it is never parked over the part being looked at. A tap on
   // the grip opens it. On a phone ‹ and › tuck it against that edge, leaving a
@@ -120,21 +192,21 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   }, [bar])
 
   const onDown = (e) => {
-    if (wide && !bar) return
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
-    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, a, input, select')) return
+    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, a, input, select')) return
     const rect = sheet.current.getBoundingClientRect()
-    drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false, grip: !!e.target.closest?.('.eotm-grip') }
+    drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false, grip: !!e.target.closest?.('.eotm-grip'), panel: !bar }
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
   const onMove = (e) => {
     const d = drag.current
-    if (!d || !bar) return
+    if (!d) return
     const dx = e.clientX - d.x
     const dy = e.clientY - d.y
     if (!d.moved && Math.hypot(dx, dy) < 8) return
     d.moved = true
-    setPos(clampPos({ x: d.left + dx, y: d.top + dy }, sheet.current))
+    if (d.panel) setPanelPos(clampPos({ x: d.left + dx, y: d.top + dy }, sheet.current))
+    else if (bar) setPos(clampPos({ x: d.left + dx, y: d.top + dy }, sheet.current))
   }
   const onUp = (e) => {
     const d = drag.current
@@ -147,13 +219,12 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
       try { localStorage.setItem(BAR_POS, JSON.stringify(clampPos({ x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y }, sheet.current))) } catch { /* private mode */ }
       return
     }
-    const dy = e.clientY - d.y
-    const order = ['bar', 'half', 'full']
-    const i = order.indexOf(d.size)
-    if (Math.abs(dy) < 8) return
-    setSize(order[Math.max(0, Math.min(2, i + (dy < 0 ? 1 : -1) * (Math.abs(dy) > 220 ? 2 : 1)))])
+    if (d.panel && d.moved) {
+      try { localStorage.setItem(PANEL_POS, JSON.stringify(clampPos({ x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y }, sheet.current))) } catch { /* private mode */ }
+    }
   }
   const floating = bar && pos
+  const loose = !bar && panelPos
   if (bar && !wide && tuck) return (
     <button type="button" className={`eotm-tab is-${tuck}`} style={{ ...style, ...(pos ? { top: pos.y, bottom: 'auto' } : null) }}
       aria-label="Show the editor" title="Show the editor" onClick={() => setTuck(null)}>
@@ -163,13 +234,14 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   // Minimised, the whole bar drags (not its buttons); open, only the grip.
   const dragOn = { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp }
   return (
-    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}`}
-      style={floating ? { ...style, left: pos.x, top: pos.y } : style} aria-label="Site editor"
+    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}${loose ? ' is-loose' : ''}`}
+      style={floating ? { ...style, left: pos.x, top: pos.y } : loose ? { ...style, left: panelPos.x, top: panelPos.y } : style} aria-label="Site editor"
       {...(bar ? dragOn : null)}
       onClickCapture={(e) => { if (dragged.current) { dragged.current = false; e.preventDefault(); e.stopPropagation() } }}>
-      <div className="eotm-grip" {...(bar ? null : dragOn)} title={bar ? 'Drag to move the editor; tap to open it' : undefined}>
+      <div className="eotm-grip" {...(bar ? null : dragOn)} title={bar ? 'Drag to move the editor; tap to open it' : 'Drag to move the editor anywhere'}>
         {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the left edge" title="Tuck to the left" onClick={() => setTuck('left')}>‹</button>}
         <span aria-hidden="true" />
+        {loose && <button type="button" className="eotm-dock" onClick={dock} title="Put the editor back in its place">Dock</button>}
         {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the right edge" title="Tuck to the right" onClick={() => setTuck('right')}>›</button>}
       </div>
       {header}
@@ -187,14 +259,19 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   useEffect(() => { bridge.setSchema?.(schema) }, [bridge, schema])
   const mode = useBrandMode(schema.brand)
   const wide = useWide()
+  const docked = useDocked(wide)
+  const page = usePageWidth()
   const [size, setSize] = useState(wide ? 'full' : 'half')
   const [peek, setPeek] = useState(false)
   // Customer view: the editor steps aside and the page shows only what is
   // published, as a visitor sees it (bridge.setPreviewing). Drafts are kept.
   const [customer, setCustomer] = useState(false)
-  // Arrange mode (Arrange.jsx): a click on the page selects a section or a
-  // part and shows handles, instead of opening it to edit.
-  const [arranging, setArranging] = useState(false)
+  // What a click on the page does. View: the page's own (links go, buttons
+  // press). Edit: opens what was clicked, buttons included, which are edited,
+  // not pressed (Targets.jsx). Arrange: selects a section or part and shows
+  // its handles (Arrange.jsx).
+  const [clickMode, setClickMode] = useState('edit')
+  const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar') }
   useEffect(() => { bridge.setPreviewing?.(customer) }, [bridge, customer])
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
@@ -225,7 +302,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const close = () => (unpublished ? setLeaving(true) : onClose())
   useEffect(() => () => bridge.clear(), [bridge])
 
+  // The page laid out wider than the screen is scaled down; the editor is
+  // zoomed back up so its text and buttons keep their size.
   const style = brandStyle(schema.brand, mode)
+  const rootStyle = page.scale < 1 ? { ...style, zoom: 1 / page.scale } : style
   const title = view.name === 'edit' ? view.viewLabel ?? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
     : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates'
     : view.name === 'images' ? schema.images?.label ?? 'Images' : schema.brand.name
@@ -256,6 +336,25 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         </a>
       )}
       <button type="button" className="eotm-icon" aria-label="Close editor" onClick={close}>✕</button>
+      {/* On a screen narrower than a desktop: the width the page is laid out
+          at, so a phone or tablet can show and arrange the desktop layout. */}
+      {page.narrow && (
+        <label className="eotm-pagewidth" title="The width the page is laid out at while you edit. Pinch to zoom in on it.">
+          <span>Page</span>
+          <select className="eotm-input" value={page.width} onChange={(e) => page.setWidth(e.target.value)}>
+            <option value="fit">This screen</option>
+            <option value="tablet">Tablet (1024)</option>
+            <option value="desktop">Desktop (1280)</option>
+          </select>
+        </label>
+      )}
+      <div className="eotm-seg eotm-modes" role="radiogroup" aria-label="What a click on the page does">
+        {[['view', 'View', 'The page works as visitors use it: links go, buttons press'],
+          ['edit', 'Edit', 'A click opens what was clicked to edit; buttons are edited, not pressed'],
+          ['arrange', 'Arrange', 'Move, resize and fade the parts of a section on the page']].map(([m, label, help]) => (
+          <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
+        ))}
+      </div>
       {/* Two ways to look at the page, named for what each shows: the owner's
           changes before they are live, or the live site as customers get it. */}
       {size !== 'bar' && (
@@ -273,14 +372,6 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
               <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
             Customer view
-          </button>
-          <button type="button" className={`eotm-pill${arranging ? ' is-on' : ''}`} aria-pressed={arranging}
-            title={arranging ? 'Back to editing content: a click opens what was clicked' : 'Move, resize and fade the parts of a section on the page'}
-            onClick={() => { setArranging((a) => !a); setPeek(false); if (!arranging && !wide) setSize('bar') }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
-            </svg>
-            {arranging ? 'Done arranging' : 'Arrange'}
           </button>
         </div>
       )}
@@ -424,15 +515,16 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
 
   if (customer) return (
-    <div className="eotm-root" data-eotm-mode={mode} style={style}>
+    <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
       <button type="button" className="eotm-btn is-primary eotm-return" onClick={() => setCustomer(false)}
         title="Customer view: this is the live site. Your unpublished changes are kept.">Back to editing</button>
     </div>
   )
 
   return (
-    <div className="eotm-root" data-eotm-mode={mode} style={style}>
-      <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={wide}>
+    <>
+    <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
+      <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={docked}>
         {body}
         {user && view.name === 'home' && !leaving && (
           <p className="eotm-who">
@@ -443,11 +535,16 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
+    </div>
+    {/* The on-page outlines and handles sit over the page in its own
+        coordinates, so they are outside the editor's zoom (page width). */}
+    <div className="eotm-root eotm-overlay" data-eotm-mode={mode} style={style}>
       <div ref={setOverlay} />
-      {user && overlay && !customer && createPortal(arranging
-        ? <Arrange onChange={resizeTarget} />
+      {user && overlay && !customer && clickMode !== 'view' && createPortal(clickMode === 'arrange'
+        ? <Arrange onChange={resizeTarget} uiScale={1 / page.scale} />
         : <Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
+    </>
   )
 }
 

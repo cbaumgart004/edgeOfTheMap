@@ -60,7 +60,7 @@ says what each key means.
 | `boolean` | boolean | |
 | `date` | `YYYY-MM-DD` | |
 | `datetime` | ISO 8601 string with offset | |
-| `select` | string | `options: [{ value, label }]` |
+| `select` | string | `options: [{ value, label }]`, or `optionsFrom: "buttonStyles"` for a list at the top of the schema. `blankLabel` names the blank choice (default None). `preview: "font"` shows the choice set in that font (`previewDefault`: the role blank stands for, `previewText`); a select with `optionsFrom: "buttonStyles"` shows the button drawn with the site's class |
 | `image` | `{ src, alt, width, height, rotate?, flip?, opacity? }` | The owner can turn it (`rotate` 0, 90, 180, 270), mirror it (`flip`) and fade it (`opacity` 10 to 100); the site applies them as CSS. "Site photos" reuses one already on the site, or takes a pasted address. Uploads are scaled to 1600 px, 600 KB; `"wide": true` (a banner or full-bleed background) allows 2560 px, 1.2 MB. After an upload, "Sharper (larger file)" sends the same photo again at up to 3200 px, 2.5 MB (`src/images.js`, `LIMITS`) |
 | `photos` | `[{ src, alt, width, height, index }]` | `indexes: ["Light", "Dark"]` labels each photo. StoryShaped's daylight/blacklight pairs. `warnMissingIndex: true`: Publish asks the owner to confirm when there are photos but none under one index (`missingIndexHelp` adds a sentence). `maxItems`. Takes `wide` as `image` does |
 | `relation` | document id, or an array of ids when `many` | `to: "<type>"` |
@@ -112,6 +112,15 @@ content and the site's code do not, so a rename never needs a migration.
 | `data-eotm-wrap` | a wrapper between a section and its parts | no box of its own while the section is Free |
 | `data-eotm-group` | several elements moved as one part | no box of its own while the section flows |
 
+## Buttons and samples (1.6.0+)
+
+- **`buttonStyles`** (top level): the site's button classes, `[{ "value", "label", "className" }]`. A button
+  list takes `{ "name": "look", "kind": "select", "optionsFrom": "buttonStyles" }` and, optionally, an `icon`
+  image; the site draws the button with that class, its icon before its text, and marks it
+  `data-eotm-in="<_id>"` so Edit mode opens that button (its text, link, icon and style) instead of following it.
+- **`previewScope`** (top level): `{ "className" }`, the class the site's variables live under (StoryShaped's
+  `sss-home`), so samples in the editor (a button style, a font, a Style field) are drawn with the site's own CSS.
+
 ## Free sections (StoryShaped ADR-0010)
 
 Any section, row or document may carry `_layout`, declared by no field and checked by `checkFrame`
@@ -119,7 +128,10 @@ Any section, row or document may carry `_layout`, declared by no field and check
 "z"?, "opacity"? } } }`. `x` and `w` are % of the element's width, `y`, `h` and `height` % of its width
 too, so the arrangement scales with the page; a part with no `h` grows to fit; `fs` is its text size, %
 of the site's own. Below 820px a Free section stacks, ordered by `y` then `x`, or with `"phone": "scale"`
-keeps its desktop arrangement, drawn at desktop width and scaled down whole. The site draws it from the marks above (StoryShaped:
+keeps its desktop arrangement, drawn at desktop width and scaled down whole, or with `"phone": "free"` takes
+its own phone arrangement, `phoneParts` and `phoneHeight` (same shape), made in Arrange on a phone. A phone
+arrangement works whether or not `mode` is free. The site marks phone-placed parts `data-eotm-qplaced` and
+sets `--q*` variables. The site draws it from the marks above (StoryShaped:
 `components/Frame.jsx`, `styles/Frame.css`).
 
 ## Documents
