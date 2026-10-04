@@ -78,6 +78,14 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   remove a saved template) and Types and names.
 - **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
   against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
+- **Arrange (1.5.0+).** A toggle in the editor's header (`src/Arrange.jsx`; StoryShaped ADR-0010). While on, a
+  tap on the page selects a section instead of opening it: switch it between Flow and Free, choose Phone: stack or
+  Keep layout, and drag a Free section's height. In a Free section, drag a part to move it, a corner to scale it
+  (text too), a side to change only that side, two fingers to pinch; arrows nudge (Shift for 10 px); Fade, Front,
+  Back and Fit. Snap puts edges on 12 columns and an 8 px step; Free-hand places freely. On a phone held upright it
+  suggests turning sideways, where Free sections show their desktop layout. Every change is an updater of the
+  section's `_layout` (`src/arrange.js`), saved and undone like any edit. Not yet: alignment guides, several parts
+  at once, sections themselves on the same handles (phase 3); the older width handles still live in Targets.
 - **Settings (1.3.0+).** The gear in the editor's header opens the admin page at `?site=<slug>`: that site's
   **Changes and connections** (what is not yet pushed to production; each address with its UptimeRobot uptime; what
   the schema's `connections` say the site is wired to, set or not, from the published settings), the login

@@ -422,3 +422,31 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 .eotm-style { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px 10px; }
 .eotm-style-part { display: grid; gap: 4px; align-content: start; }
 .eotm-style .eotm-range { grid-column: 1 / -1; }
+
+/* Arrange mode (Arrange.jsx): handles over the page. */
+.eotm-arrange-sel { border-style: solid; }
+.eotm-arrange-ghost { position: fixed; outline: 1px dashed color-mix(in srgb, var(--eotm-accent) 55%, transparent); border-radius: 4px; }
+.eotm-arrange-handle { position: fixed; pointer-events: auto; touch-action: none; width: 16px; height: 16px; margin: -8px 0 0 -8px; padding: 0;
+  border: 2px solid var(--eotm-accent); border-radius: 4px; background: var(--eotm-surface); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+.eotm-arrange-handle.is-nw, .eotm-arrange-handle.is-se { cursor: nwse-resize; }
+.eotm-arrange-handle.is-ne, .eotm-arrange-handle.is-sw { cursor: nesw-resize; }
+.eotm-arrange-handle.is-n, .eotm-arrange-handle.is-s { cursor: ns-resize; }
+.eotm-arrange-handle.is-e, .eotm-arrange-handle.is-w { cursor: ew-resize; }
+.eotm-arrange-handle.is-height { width: 56px; height: 14px; margin: -7px 0 0 -28px; border-radius: 7px; background: var(--eotm-accent); cursor: ns-resize; }
+/* Fingers need bigger targets than a pointer. */
+@media (pointer: coarse) {
+  .eotm-arrange-handle { width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 13px; }
+  .eotm-arrange-handle.is-height { width: 64px; height: 22px; margin: -11px 0 0 -32px; }
+}
+.eotm-arrange-bar { position: fixed; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
+.eotm-arrange-bar > * { pointer-events: auto; }
+.eotm-arrange-seg { background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
+.eotm-arrange-range { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px;
+  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); font: 600 13px var(--eotm-font); }
+.eotm-arrange-hint, .eotm-arrange-prompt { position: fixed; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 8px 14px;
+  border-radius: 999px; background: var(--eotm-ink); color: var(--eotm-bg); font: 500 13px var(--eotm-font); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+.eotm-arrange-hint { top: 12px; pointer-events: none; }
+.eotm-arrange-prompt { top: 56px; display: flex; gap: 10px; align-items: center; width: max-content; max-width: calc(100vw - 24px); border-radius: 14px; }
+/* The parts of a Free section are dragged, not scrolled, while arranging. */
+html.eotm-arranging [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; cursor: move; user-select: none; }
+html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: default; }

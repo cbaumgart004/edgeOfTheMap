@@ -3,6 +3,7 @@ import { checkDocument, warnDocument, titleOf, setItemField } from '../schema/sc
 import { previewPathFor } from './bridge.js'
 import { FieldList } from './Fields.jsx'
 import Targets from './Targets.jsx'
+import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
@@ -191,6 +192,9 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // Customer view: the editor steps aside and the page shows only what is
   // published, as a visitor sees it (bridge.setPreviewing). Drafts are kept.
   const [customer, setCustomer] = useState(false)
+  // Arrange mode (Arrange.jsx): a click on the page selects a section or a
+  // part and shows handles, instead of opening it to edit.
+  const [arranging, setArranging] = useState(false)
   useEffect(() => { bridge.setPreviewing?.(customer) }, [bridge, customer])
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
@@ -269,6 +273,14 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
               <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
             Customer view
+          </button>
+          <button type="button" className={`eotm-pill${arranging ? ' is-on' : ''}`} aria-pressed={arranging}
+            title={arranging ? 'Back to editing content: a click opens what was clicked' : 'Move, resize and fade the parts of a section on the page'}
+            onClick={() => { setArranging((a) => !a); setPeek(false); if (!arranging && !wide) setSize('bar') }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
+            </svg>
+            {arranging ? 'Done arranging' : 'Arrange'}
           </button>
         </div>
       )}
@@ -432,7 +444,9 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
       <div ref={setOverlay} />
-      {user && overlay && !customer && createPortal(<Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
+      {user && overlay && !customer && createPortal(arranging
+        ? <Arrange onChange={resizeTarget} />
+        : <Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
   )
 }

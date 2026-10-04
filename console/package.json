@@ -1,6 +1,6 @@
 {
   "name": "@edgeofthemap/console",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "description": "The owner console, served from admin.theedgeofthemap.com and mounted on each customer's own page (StoryShaped ADR-0007).",
