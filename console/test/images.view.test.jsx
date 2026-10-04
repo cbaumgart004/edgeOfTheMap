@@ -55,7 +55,7 @@ describe('StoryShaped in the console', () => {
     const { host, store } = await mount()
     const listing = await store.create({ type: 'listing', data: { title: 'Blue ring', photos: [{ src: '/l1.webp', index: 'Light' }, { src: '/l2.webp', index: 'Light' }] } })
 
-    await act(async () => byText(host, 'button.eotm-card', 'Images').click())
+    await act(async () => byText(host, 'button.eotm-card', 'Image dictionary').click())
     await tick(10)
     expect(byText(host, '.eotm-pair-doc', 'Blue ring')).toBeTruthy()
     expect(host.querySelectorAll('.eotm-pair-doc .eotm-slot.is-empty').length).toBe(2)
@@ -69,7 +69,7 @@ describe('StoryShaped in the console', () => {
 
   it('starts a new Image pair from Images', async () => {
     const { host, store } = await mount()
-    await act(async () => byText(host, 'button.eotm-card', 'Images').click())
+    await act(async () => byText(host, 'button.eotm-card', 'Image dictionary').click())
     await tick(10)
     await act(async () => byText(host, 'button', 'New image pair').click())
     await tick(10)

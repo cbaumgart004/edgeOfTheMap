@@ -118,6 +118,9 @@ content and the site's code do not, so a rename never needs a migration.
   list takes `{ "name": "look", "kind": "select", "optionsFrom": "buttonStyles" }` and, optionally, an `icon`
   image; the site draws the button with that class, its icon before its text, and marks it
   `data-eotm-in="<_id>"` so Edit mode opens that button (its text, link, icon and style) instead of following it.
+- **`templates`** (top level): section templates the site ships, `[{ "name", "block": { "_type", ... } }]`,
+  offered when adding a section beside the owner's own (`custom.templates`), shipped ones first. StoryShaped
+  ships "Banner: collection coming soon".
 - **`previewScope`** (top level): `{ "className" }`, the class the site's variables live under (StoryShaped's
   `sss-home`), so samples in the editor (a button style, a font, a Style field) are drawn with the site's own CSS.
 

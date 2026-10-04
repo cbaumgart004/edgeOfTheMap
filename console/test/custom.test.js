@@ -124,7 +124,7 @@ describe('renaming built-in types and fields', () => {
     const base = JSON.parse(readFileSync(new URL('../schema/sites/storyshaped.json', import.meta.url), 'utf8'))
     const custom = { templates: [{ name: 'Quote', block: { _type: 'card', heading: 'A quote', look: 'story' } }] }
     expect(checkCustom(base, custom)).toEqual([])
-    expect(mergeCustom(base, custom).templates.map((t) => t.name)).toEqual(['Quote'])
+    expect(mergeCustom(base, custom).templates.map((t) => t.name)).toEqual(['Banner: collection coming soon', 'Quote']) // the site's own first
     expect(checkCustom(base, { templates: [{ name: 'Bad', block: { _type: 'nope' } }] })).toEqual([expect.stringMatching(/no such section type/)])
   })
 })

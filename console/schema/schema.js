@@ -80,6 +80,10 @@ export function checkSchema(schema) {
     if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
     if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
   }
+  // Section templates the site ships ("Banner"), offered beside the owner's.
+  for (const t of schema.templates ?? []) {
+    if (!t?.name || !blocks[t.block?._type]) errors.push(`templates.${t?.name}: names no section type`)
+  }
   // The site's classes (schema/classes.js): a name, a label and a selector each.
   checkClassList(schema.classes, errors)
   // The site's button classes, offered by a select with optionsFrom

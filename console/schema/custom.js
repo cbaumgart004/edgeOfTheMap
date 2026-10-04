@@ -130,7 +130,8 @@ export function mergeCustom(shipped, custom) {
   }
   // Section templates the owner saved ("Save as template"): a name and a
   // section's content, offered when adding a section of that type.
-  merged.templates = templates.filter((t) => merged.blocks[t?.block?._type])
+  // The site's own (schema `templates`, shipped) first, then the owner's.
+  merged.templates = [...(base.templates ?? []), ...templates.filter((t) => merged.blocks[t?.block?._type])]
   return merged
 }
 

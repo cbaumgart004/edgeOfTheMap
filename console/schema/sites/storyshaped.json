@@ -25,9 +25,9 @@
   ],
   "images": {
     "type": "imagePair",
-    "label": "Images",
-    "summary": "Daylight and blacklight pairs",
-    "help": "Every daylight and blacklight pair on the site: your Image pairs, your Listings’ photos and your pages’ photos. A side with no photo takes an upload. Image pairs show on the Images page."
+    "label": "Image dictionary",
+    "summary": "Daylight and blacklight pairs (private)",
+    "help": "Private to the editor: every daylight and blacklight pair on the site, your Image pairs, your Listings’ photos and your pages’ photos. A side with no photo takes an upload. This is not a page of the site; the Images page is its own, built from Image with text sections."
   },
   "brand": {
     "name": "StoryShaped Studios",
@@ -147,6 +147,40 @@
       "name": "footer",
       "label": "Footer",
       "selector": ".sss-home .sss-footer"
+    },
+    {
+      "name": "imageText",
+      "label": "Image with text",
+      "selector": ".sss-home .image-text"
+    },
+    {
+      "name": "banner",
+      "label": "Banners",
+      "selector": ".sss-home .banner"
+    }
+  ],
+  "templates": [
+    {
+      "name": "Banner: collection coming soon",
+      "block": {
+        "_type": "banner",
+        "heading": "Collection Coming Soon",
+        "text": "Our pieces are on Etsy and eBay while the shop here is being built.",
+        "links": [
+          {
+            "_id": "banner-etsy",
+            "label": "StoryShaped Studios on Etsy",
+            "url": "https://www.etsy.com/shop/storyshapedstudios/?etsrc=sdt",
+            "look": "primary"
+          },
+          {
+            "_id": "banner-ebay",
+            "label": "StoryShaped Studios on eBay",
+            "url": "https://www.ebay.com/str/storyshapedstudios",
+            "look": "ghost"
+          }
+        ]
+      }
     }
   ],
   "previewScope": {
@@ -225,7 +259,9 @@
             "values",
             "photoFeature",
             "productCard",
-            "pairGallery"
+            "pairGallery",
+            "imageText",
+            "banner"
           ],
           "help": "The components this page is made of, in order. Arrange them side by side with its Page layout."
         }
@@ -1559,6 +1595,96 @@
           "name": "intro",
           "kind": "textarea",
           "label": "Introduction"
+        }
+      ]
+    },
+    "imageText": {
+      "label": "Image with text",
+      "className": "image-text",
+      "fields": [
+        {
+          "name": "image",
+          "kind": "image",
+          "label": "Photo",
+          "wide": true
+        },
+        {
+          "name": "width",
+          "kind": "number",
+          "label": "Photo width",
+          "integer": true,
+          "min": 10,
+          "max": 100,
+          "step": 1,
+          "slider": true,
+          "unit": "%",
+          "sliderDefault": 100,
+          "help": "Or drag the photo's edge on the page: it snaps to the 12 columns, or moves freely with Snap off."
+        },
+        {
+          "name": "align",
+          "kind": "select",
+          "label": "Photo position",
+          "blankLabel": "Centre",
+          "options": [
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ]
+        },
+        {
+          "name": "text",
+          "kind": "richtext",
+          "label": "Text beneath the photo"
+        }
+      ]
+    },
+    "banner": {
+      "label": "Banner",
+      "className": "banner",
+      "fields": [
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading",
+          "required": true
+        },
+        {
+          "name": "text",
+          "kind": "textarea",
+          "label": "Line beneath"
+        },
+        {
+          "name": "links",
+          "kind": "list",
+          "label": "Links beneath",
+          "itemLabel": "label",
+          "fields": [
+            {
+              "name": "label",
+              "kind": "text",
+              "label": "Link text",
+              "required": true
+            },
+            {
+              "name": "url",
+              "kind": "url",
+              "label": "Goes to",
+              "required": true
+            },
+            {
+              "name": "look",
+              "kind": "select",
+              "label": "Button style",
+              "optionsFrom": "buttonStyles",
+              "blankLabel": "Outline"
+            }
+          ]
         }
       ]
     }
