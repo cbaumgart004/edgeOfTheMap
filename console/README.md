@@ -79,7 +79,7 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
 - **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
   against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
 - **Settings (1.3.0+).** The gear in the editor's header opens the admin page at `?site=<slug>`: that site's
-  **Pages and connections** (every page and whether it is live; each address with its UptimeRobot uptime; what
+  **Changes and connections** (what is not yet pushed to production; each address with its UptimeRobot uptime; what
   the schema's `connections` say the site is wired to, set or not, from the published settings), the login
   (change password, or email a reset link), and the owner's requests, each open one with **Request update**,
   which adds a line to its thread and emails and pushes every operator, at most once an hour

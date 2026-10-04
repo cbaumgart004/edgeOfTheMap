@@ -117,7 +117,7 @@ async function loadSites() {
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a>${
       // A site with a preview (or a second domain): open that one instead.
-      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}<details class="status" data-status="${esc(s.slug)}"><summary>Pages and connections</summary><div class="status-body"><p class="meta">Loading…</p></div></details></li>`).join('')
+      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}<details class="status" data-status="${esc(s.slug)}"><summary>Changes and connections</summary><div class="status-body"><p class="meta">Loading…</p></div></details></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
   // ?site=<slug> (the editor's settings button): that site's status, open.
   const asked = new URLSearchParams(location.search).get('site')
@@ -634,23 +634,23 @@ $('#reset-me').addEventListener('click', async () => {
 // whether it is live, each address with its uptime, and what the site is
 // wired to. The editor's settings button lands here with ?site=<slug>.
 const DOC_STATE = { published: ['Live', 'is-ok'], changed: ['Changes not live yet', 'is-warn'], draft: ['Not published', ''] }
-const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
 const bare = (url) => url.replace(/^https:\/\//, '')
 async function loadStatus(box) {
   const slug = box.dataset.status
   const body = box.querySelector('.status-body')
   try {
-    const boot = await (await fetch(`/api/sites/${slug}/boot`)).json()
-    const types = Object.entries(boot.schema?.types ?? {}).filter(([n, t]) => t.previewPath && !t.singleton && !isDesign(n, t))
-    const [status, ...lists] = await Promise.all([
+    // Only what is not live yet (the editor's To the Developer list): every
+    // page of a long site made this too long to read.
+    const [boot, status, release] = await Promise.all([
+      fetch(`/api/sites/${slug}/boot`).then((r) => r.json()),
       api('GET', `/api/sites/${slug}/status`),
-      ...types.map(([n]) => api('GET', `/api/sites/${slug}/documents?type=${encodeURIComponent(n)}`)),
+      api('GET', `/api/sites/${slug}/release`),
     ])
-    const title = (d) => d.data?.title ?? d.data?.name ?? d.slug ?? 'Untitled'
-    const pages = types.map(([, t], i) => `<h3>${esc(t.plural ?? t.label)}</h3><ul>${lists[i].length ? lists[i].map((d) => {
+    const kind = (d) => boot.schema?.types?.[d.type]?.label ?? d.type
+    const pages = `<h3>Not yet pushed to production</h3><ul>${release.pending.length ? release.pending.map((d) => {
       const [label, cls] = DOC_STATE[d.status] ?? [d.status, '']
-      return `<li><span>${esc(title(d))}</span><span class="dot ${cls}">${esc(label)}</span></li>`
-    }).join('') : '<li class="meta">None yet</li>'}</ul>`).join('')
+      return `<li><span>${esc(d.title)}<span class="meta"> · ${esc(kind(d))}</span></span><span class="dot ${cls}">${esc(label)}</span></li>`
+    }).join('') : '<li class="meta">Nothing: everything is live.</li>'}</ul>`
     const up = (m) => (!m ? ['Not monitored', ''] : m.status === 'up' ? [`Up${m.uptimeMonth != null ? ` · ${m.uptimeMonth}% this month` : ''}`, 'is-ok'] : [m.status, /down/.test(m.status) ? 'is-bad' : 'is-warn'])
     const origins = `<h3>Addresses</h3><ul>${status.origins.map((o) => {
       const [label, cls] = up(o.monitor)
