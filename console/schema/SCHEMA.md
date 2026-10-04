@@ -117,8 +117,9 @@ content and the site's code do not, so a rename never needs a migration.
 Any section, row or document may carry `_layout`, declared by no field and checked by `checkFrame`
 (`schema/schema.js`): `{ "mode": "flow" | "free", "height", "parts": { "<part>": { "x", "y", "w", "h"?,
 "z"?, "opacity"? } } }`. `x` and `w` are % of the element's width, `y`, `h` and `height` % of its width
-too, so the arrangement scales with the page; a part with no `h` grows to fit. A Free section stacks
-below 820px, ordered by `y` then `x`. The site draws it from the marks above (StoryShaped:
+too, so the arrangement scales with the page; a part with no `h` grows to fit; `fs` is its text size, %
+of the site's own. Below 820px a Free section stacks, ordered by `y` then `x`, or with `"phone": "scale"`
+keeps its desktop arrangement, drawn at desktop width and scaled down whole. The site draws it from the marks above (StoryShaped:
 `components/Frame.jsx`, `styles/Frame.css`).
 
 ## Documents

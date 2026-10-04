@@ -175,6 +175,21 @@
           { "value": "over", "label": "Overlapping the photo (lapped side by side)" } ] },
         { "name": "taglineBlend", "kind": "number", "label": "Tagline blend %", "integer": true, "min": 10, "max": 100,
           "help": "Overlapping the photo only: how opaque the artwork is where it laps onto the photo. Blank is 90." },
+        { "name": "taglineHeading", "kind": "text", "label": "Tagline heading", "maxLength": 80, "help": "Blank: “Your Integrative Healer;”, as in the artwork." },
+        { "name": "taglineLine", "kind": "textarea", "label": "Tagline line", "maxLength": 240, "help": "Blank: the artwork’s line, ending “Lasting Health”. Longer text wraps." },
+        { "name": "taglineSize", "kind": "number", "label": "Tagline text size", "integer": true, "min": 50, "max": 200, "step": 5, "slider": true, "unit": "%", "sliderDefault": 100,
+          "help": "Grows or shrinks all the tagline’s lettering together. 100% is the artwork’s." },
+        { "name": "taglineHeadingFont", "kind": "select", "label": "Tagline heading font",
+          "help": "Blank follows the site’s heading font (Euphoria Script, the artwork’s, unless the look changes it). Pick a role to follow that, or a font to fix it.", "options": [
+          { "value": "subheading", "label": "The site’s subheading font" }, { "value": "body", "label": "The site’s body font" },
+          { "value": "Euphoria Script", "label": "Euphoria Script, always" }, { "value": "Caveat", "label": "Caveat" }, { "value": "Playfair Display", "label": "Playfair Display" },
+          { "value": "Cormorant Garamond", "label": "Cormorant Garamond" }, { "value": "Fraunces", "label": "Fraunces" } ] },
+        { "name": "taglineLineFont", "kind": "select", "label": "Tagline line font",
+          "help": "Blank follows the site’s subheading font (Farsan, the artwork’s, unless the look changes it). Pick a role to follow that, or a font to fix it.", "options": [
+          { "value": "heading", "label": "The site’s heading font" }, { "value": "body", "label": "The site’s body font" },
+          { "value": "Farsan", "label": "Farsan, always" }, { "value": "Merriweather Sans", "label": "Merriweather Sans" }, { "value": "Assistant", "label": "Assistant" },
+          { "value": "Cormorant Garamond", "label": "Cormorant Garamond" }, { "value": "Fraunces", "label": "Fraunces" } ] },
+        { "name": "taglineInk", "kind": "color", "label": "Tagline ink", "help": "Blank: the season’s colour. “You are resilient” takes it too." },
         { "name": "overlayAlign", "kind": "select", "label": "Splash text position", "default": "center", "options": [
           { "value": "center", "label": "Centered" }, { "value": "bottomLeft", "label": "Bottom left" }, { "value": "bottomCenter", "label": "Bottom center" } ] },
         { "name": "imageSide", "kind": "select", "label": "Image placement", "default": "auto", "help": "Auto alternates sides down the page. Pick Left or Right to pin it.", "options": [

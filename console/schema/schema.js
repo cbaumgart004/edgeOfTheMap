@@ -343,14 +343,20 @@ function checkFields(fields, data, at, schema, errors, opts) {
 // every width. A part with no h grows to fit what is in it.
 export const FRAME = {
   modes: ['flow', 'free'],
+  // On a phone a Free section stacks its parts, or keeps the desktop
+  // arrangement scaled down whole ("scale").
+  phones: ['stack', 'scale'],
   maxParts: 60,
   x: [-50, 150], y: [0, 1000], w: [1, 200], h: [1, 1000], height: [1, 1000], z: [0, 100], opacity: [10, 100],
+  // A part's text size, % of the site's own: what a corner drag or a pinch changes.
+  fs: [10, 500],
 }
 const PART = /^[\w:-]{1,100}$/
 
 export function checkFrame(v, at, errors) {
   if (typeof v !== 'object' || Array.isArray(v)) return errors.push(`${at}: must be an object`)
   if (v.mode != null && !FRAME.modes.includes(v.mode)) errors.push(`${at}.mode: flow or free`)
+  if (v.phone != null && !FRAME.phones.includes(v.phone)) errors.push(`${at}.phone: stack or scale`)
   const num = (x, [lo, hi], where, int = false) => {
     if (x == null) return
     if (typeof x !== 'number' || !Number.isFinite(x) || (int && !Number.isInteger(x)) || x < lo || x > hi) errors.push(`${where}: ${lo} to ${hi}`)
@@ -365,10 +371,10 @@ export function checkFrame(v, at, errors) {
     const where = `${at}.parts.${name}`
     if (!PART.test(name)) { errors.push(`${where}: not a part name`); continue }
     if (!p || typeof p !== 'object' || Array.isArray(p)) { errors.push(`${where}: must be an object`); continue }
-    for (const k of Object.keys(p)) if (!['x', 'y', 'w', 'h', 'z', 'opacity'].includes(k)) errors.push(`${where}.${k}: not a position`)
+    for (const k of Object.keys(p)) if (!['x', 'y', 'w', 'h', 'z', 'opacity', 'fs'].includes(k)) errors.push(`${where}.${k}: not a position`)
     for (const k of ['x', 'y', 'w']) if (p[k] == null) errors.push(`${where}.${k}: required`)
     num(p.x, FRAME.x, `${where}.x`); num(p.y, FRAME.y, `${where}.y`); num(p.w, FRAME.w, `${where}.w`); num(p.h, FRAME.h, `${where}.h`)
-    num(p.z, FRAME.z, `${where}.z`, true); num(p.opacity, FRAME.opacity, `${where}.opacity`, true)
+    num(p.z, FRAME.z, `${where}.z`, true); num(p.opacity, FRAME.opacity, `${where}.opacity`, true); num(p.fs, FRAME.fs, `${where}.fs`)
   }
 }
 

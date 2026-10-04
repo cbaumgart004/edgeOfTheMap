@@ -18,6 +18,13 @@ describe('a Free section (StoryShaped ADR-0010)', () => {
     ])
   })
 
+  it('may keep the desktop arrangement on a phone, and size a part’s text', () => {
+    expect(checkDocument(schema, 'page', page({ mode: 'free', phone: 'scale', parts: { heading: { x: 0, y: 0, w: 40, fs: 180 } } }))).toEqual([])
+    expect(checkDocument(schema, 'page', page({ mode: 'free', phone: 'shrink', parts: { heading: { x: 0, y: 0, w: 40, fs: 900 } } }))).toEqual([
+      'sections[0]._layout.phone: stack or scale', 'sections[0]._layout.parts.heading.fs: 10 to 500',
+    ])
+  })
+
   it('travels with a duplicated section, as a saved template does', () => {
     const layout = { mode: 'free', parts: { heading: { x: 1, y: 1, w: 50 } } }
     const copy = duplicateData(page(layout).sections[0])
