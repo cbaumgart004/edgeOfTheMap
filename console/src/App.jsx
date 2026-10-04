@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { checkDocument, warnDocument, titleOf, setItemField } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
-import { FieldList } from './Fields.jsx'
+import { FieldList, Elements } from './Fields.jsx'
 import Targets from './Targets.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
+import { CLASS_TYPE } from '../schema/classes.js'
 import { createPortal } from 'react-dom'
 
 // The nth image of a rich text field set to `pct`% wide; its height follows.
@@ -410,7 +411,42 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     await saveAdded(at, (schema.custom?.fields?.[at] ?? []).filter((f) => f.name !== name))
     notify('Field removed. What was typed in it is kept, in case it comes back.')
   }
-  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate, addField, removeField }
+  // "+ Add a class" in Classes: the owner's own class, kept with their types
+  // (schema/classes.js); it gets a Style there and can be given to elements.
+  const addClass = async (label) => {
+    const custom = schema.custom ?? {}
+    const taken = new Set([...(schema.classes ?? []), ...(custom.classes ?? [])].map((c) => c.name))
+    const base = customName(label).slice('custom'.length).replace(/^./, (c) => c.toLowerCase()) || 'class'
+    let name = base
+    for (let n = 2; taken.has(name); n++) name = `${base}${n}`
+    const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), { name, label }] })
+    setSchema(next)
+    notify(`Added the class “${label}”. Give it a style here, then give it to any element.`)
+  }
+  // An element saved as a template (Fields.jsx Elements, Arrange): offered when
+  // adding an element to any section.
+  const saveElementTemplate = async (name, element) => {
+    const custom = schema.custom ?? {}
+    const { _id, ...rest } = element // eslint-disable-line no-unused-vars
+    const { schema: next } = await store.saveCustom({ ...custom, elementTemplates: [...(custom.elementTemplates ?? []), { name, element: rest }] })
+    setSchema(next)
+    notify(`Saved “${name}”. It is offered when you add an element.`)
+  }
+  // Arrange saves the element on the page: found by its id in its document.
+  const saveElementFromPage = async ({ type, key, id, name }) => {
+    const doc = await findDoc(type, key)
+    let found = null
+    const walk = (v) => {
+      if (found || !v || typeof v !== 'object') return
+      if (Array.isArray(v)) return v.forEach(walk)
+      if (Array.isArray(v._elements)) found = v._elements.find((e) => e?._id === id) ?? null
+      Object.values(v).forEach(walk)
+    }
+    walk(doc?.data)
+    if (!found) throw new Error('That is not an element of yours: only added elements can be saved as templates.')
+    await saveElementTemplate(name, found)
+  }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate, addField, removeField, addClass, saveElementTemplate }
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
@@ -448,7 +484,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // from the draft); a document not open yet is opened and takes the latest
   // value when it loads.
   const editorApi = useRef(null)
-  const pendingSize = useRef(null)
+  // Writes waiting for their document to open: the last one per row and field,
+  // so a new element and its place both land (Arrange writes both at once).
+  const pendingSize = useRef([])
+  const queueWrite = (w) => { pendingSize.current = [...pendingSize.current.filter((p) => !(p.key === w.key && p.item === w.item && p.field === w.field)), w] }
   const opening = useRef(null)
   // Typing on the page (Targets): the document takes each change without the
   // page being redrawn under the cursor; when the owner leaves the text, the
@@ -461,7 +500,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       return api.setField(item, field, value, null, { quiet: true })
     }
     if (done) return
-    pendingSize.current = { key, item, field, value, imageIndex: null }
+    queueWrite({ key, item, field, value, imageIndex: null })
     if (opening.current === key) return
     opening.current = key
     await openTarget({ type, key, item })
@@ -471,7 +510,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     if (!schema.types[type]) return
     const api = editorApi.current
     if (api && (api.id === key || api.slug === key)) return api.setField(item, field, value, imageIndex)
-    pendingSize.current = { key, item, field, value, imageIndex }
+    queueWrite({ key, item, field, value, imageIndex })
     if (opening.current === key) return
     opening.current = key
     await openTarget({ type, key, item })
@@ -541,7 +580,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <div className="eotm-root eotm-overlay" data-eotm-mode={mode} style={style}>
       <div ref={setOverlay} />
       {user && overlay && !customer && clickMode !== 'view' && createPortal(clickMode === 'arrange'
-        ? <Arrange onChange={resizeTarget} uiScale={1 / page.scale} />
+        ? <Arrange onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
+            templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} />
         : <Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
     </>
@@ -956,8 +996,9 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
     const flushPage = () => bridge.push(docRef.current)
     const d = docRef.current
     editorApi.current = { id: d.id, slug: d.slug, setField, flushPage }
-    const p = pendingSize.current
-    if (p && (p.key === d.id || p.key === d.slug)) { pendingSize.current = null; setField(p.item, p.field, p.value, p.imageIndex) }
+    const mine = pendingSize.current.filter((p) => p.key === d.id || p.key === d.slug)
+    pendingSize.current = pendingSize.current.filter((p) => !mine.includes(p))
+    for (const p of mine) setField(p.item, p.field, p.value, p.imageIndex)
     return () => { if (editorApi.current?.id === d.id) editorApi.current = null }
   }, [loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1070,6 +1111,11 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           )}
         </>
       ) : <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />}
+      {/* The document's own elements (a library entry's), added in Arrange. */}
+      {!only && doc.data?._elements?.length > 0 && (
+        <Elements value={doc.data._elements} onChange={(els) => change({ ...doc.data, _elements: els })} ctx={ctx} path="_elements" />
+      )}
+      {doc.type === CLASS_TYPE && ctxBase.addClass && <AddClass onAdd={ctxBase.addClass} notify={notify} />}
       <div className="eotm-danger">
         <button type="button" className="eotm-btn is-quiet" onClick={async () => { try { onOpen(await store.duplicate(id)) } catch (e) { notify(e.message) } }}>Duplicate</button>
         <DeleteButton label={type.label} onConfirm={() => act((d) => store.remove(id, d.version), 'Deleted.')} />
@@ -1135,6 +1181,26 @@ function trailTo(schema, data, id) {
     return false
   }
   return walk(data) ? path : []
+}
+
+// A class of the owner's own, named in their words.
+function AddClass({ onAdd, notify }) {
+  const [label, setLabel] = useState('')
+  const [busy, setBusy] = useState(false)
+  return (
+    <form className="eotm-group eotm-add-field" onSubmit={async (e) => {
+      e.preventDefault()
+      if (!label.trim()) return
+      setBusy(true)
+      try { await onAdd(label.trim()); setLabel('') } catch (err) { notify(err.message) } finally { setBusy(false) }
+    }}>
+      <p className="eotm-help">Add a class of your own: a look you can give to any element, and change in one place.</p>
+      <div className="eotm-row">
+        <input className="eotm-input" aria-label="Class name" placeholder="Class name, e.g. Gold call-out" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} />
+        <button className="eotm-btn is-primary" disabled={busy || !label.trim()}>{busy ? 'Adding…' : 'Add class'}</button>
+      </div>
+    </form>
+  )
 }
 
 // Publish, or, when the document has something worth a second look (a Listing

@@ -12,7 +12,8 @@
       "theme",
       "siteSettings",
       "menu",
-      "imagePair"
+      "imagePair",
+      "classes"
     ]
   },
   "tools": [
@@ -109,6 +110,43 @@
       "value": "ghost",
       "label": "Outline",
       "className": "btn btn-ghost"
+    }
+  ],
+  "classes": [
+    {
+      "name": "btn",
+      "label": "Buttons",
+      "selector": ".sss-home .btn"
+    },
+    {
+      "name": "sectionHeading",
+      "label": "Section headings",
+      "selector": ".sss-home .section h2"
+    },
+    {
+      "name": "eyebrow",
+      "label": "Small headings above a heading",
+      "selector": ".sss-home .eyebrow"
+    },
+    {
+      "name": "bodyText",
+      "label": "Body text",
+      "selector": ".sss-home .page-rich"
+    },
+    {
+      "name": "pieceCard",
+      "label": "Photo cards",
+      "selector": ".sss-home .piece-card"
+    },
+    {
+      "name": "navLinks",
+      "label": "Menu links",
+      "selector": ".sss-home .sss-navlinks a"
+    },
+    {
+      "name": "footer",
+      "label": "Footer",
+      "selector": ".sss-home .sss-footer"
     }
   ],
   "previewScope": {

@@ -78,6 +78,12 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   remove a saved template) and Types and names.
 - **The minimised editor on a phone (1.3.0+).** The whole bar drags (its buttons stay buttons), and ‹ or › tucks it
   against that edge as a small tab; a tap on the tab brings the bar back. Controls are a size smaller on a phone.
+- **Classes and elements (1.7.0+).** Design › **Classes** holds a Style for each of the site's named looks (its
+  buttons, headings, body text: schema `classes`) and for classes the owner adds; the site applies each everywhere
+  it appears. Arrange adds **+ Text, + Photo, + Button, + Box** to any section, row or document, and **from a
+  template**; **Duplicate** copies any part (one of the site's own becomes an element with its content); an added
+  element saves as a template. Each new one is drawn at once, placed in view when the section is Free, and
+  selected. A document can have several arranged regions (`_layout_<key>`), such as a header and a button bar.
 - **View, Edit and Arrange (1.6.0+).** A switch in the header says what a click on the page does. View: the
   page's own (links go, buttons press). Edit: opens what was clicked; a button is edited (text, link, icon, style
   from the schema's `buttonStyles`), not pressed. Arrange: below. On a phone, Arrange edits the phone's own

@@ -38,3 +38,29 @@ describe('a Free section (StoryShaped ADR-0010)', () => {
     expect(copy._layout).toEqual(layout)
   })
 })
+
+describe('elements of a section', () => {
+  it('are checked by kind, class and id, and their HTML is made safe', async () => {
+    const { mergeCustom } = await import('../schema/custom.js')
+    const { sanitizeDocumentData } = await import('../src/richtext.js')
+    const merged = mergeCustom(schema, { classes: [{ name: 'gold', label: 'Gold' }] })
+    const page = (els) => ({ title: 'P', sections: [{ _id: 's', _type: 'values', heading: 'H', items: [], _elements: els }] })
+    const ok = [
+      { _id: 'e1', kind: 'text', text: 'Hi', tag: 'h2', class: 'gold' },
+      { _id: 'e2', kind: 'button', label: 'Go', url: '/shop', look: 'primary' },
+      { _id: 'e3', kind: 'image', image: { src: '/a.webp' }, style: { width: 50 } },
+    ]
+    expect(checkDocument(merged, 'page', page(ok))).toEqual([])
+    expect(checkDocument(merged, 'page', page([{ _id: 'e1', kind: 'video' }, { _id: 'e1', kind: 'button', url: 'javascript:x', class: 'nope' }]))).toEqual([
+      'sections[0]._elements[0]: kind is text, richtext, image, button, box',
+      'sections[0]._elements[1]: id used twice',
+      'sections[0]._elements[1].class: no class "nope"',
+      'sections[0]._elements[1].url: must be a link (https://, mailto:, tel: or /path)',
+    ])
+    // As the API runs it: DOMPurify over a jsdom window.
+    const { JSDOM } = await import('jsdom')
+    const purify = (await import('dompurify')).default(new JSDOM('').window)
+    const clean = sanitizeDocumentData(merged, 'page', page([{ _id: 'e4', kind: 'richtext', html: '<p>ok<img src=x onerror=alert(1)></p><script>bad()</script>' }]), purify)
+    expect(clean.sections[0]._elements[0].html).toBe('<p>ok<img></p>')
+  })
+})

@@ -12,6 +12,15 @@
     { "value": "standard", "label": "Standard", "className": "btn" },
     { "value": "shimmer", "label": "Shimmer", "className": "btn btn--shimmer" }
   ],
+  "classes": [
+    { "name": "btn", "label": "Buttons", "selector": ".btn" },
+    { "name": "sectionHeading", "label": "Section headings", "selector": ".section h2" },
+    { "name": "bodyText", "label": "Body text", "selector": ".rich-text" },
+    { "name": "panel", "label": "Panels", "selector": ".panel" },
+    { "name": "card", "label": "Cards", "selector": ".card" },
+    { "name": "siteTitle", "label": "Site title in the menu bar", "selector": "nav[data-eotm-frame-key='header'] h1" },
+    { "name": "actionButtons", "label": "Buttons under the menu bar", "selector": ".action-bar__btn" }
+  ],
   "styleColors": [
     { "value": "primary", "label": "Primary (follows the season)", "css": "var(--primary-color)" },
     { "value": "secondary", "label": "Secondary", "css": "var(--secondary-color)" },

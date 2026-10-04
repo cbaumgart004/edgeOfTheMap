@@ -41,6 +41,10 @@ export function sanitizeDocumentData(schema, typeName, data, purify) {
   const walk = (fields, d) => {
     if (!d || typeof d !== 'object') return d
     const out = { ...d }
+    // The owner's own elements (schema/elements.js): formatted text is HTML too.
+    if (Array.isArray(out._elements)) {
+      out._elements = out._elements.map((el) => (el && typeof el.html === 'string' ? { ...el, html: sanitizeRichText(el.html, schema, purify) } : el))
+    }
     for (const f of fields) {
       const v = out[f.name]
       if (v == null) continue

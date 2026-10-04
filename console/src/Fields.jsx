@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId } from '../schema/schema.js'
+import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement } from '../schema/elements.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
@@ -441,7 +442,9 @@ function Relation({ id, field, value, onChange, ctx }) {
 const holds = (item, id) => Boolean(id) && JSON.stringify(item).includes(`"_id":"${id}"`)
 
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
-function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, atFor = () => null, add, sections }) {
+function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs }) {
+  // Save as template: a section's by default (ctx.saveTemplate); an element's when given.
+  const saveTemplate = saveAs ?? (sections ? ctx.saveTemplate : null)
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
   // here already expanded and scrolled into view.
   const focused = () => items.find((x) => x._id === ctx.focus || holds(x, ctx.focus))
@@ -519,7 +522,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
                   <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
                   <button type="button" className="eotm-icon" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
                   <button type="button" className="eotm-icon" onClick={() => duplicate(i)} aria-label="Duplicate">⧉</button>
-                  {sections && ctx.saveTemplate && <button type="button" className="eotm-icon" onClick={() => setNaming(naming === key ? null : key)} aria-label="Save as template" title="Save as template">☆</button>}
+                  {saveTemplate && <button type="button" className="eotm-icon" onClick={() => setNaming(naming === key ? null : key)} aria-label="Save as template" title="Save as template">☆</button>}
                   <button type="button" className="eotm-icon" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
                 </div>
               </div>
@@ -528,7 +531,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
                   e.preventDefault()
                   const name = e.currentTarget.elements.name.value.trim()
                   if (!name) return
-                  try { await ctx.saveTemplate(name, item); setNaming(null) } catch (err) { ctx.notify(err.message) }
+                  try { await saveTemplate(name, item); setNaming(null) } catch (err) { ctx.notify(err.message) }
                 }}>
                   <input name="name" className="eotm-input" placeholder="Template name" maxLength={60} autoFocus aria-label="Template name" />
                   <button className="eotm-btn is-primary">Save template</button>
@@ -537,11 +540,13 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
               {isOpen && (
                 <div className="eotm-item-body">
                   <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} at={atFor(item)} />
+                  {/* A section's own elements, beyond its fields (schema/elements.js). */}
+                  {(sections || item._elements?.length > 0) && <Elements value={item._elements} onChange={(els) => update(i, { ...item, _elements: els })} ctx={ctx} path={`${path}[${i}]._elements`} />}
                   {/* A changed section: keep it as it is, or keep its look as a template too. */}
                   {sections && state && (
                     <div className="eotm-row eotm-item-save">
                       <button type="button" className="eotm-btn is-quiet" onClick={() => ctx.saveNow?.()}>Save</button>
-                      {ctx.saveTemplate && <button type="button" className="eotm-btn is-quiet" onClick={() => setNaming(key)}>Save as custom template</button>}
+                      {saveTemplate && <button type="button" className="eotm-btn is-quiet" onClick={() => setNaming(key)}>Save as custom template</button>}
                     </div>
                   )}
                 </div>
@@ -583,6 +588,30 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
         </div>
       )}
     </fieldset>
+  )
+}
+
+// The owner's elements in a section or document: text, formatted text, a
+// photo, a button or a box, each with its own id, a class and a Style. Added,
+// duplicated and saved as templates here or from Arrange; each shows on the page
+// at once (the page draws the draft), and in a Free section it is placed.
+export function Elements({ value, onChange, ctx, path }) {
+  const items = Array.isArray(value) ? value : []
+  const classes = classOptions(ctx.schema)
+  const templates = ctx.schema.custom?.elementTemplates ?? []
+  const label = (el) => {
+    const own = el.text || el.label || el.image?.alt || (el.html ?? '').replace(/<[^>]*>/g, ' ').trim().slice(0, 40)
+    return own ? `${ELEMENT_LABELS[el.kind] ?? el.kind}: ${own}` : ELEMENT_LABELS[el.kind] ?? el.kind
+  }
+  return (
+    <Repeater label="Elements" help="Anything more you want in this section. In Arrange, a Free section places them anywhere."
+      items={items} onChange={onChange} ctx={ctx} path={path}
+      itemTitle={(el) => label(el)} fieldsFor={(el) => elementFields(el.kind, classes)}
+      saveTemplate={ctx.saveElementTemplate}
+      add={[
+        ...ELEMENT_KINDS.map((k) => ({ key: k, label: ELEMENT_LABELS[k], make: () => newElement(k, newId()) })),
+        ...templates.map((t, i) => ({ key: `et-${i}`, label: `${t.name} (template)`, make: () => copyElement(t.element, newId()) })),
+      ]} />
   )
 }
 

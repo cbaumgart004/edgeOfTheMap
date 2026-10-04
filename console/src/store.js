@@ -59,7 +59,8 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
   const write = (v) => { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private mode: memory only */ } }
   const repo = createMemoryRepo({ load: read, persist: write })
   const make = (schema) => createService({ schema, repo, sanitize: (type, data) => sanitizeDocumentData(schema, type, data) })
-  let svc = make(base)
+  // As the API does: the shipped schema with its Classes document (schema/classes.js).
+  let svc = make(mergeCustom(base, null))
   const wrap = (fn) => async (...args) => {
     try {
       return await fn(...args)

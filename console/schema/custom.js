@@ -12,6 +12,8 @@
 // public API like any other type.
 
 import { checkSchema } from './schema.js'
+import { withClasses, checkClasses } from './classes.js'
+import { ELEMENT_KINDS } from './elements.js'
 
 // Kinds an owner may use: the ones that need no code to render or to point at.
 export const CUSTOM_KINDS = ['text', 'textarea', 'richtext', 'url', 'number', 'boolean', 'date', 'datetime', 'select', 'image', 'color', 'money', 'list', 'style']
@@ -91,14 +93,17 @@ function addFields(fields, rest, extra) {
 // own definitions ride along as `custom`, for the editor that changes them.
 const MAX_TEMPLATES = 50
 
-export function mergeCustom(base, custom) {
+export function mergeCustom(shipped, custom) {
+  // The site's classes and the owner's become the Classes design document.
+  const base = withClasses(shipped, custom)
   const blocks = custom?.blocks ?? {}
   const types = custom?.types ?? {}
   const labels = custom?.labels ?? {}
   const templates = Array.isArray(custom?.templates) ? custom.templates : []
   const added = custom?.fields ?? {}
+  const ownClasses = custom?.classes ?? []
   const renamed = Object.keys(labels.types ?? {}).length + Object.keys(labels.blocks ?? {}).length + Object.keys(labels.fields ?? {}).length
-  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed && !templates.length && !Object.keys(added).length) return base
+  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed && !templates.length && !Object.keys(added).length && !ownClasses.length) return base
   const extra = Object.keys(blocks)
   const withPalette = (fields) => (fields ?? []).map((f) => (f.kind === 'blocks' ? { ...f, of: [...new Set([...f.of, ...extra])] } : f))
   const names = labels.fields ?? {}
@@ -184,6 +189,19 @@ export function checkCustom(base, custom) {
     checkFields(t?.fields, `types.${name}`, CUSTOM_KINDS)
   }
   checkLabels(base, custom.labels, errors)
+  checkClasses(custom.classes, 'classes', errors, { custom: true })
+  // Elements saved as templates (schema/elements.js): a name and the element.
+  if (custom.elementTemplates != null) {
+    if (!Array.isArray(custom.elementTemplates)) errors.push('elementTemplates must be a list')
+    else {
+      if (custom.elementTemplates.length > MAX_TEMPLATES) errors.push(`at most ${MAX_TEMPLATES} element templates`)
+      for (const t of custom.elementTemplates) {
+        if (typeof t?.name !== 'string' || !t.name.trim() || t.name.length > MAX_LABEL) errors.push(`elementTemplates: a name of 1 to ${MAX_LABEL} characters`)
+        else if (!ELEMENT_KINDS.includes(t.element?.kind)) errors.push(`elementTemplates.${t.name}: not an element`)
+      }
+    }
+  }
+  for (const c of custom.classes ?? []) if ((base.classes ?? []).some((x) => x.name === c?.name)) errors.push(`classes.${c.name}: already a class of the site`)
   if (custom.fields != null) {
     if (typeof custom.fields !== 'object' || Array.isArray(custom.fields)) errors.push('fields must be an object')
     else {

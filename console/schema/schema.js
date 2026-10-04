@@ -2,10 +2,26 @@
 // in the browser and the API in Lambda, so a write is checked by the same rules
 // that built the form.
 
+import { checkElements } from './elements.js'
+
 export const FIELD_KINDS = [
   'text', 'textarea', 'richtext', 'url', 'number', 'money', 'boolean', 'date',
   'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout', 'color', 'style',
 ]
+
+// The same rules as schema/classes.js checkClasses, kept here so this file
+// imports nothing (custom.js and classes.js import it).
+function checkClassList(list, errors) {
+  if (list == null) return
+  if (!Array.isArray(list)) return errors.push('classes: a list of classes')
+  const seen = new Set()
+  for (const c of list) {
+    if (!c?.name || !NAME.test(c.name) || seen.has(c.name)) errors.push(`classes: "${c?.name}" must be a plain name, once`)
+    seen.add(c?.name)
+    if (typeof c?.label !== 'string' || !c.label.trim()) errors.push(`classes.${c?.name}: needs a label`)
+    if (typeof c?.selector !== 'string' || !c.selector.trim() || /[{}<>]/.test(c.selector)) errors.push(`classes.${c?.name}: needs a CSS selector`)
+  }
+}
 
 // A select's choices: its own `options`, or a list at the top of the schema
 // named by `optionsFrom` (the site's buttonStyles), so every select offering
@@ -62,6 +78,8 @@ export function checkSchema(schema) {
     if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
     if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
   }
+  // The site's classes (schema/classes.js): a name, a label and a selector each.
+  checkClassList(schema.classes, errors)
   // The site's button classes, offered by a select with optionsFrom
   // "buttonStyles": [{ value, label, className }].
   for (const b of schema.buttonStyles ?? []) {
@@ -347,7 +365,17 @@ function checkValue(field, value, at, schema, errors, opts) {
 
 function checkFields(fields, data, at, schema, errors, opts) {
   for (const f of fields) checkValue(f, data?.[f.name], at ? `${at}.${f.name}` : f.name, schema, errors, opts)
-  if (data?._layout != null) checkFrame(data._layout, at ? `${at}._layout` : '_layout', errors)
+  // _layout, or _layout_<region> for one of several arranged regions of one
+  // document (a site's header and its button bar, both Site settings).
+  for (const k of Object.keys(data ?? {})) {
+    if (/^_layout(_[A-Za-z]\w*)?$/.test(k) && data[k] != null) checkFrame(data[k], at ? `${at}.${k}` : k, errors)
+  }
+  // The owner's own elements in this section or document (schema/elements.js),
+  // each checked with the field rules of its kind.
+  if (data?._elements != null) {
+    checkElements(data._elements, at ? `${at}._elements` : '_elements', schema, errors,
+      (fields, el, where) => checkFields(fields, el, where, schema, errors, opts))
+  }
 }
 
 // A Free section's arrangement (StoryShaped ADR-0010), on any section, row or

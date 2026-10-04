@@ -477,3 +477,8 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 /* The page's width while editing on a narrow screen. */
 .eotm-pagewidth { display: inline-flex; align-items: center; gap: 4px; font: 600 12px var(--eotm-font); color: var(--eotm-muted); }
 .eotm-pagewidth .eotm-input { min-height: 30px; padding: 2px 6px; font-size: 13px; width: auto; }
+/* Adding to a section in Arrange: + Text, + Photo, + Button, + Box, templates. */
+.eotm-arrange-add { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.eotm-arrange-add label.eotm-target-snap { display: inline-flex; align-items: center; }
+.eotm-arrange-name { display: inline-flex; gap: 6px; }
+.eotm-arrange-name .eotm-input { min-height: 36px; width: 160px; }

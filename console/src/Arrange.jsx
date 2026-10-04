@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLUMNS } from './arrange.js'
+import { newId } from '../schema/schema.js'
+import { newElement, copyElement } from '../schema/elements.js'
+import { prepareImage } from './images.js'
 
 // Arrange mode (StoryShaped ADR-0010): the page's sections and their parts, on
 // the page itself, with handles. In place of click-to-edit (Targets.jsx) while
@@ -15,13 +18,20 @@ import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLU
 //   text too, as Canva does), a side to change only that side; pinch with two
 //   fingers to scale; arrow keys nudge (Shift for 10 px); fade it, bring it
 //   forward or send it back. Snap puts edges on the 12 columns and an 8 px step.
+//   Add a text, photo, button or box to a section (its `_elements`, schema/
+//   elements.js), from a template too; duplicate any part (an element is
+//   copied; one of the site's own parts becomes an element with its content);
+//   save an element as a template. A new one is drawn at once, placed in view
+//   when the section is Free, and selected.
 //
 // Every change is an updater of the section's `_layout`, written through the
 // editor like a drag-to-size (App's resizeTarget), so it saves, undoes and
 // previews like any edit. Measurements are taken from the page as drawn, so a
 // section a phone has zoomed down (ScaleBox) is arranged in the same units.
 
-const SECTION = '[data-eotm-edit][data-eotm-item]'
+// Anything marked as showing a document, a section of a page or a whole
+// document (a site's button bar, its header): what holds parts is arranged.
+const SECTION = '[data-eotm-edit]'
 const PART = '[data-eotm-part]'
 const SNAP_KEY = 'eotm:snap'
 const PROMPT_KEY = 'eotm:arrange-prompt'
@@ -33,15 +43,18 @@ const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const readSnap = () => { try { return localStorage.getItem(SNAP_KEY) !== 'free' } catch { return true } }
 const targetOf = (el) => {
   const [type, ...rest] = (el.dataset.eotmEdit ?? '').split(':')
-  return { type, key: rest.join(':'), item: el.dataset.eotmItem }
+  return { type, key: rest.join(':'), item: el.dataset.eotmItem || null }
 }
-const partsOf = (section) => [...section.querySelectorAll(PART)].filter((p) => p.closest('[data-eotm-item]') === section)
+const partsOf = (section) => [...section.querySelectorAll(PART)].filter((p) => p.closest(SECTION) === section)
 const isSection = (el) => el && (el.hasAttribute('data-eotm-frame') || partsOf(el).length > 0)
 // Whether this screen arranges the section's phone layout: on a phone, unless
 // the section shows the desktop layout scaled down there (then it is that
 // one, in the same units).
 const phoneEdit = (section) => matchMedia(PHONE).matches && section?.dataset.eotmPhone !== 'scale'
 const isFree = (section) => (phoneEdit(section) ? section?.dataset.eotmPhone === 'free' : section?.dataset.eotmFrame === 'free')
+// Where the arrangement is kept: _layout, or _layout_<key> for one of several
+// regions of one document (data-eotm-frame-key: a site's header, its button bar).
+const layoutField = (section) => (section.dataset.eotmFrameKey ? `_layout_${section.dataset.eotmFrameKey}` : '_layout')
 const isText = (part) => !part.querySelector('img, svg, video, picture, canvas')
 
 // A part's box. A group (data-eotm-group) is no box of its own while it
@@ -71,6 +84,18 @@ function partNow(part, section) {
   return p
 }
 
+// One of the site's own parts as an element with its content: a photo, a
+// button (its text and link), or text (a heading stays a heading).
+function elementFromPart(part, id) {
+  const img = part.querySelector('img')
+  if (img) return newElement('image', id, { image: { src: img.getAttribute('src'), alt: img.getAttribute('alt') ?? '' } })
+  const link = part.matches('a, button') ? part : part.querySelector('a, button')
+  const text = (part.innerText ?? part.textContent ?? '').trim()
+  if (link && text.length <= 60) return newElement('button', id, { label: text, url: link.getAttribute?.('href') || '/' })
+  const tag = part.matches('h1, h2') || part.querySelector('h1, h2') ? 'h2' : part.matches('h3, h4') || part.querySelector('h3, h4') ? 'h3' : 'p'
+  return newElement('text', id, { text, tag })
+}
+
 // What to tell the owner about the screen they arrange on, once a visit each.
 function promptFor() {
   if (matchMedia(PHONE).matches) return { key: 'phone', text: 'Edits on a phone change the phone view only. To arrange the desktop layout, turn your phone sideways or set the page to Desktop width.' }
@@ -84,7 +109,7 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1 }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -99,6 +124,12 @@ export default function Arrange({ onChange, uiScale = 1 }) {
   const latest = useRef({})
   latest.current = { sel, snap, onChange }
 
+  // A change written at once (not once a frame): an element and its place.
+  const writeNow = (section, field, fn) => latest.current.onChange({ ...targetOf(section), field, value: fn })
+  // The element just added or copied, selected when the page has drawn it.
+  const pick = useRef(null)
+  const [naming, setNaming] = useState(false)
+
   // Write an updater of the section's _layout, at most once a frame.
   const queued = useRef(null)
   const write = (section, fn) => {
@@ -108,7 +139,7 @@ export default function Arrange({ onChange, uiScale = 1 }) {
     requestAnimationFrame(() => {
       const q = queued.current
       queued.current = null
-      latest.current.onChange({ ...targetOf(q.section), field: '_layout', value: q.fn })
+      latest.current.onChange({ ...targetOf(q.section), field: layoutField(q.section), value: q.fn })
     })
   }
 
@@ -171,7 +202,7 @@ export default function Arrange({ onChange, uiScale = 1 }) {
       e.preventDefault()
       e.stopPropagation()
       const part = isFree(section) ? e.target.closest(PART) : null
-      const own = part && part.closest('[data-eotm-item]') === section ? part : null
+      const own = part && part.closest(SECTION) === section ? part : null
       setSel({ section, part: own })
       if (own) startDrag(section, own, 'move', e)
     }
@@ -213,9 +244,14 @@ export default function Arrange({ onChange, uiScale = 1 }) {
     const tick = () => {
       setSel((s) => {
         if (!s) return s
-        const section = s.section.isConnected ? s.section : document.querySelector(`[data-eotm-item="${s.section.dataset.eotmItem}"]`)
+        const again = s.section.dataset.eotmItem ? `[data-eotm-item="${s.section.dataset.eotmItem}"]` : `[data-eotm-edit="${s.section.dataset.eotmEdit}"]:not([data-eotm-item])`
+        const section = s.section.isConnected ? s.section : document.querySelector(again)
         if (!section) return null
-        const part = s.part && (s.part.isConnected ? s.part : partsOf(section).find((p) => p.dataset.eotmPart === s.part.dataset.eotmPart))
+        let part = s.part && (s.part.isConnected ? s.part : partsOf(section).find((p) => p.dataset.eotmPart === s.part.dataset.eotmPart))
+        if (pick.current && pick.current.section.dataset.eotmItem === section.dataset.eotmItem) {
+          const fresh = partsOf(section).find((p) => p.dataset.eotmPart === pick.current.name)
+          if (fresh) { pick.current = null; part = isFree(section) ? fresh : null }
+        }
         return section === s.section && (part ?? null) === s.part ? s : { section, part: part ?? null }
       })
       setFrame((n) => n + 1)
@@ -264,6 +300,44 @@ export default function Arrange({ onChange, uiScale = 1 }) {
   }
   const opacity = part ? Math.round((parseFloat(part.style.getPropertyValue(phone ? '--qo' : '--o')) || 1) * 100) : 100
   const setPhone = (v) => write(section, (old) => ({ ...old, phone: v }))
+
+  // Elements: a section, a row (a glossary term) or a whole document (a
+  // library entry) holds them; a region of a document (its header, its
+  // button bar, data-eotm-frame-key) does not, as its regions share one.
+  const holdsElements = !section.dataset.eotmFrameKey
+  // Where a new element goes in a Free section: across the middle, in view.
+  const spot = () => {
+    const mid = Math.min(Math.max(innerHeight / 2, s.top), s.top + s.height) - s.top
+    return { x: 30, y: Math.max(0, Math.round(((mid * 100) / (s.width || 1)) * 100) / 100), w: 40 }
+  }
+  const addElement = (el, at = spot()) => {
+    writeNow(section, '_elements', (old) => [...(Array.isArray(old) ? old : []), el])
+    if (free) writeNow(section, layoutField(section), (old) => setPart(old, el._id, at, { phone }))
+    pick.current = { section, name: el._id }
+  }
+  const addPhoto = async (file) => {
+    if (!file || !upload) return
+    try {
+      const { blob, width, height } = await prepareImage(file)
+      const src = await upload(blob)
+      addElement(newElement('image', newId(), { image: { src, width, height, alt: '' } }))
+    } catch (e) { notify(e.message) }
+  }
+  const duplicate = () => {
+    const id = newId()
+    const at = (() => { const n = partNow(part, section); return { x: n.x + 3, y: n.y + 3, w: n.w, ...(n.h != null ? { h: n.h } : {}), ...(n.fs != null ? { fs: n.fs } : {}) } })()
+    if (part.hasAttribute('data-eotm-element')) {
+      writeNow(section, '_elements', (old) => {
+        const list = Array.isArray(old) ? old : []
+        const src = list.find((e) => e?._id === name)
+        return src ? [...list, copyElement(src, id)] : list
+      })
+      if (free) writeNow(section, layoutField(section), (old) => setPart(old, id, at, { phone }))
+      pick.current = { section, name: id }
+    } else {
+      addElement(elementFromPart(part, id), at)
+    }
+  }
 
   const heightDrag = (e) => {
     e.preventDefault()
@@ -329,6 +403,18 @@ export default function Arrange({ onChange, uiScale = 1 }) {
             <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => restack(old, name, false, { phone }))} title="Send to back">Back</button>
             <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => setPart(old, name, { h: null, fs: null }, { phone }))}
               title="Let it take its text’s own size and height again">Fit</button>
+            {holdsElements && <button type="button" className="eotm-target-snap" onClick={duplicate} title="A copy beside it">Duplicate</button>}
+            {holdsElements && part.hasAttribute('data-eotm-element') && onSaveTemplate && (naming ? (
+              <form className="eotm-arrange-name" onSubmit={async (e) => {
+                e.preventDefault()
+                const tplName = e.currentTarget.elements.name.value.trim()
+                if (!tplName) return
+                try { await onSaveTemplate({ ...targetOf(section), id: name, name: tplName }); setNaming(false) } catch (err) { notify(err.message) }
+              }}>
+                <input name="name" className="eotm-input" placeholder="Template name" maxLength={60} autoFocus aria-label="Template name" />
+                <button className="eotm-target-snap">Save</button>
+              </form>
+            ) : <button type="button" className="eotm-target-snap" onClick={() => setNaming(true)} title="Keep it to add to any section">Save as template</button>)}
             <button type="button" className="eotm-target-snap" onClick={() => setSel({ section, part: null })}>Section</button>
           </>
         ) : phone ? (
@@ -363,6 +449,25 @@ export default function Arrange({ onChange, uiScale = 1 }) {
               )}
             </div>
           </>
+        )}
+        {!part && holdsElements && (
+          <div className="eotm-arrange-add" role="group" aria-label="Add to this section">
+            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('text', newId()))}>+ Text</button>
+            {upload && (
+              <label className="eotm-target-snap">+ Photo
+                <input type="file" accept="image/*" hidden onChange={(e) => { addPhoto(e.target.files[0]); e.target.value = '' }} />
+              </label>
+            )}
+            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('button', newId()))}>+ Button</button>
+            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('box', newId()))}>+ Box</button>
+            {templates.length > 0 && (
+              <select className="eotm-target-snap" value="" aria-label="Add from a template"
+                onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) addElement(copyElement(t.element, newId())) }}>
+                <option value="">+ From template…</option>
+                {templates.map((t, i) => <option key={`${t.name}:${i}`} value={i}>{t.name}</option>)}
+              </select>
+            )}
+          </div>
         )}
         {free && (
           <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}

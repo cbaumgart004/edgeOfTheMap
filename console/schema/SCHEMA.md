@@ -121,6 +121,20 @@ content and the site's code do not, so a rename never needs a migration.
 - **`previewScope`** (top level): `{ "className" }`, the class the site's variables live under (StoryShaped's
   `sss-home`), so samples in the editor (a button style, a font, a Style field) are drawn with the site's own CSS.
 
+## Classes and elements (1.7.0+)
+
+- **`classes`** (top level): the site's named looks, `[{ "name", "label", "selector" }]` ("Buttons", `.btn`).
+  The console adds a design document, `classes` (`schema/classes.js`, `withClasses`, applied in `mergeCustom`), with
+  one Style field per class; the site turns each into a CSS rule on its selector, led by `html body` so it wins
+  (StoryShaped `components/ClassStyles.jsx`, Spirit Seeds `components/cms/ClassStyles.jsx`). The owner adds
+  classes of their own (`custom.classes: [{ name, label }]`, selector `.c-<name>`) from the Classes document.
+- **`_elements`** on any section, row or document, declared by no field (`schema/elements.js`): the owner's own
+  text, formatted text, photo, button or box, each `{ _id, kind, ... , class?, style? }`, checked by kind and
+  sanitized on save like rich text. Each is a part named by its `_id`, so a Free section places it. Added and
+  duplicated from Arrange (a site's own part duplicates as an element with its content) or the panel's Elements
+  list; saved as templates in `custom.elementTemplates: [{ name, element }]`. A site draws them with its
+  Elements component, marking each `data-eotm-element="<kind>"` and `data-eotm-in="<_id>"`.
+
 ## Free sections (StoryShaped ADR-0010)
 
 Any section, row or document may carry `_layout`, declared by no field and checked by `checkFrame`
@@ -131,7 +145,8 @@ of the site's own. Below 820px a Free section stacks, ordered by `y` then `x`, o
 keeps its desktop arrangement, drawn at desktop width and scaled down whole, or with `"phone": "free"` takes
 its own phone arrangement, `phoneParts` and `phoneHeight` (same shape), made in Arrange on a phone. A phone
 arrangement works whether or not `mode` is free. The site marks phone-placed parts `data-eotm-qplaced` and
-sets `--q*` variables. The site draws it from the marks above (StoryShaped:
+sets `--q*` variables. A document with several arranged regions keeps each as `_layout_<key>` (the region marked
+`data-eotm-frame-key="<key>"`), so a site's header and its button bar, both Site settings, arrange apart. The site draws it from the marks above (StoryShaped:
 `components/Frame.jsx`, `styles/Frame.css`).
 
 ## Documents

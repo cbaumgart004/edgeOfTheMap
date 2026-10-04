@@ -7,13 +7,16 @@ import App from './App.jsx'
 import css from './console.css?inline'
 import { httpStore, localStore } from './store.js'
 import { neonAuth, localAuth, editorAuth } from './auth.js'
+import { mergeCustom } from '../schema/custom.js'
 
 export const VERSION = __CONSOLE_VERSION__
 
 // opts: { schema, bridge, apiBase?, authBase?, local?, onClose? }. onClose runs
 // after the editor has gone, however it was closed (the loader shows its Edit
 // site button again).
-export function mount({ schema, bridge, apiBase, authBase, local = false, onClose }) {
+export function mount({ schema: given, bridge, apiBase, authBase, local = false, onClose }) {
+  // The API's boot answer is merged already; a local schema is merged here, as the API would.
+  const schema = local ? mergeCustom(given, null) : given
   const style = document.createElement('style')
   style.dataset.eotm = VERSION
   style.textContent = css
