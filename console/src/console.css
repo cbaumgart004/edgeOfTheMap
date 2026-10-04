@@ -220,6 +220,19 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-seg button { padding: 7px 16px; cursor: pointer; font-size: 14px; }
 .eotm-seg button.is-on { background: var(--eotm-accent); color: var(--eotm-accent-ink); }
 
+/* Images (Images.jsx): a document, then its pairs, the two sides side by side. */
+.eotm-images { display: grid; gap: 14px; }
+.eotm-pair-doc { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--eotm-line); }
+.eotm-pair-field { display: grid; gap: 6px; }
+.eotm-pairs { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.eotm-pair { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: start; }
+.eotm-pair.is-untagged { grid-template-columns: 1fr; }
+.eotm-slot { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.eotm-slot img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--eotm-radius); }
+.eotm-slot.is-empty { min-height: 120px; padding: 10px; border: 1px dashed var(--eotm-line); border-radius: var(--eotm-radius); justify-items: start; }
+.eotm-slot .eotm-chip { width: max-content; }
+.eotm-pair.is-new .eotm-slot.is-empty { min-height: 0; }
+
 /* ------------------------------------------------------------ rich text */
 
 .eotm-rt { border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-bg); }
@@ -401,3 +414,11 @@ select.eotm-input[multiple] { min-height: 120px; }
   .eotm-card strong { font-size: 16px; }
   .eotm-sheet.is-bar { height: auto; }
 }
+
+/* "+ Add a field" on any element, and the Style field (Fields.jsx). */
+.eotm-add-field { justify-self: start; margin-top: 4px; }
+form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
+.eotm-remove-field { justify-self: start; font-size: 13px; }
+.eotm-style { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px 10px; }
+.eotm-style-part { display: grid; gap: 4px; align-content: start; }
+.eotm-style .eotm-range { grid-column: 1 / -1; }

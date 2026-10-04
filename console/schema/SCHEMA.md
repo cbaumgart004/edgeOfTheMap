@@ -18,6 +18,9 @@ says what each key means.
     "fonts": { "body": "Inter, sans-serif", "heading": "'Poiret One', sans-serif" },
     "radius": "10px"
   },
+  "styleColors": [                       // the colours a style field offers by name; css is the site's own
+    { "value": "accent", "label": "Accent", "css": "var(--accent)" }   // a theme variable follows the mode
+  ],
   "textStyles": [                        // brand marks offered in rich text; the site owns the CSS
     { "name": "glow", "label": "Glow", "className": "uv-glow" }
   ],
@@ -61,6 +64,7 @@ says what each key means.
 | `image` | `{ src, alt, width, height, rotate?, flip?, opacity? }` | The owner can turn it (`rotate` 0, 90, 180, 270), mirror it (`flip`) and fade it (`opacity` 10 to 100); the site applies them as CSS. "Site photos" reuses one already on the site, or takes a pasted address. Uploads are scaled to 1600 px, 600 KB; `"wide": true` (a banner or full-bleed background) allows 2560 px, 1.2 MB. After an upload, "Sharper (larger file)" sends the same photo again at up to 3200 px, 2.5 MB (`src/images.js`, `LIMITS`) |
 | `photos` | `[{ src, alt, width, height, index }]` | `indexes: ["Light", "Dark"]` labels each photo. StoryShaped's daylight/blacklight pairs. `warnMissingIndex: true`: Publish asks the owner to confirm when there are photos but none under one index (`missingIndexHelp` adds a sentence). `maxItems`. Takes `wide` as `image` does |
 | `relation` | document id, or an array of ids when `many` | `to: "<type>"` |
+| `style` | `{ size?, font?, weight?, align?, color?, background?, width? }`, each part optional | How one element looks. `size` small, large, xlarge; `font` heading, body; `weight` normal, bold; `align` left, center, right; `color` and `background` a value from the schema's `styleColors` or `#rrggbb`; `width` 10 to 100 (%). The site turns it into CSS on the element holding it |
 | `group` | object | `fields` |
 | `list` | array of objects, each with an `_id` | `fields`, `itemLabel` (field shown per row), `maxItems` |
 | `blocks` | array of `{ _id, _type, ...fields }` | `of: ["<block>", ...]` |
@@ -74,6 +78,15 @@ An owner can design sections and collections in the editor ("Your own types"), s
 start with `custom`, use only kinds that need no code (`CUSTOM_KINDS`), and join every page's
 section palette. A site renders a custom section generically from its fields until it is designed;
 `window.EOTM.schema` has the merged schema while editing, the public `boot` has it otherwise.
+
+The owner can add a field to anything the site ships with: "+ Add a field" under any type, section or
+list row in the editor. Kept in the same record as `fields`, keyed by where it goes:
+`{ "types.siteSettings.socials": [{ "name": "customPhoto", "kind": "image", "label": "Photo" }] }`. The key
+is `types.<type>` or `blocks.<section>`, then field names down to a list or group. Every document, section
+or row of that kind gains it; names start with `custom`; the kinds are `CUSTOM_KINDS`, `style` included.
+Removing one keeps what was typed into it. The merged schema marks each with `added: true`, and a site
+draws them after the element's own content until its developer places them (StoryShaped:
+`components/Extras.jsx`, `Extras` and `useLook`). Saved section templates carry their added fields' content.
 
 The owner can also rename the site's own types, sections and fields ("Types and names"), kept in
 the same record as `labels`: `{ types: { page: { label, plural } }, blocks: { service: { label } },
@@ -130,3 +143,17 @@ console only offers the way there.
   boolean on; `show` prints the value, `detail` a fixed line. No `field`: always connected.
 - **`group`** on a type: `"content"` or `"design"`, where the editor's home menu lists it. Unset, a type named for
   a theme, layout, setting or menu is Design.
+
+## Views and Images (1.4.0+)
+
+- **`views`** on a singleton type: the one document shown as several cards on the editor's home, each
+  opening it with only `fields` showing, and the fields more than one view lists folded beneath as
+  shared. `{ "label", "fields": [names], "mode"?, "help"? }`; `help` is the card's second line. With
+  `mode`, the page is asked to show that look while the view is open: the bridge's
+  `showMode(mode)` sends `{ type: '$mode', mode }`, and `null` on leaving (bridge 5). StoryShaped's
+  Theme is a Daylight and a Blacklight theme this way; the stored document is unchanged.
+- **`images`** (top level): `{ "type", "label"?, "summary"?, "help"? }` adds an Images view (`src/Images.jsx`)
+  listing every pair of every `photos` field with two `indexes`, in every type that holds one, grouped by
+  document. An empty side takes an upload, compressed as any upload is; removing one side keeps the later
+  pairs together (`src/pairs.js`). `type` is the site's own pairs, created from the view and left off the
+  home menu; it needs a two-index `photos` field.

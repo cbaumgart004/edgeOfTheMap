@@ -123,5 +123,10 @@
     "version": "1.3.0",
     "integrity": "sha384-7cVHbN3n974FGWWQPJO5KorqK9tKaG54PH+1hOxQW2IFJjZWtV8tFS0aUj3nlIBs",
     "releasedAt": "2026-10-03"
+  },
+  {
+    "version": "1.4.0",
+    "integrity": "sha384-wg31hkNiQ2d+XYlHqn0SYRqKhcoTYIjaeCHQC2Sp7/ifBZtIPwhWpRhbvxkNvdbU",
+    "releasedAt": "2026-10-04"
   }
 ]

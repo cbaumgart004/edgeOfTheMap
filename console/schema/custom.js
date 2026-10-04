@@ -14,8 +14,9 @@
 import { checkSchema } from './schema.js'
 
 // Kinds an owner may use: the ones that need no code to render or to point at.
-export const CUSTOM_KINDS = ['text', 'textarea', 'richtext', 'url', 'number', 'boolean', 'date', 'datetime', 'select', 'image', 'color', 'money', 'list']
+export const CUSTOM_KINDS = ['text', 'textarea', 'richtext', 'url', 'number', 'boolean', 'date', 'datetime', 'select', 'image', 'color', 'money', 'list', 'style']
 const LIST_KINDS = CUSTOM_KINDS.filter((k) => k !== 'list')
+const MAX_ADDED = 20 // fields the owner adds to one built-in, below
 const MAX_TYPES = 30
 const MAX_FIELDS = 40
 
@@ -50,6 +51,41 @@ function renameFields(fields, prefix, names) {
   })
 }
 
+// Fields the owner adds to anything the site ships with (fourth part of custom):
+//
+//   "fields": { "types.siteSettings.socials": [{ "name": "customPhoto", "kind": "image", "label": "Photo" }],
+//               "blocks.hero": [{ "name": "customNote", "kind": "richtext", "label": "Note" }] }
+//
+// The key names what gains them: a type or section ("types.listing",
+// "blocks.hero"), or a list or group inside one, by field names
+// ("types.siteSettings.socials"). Every document of that type, every section
+// of that kind and every row of that list gets them. Names start with
+// "custom", so they never meet a field the site's code adds later. The site
+// draws them generically after the element's own content (its Extras helper)
+// until its developer places them; a `style` field restyles the element.
+
+// The fields array at `at` in a schema, or null.
+export function fieldsAt(schema, at) {
+  const [kind, name, ...rest] = String(at ?? '').split('.')
+  if (kind !== 'types' && kind !== 'blocks') return null
+  let fields = schema?.[kind]?.[name]?.fields ?? null
+  for (const part of rest) {
+    const f = fields?.find((x) => x.name === part)
+    if (!f || !['list', 'group'].includes(f.kind)) return null
+    fields = f.fields ?? null
+  }
+  return fields
+}
+
+// The fields the owner added at `at`: what a site's Extras helper draws.
+export const addedFields = (schema, at) => (fieldsAt(schema, at) ?? []).filter((f) => f.added)
+
+function addFields(fields, rest, extra) {
+  if (!rest.length) return [...(fields ?? []), ...extra.map((f) => ({ ...f, added: true }))]
+  const [part, ...more] = rest
+  return (fields ?? []).map((f) => (f.name === part ? { ...f, fields: addFields(f.fields, more, extra) } : f))
+}
+
 // The shipped schema with the owner's types added and names applied. Custom
 // sections join the palette of every blocks field of every type. The owner's
 // own definitions ride along as `custom`, for the editor that changes them.
@@ -60,8 +96,9 @@ export function mergeCustom(base, custom) {
   const types = custom?.types ?? {}
   const labels = custom?.labels ?? {}
   const templates = Array.isArray(custom?.templates) ? custom.templates : []
+  const added = custom?.fields ?? {}
   const renamed = Object.keys(labels.types ?? {}).length + Object.keys(labels.blocks ?? {}).length + Object.keys(labels.fields ?? {}).length
-  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed && !templates.length) return base
+  if (!Object.keys(blocks).length && !Object.keys(types).length && !renamed && !templates.length && !Object.keys(added).length) return base
   const extra = Object.keys(blocks)
   const withPalette = (fields) => (fields ?? []).map((f) => (f.kind === 'blocks' ? { ...f, of: [...new Set([...f.of, ...extra])] } : f))
   const names = labels.fields ?? {}
@@ -80,6 +117,12 @@ export function mergeCustom(base, custom) {
   for (const [name, b] of Object.entries(base.blocks ?? {})) merged.blocks[name] = apply(b, name, 'blocks')
   for (const [name, b] of Object.entries(blocks)) merged.blocks[name] = { ...b, custom: true }
   for (const [name, t] of Object.entries(types)) merged.types[name] = { ...t, custom: true }
+  // Added fields last, so a renamed or custom element gains them too.
+  for (const [at, extra] of Object.entries(added)) {
+    const [kind, name, ...rest] = at.split('.')
+    const def = merged[kind]?.[name]
+    if (def && Array.isArray(extra)) merged[kind][name] = { ...def, fields: addFields(def.fields, rest, extra) }
+  }
   // Section templates the owner saved ("Save as template"): a name and a
   // section's content, offered when adding a section of that type.
   merged.templates = templates.filter((t) => merged.blocks[t?.block?._type])
@@ -141,6 +184,23 @@ export function checkCustom(base, custom) {
     checkFields(t?.fields, `types.${name}`, CUSTOM_KINDS)
   }
   checkLabels(base, custom.labels, errors)
+  if (custom.fields != null) {
+    if (typeof custom.fields !== 'object' || Array.isArray(custom.fields)) errors.push('fields must be an object')
+    else {
+      const withTypes = { ...base, blocks: { ...base.blocks, ...blocks }, types: { ...base.types, ...types } }
+      for (const [at, extra] of Object.entries(custom.fields)) {
+        const target = fieldsAt(withTypes, at)
+        if (!target) { errors.push(`fields.${at}: nothing there takes fields`); continue }
+        if (!Array.isArray(extra) || !extra.length) { errors.push(`fields.${at}: a list of fields`); continue }
+        if (extra.length > MAX_ADDED) errors.push(`fields.${at}: at most ${MAX_ADDED} added fields`)
+        for (const f of extra) {
+          if (!/^custom[A-Z]\w*$/.test(f?.name ?? '')) errors.push(`fields.${at}.${f?.name}: added names start with "custom"`)
+          else if (target.some((x) => x.name === f.name)) errors.push(`fields.${at}.${f.name}: already a field there`)
+        }
+        checkFields(extra, `fields.${at}`, CUSTOM_KINDS)
+      }
+    }
+  }
   if (custom.templates != null) {
     if (!Array.isArray(custom.templates)) errors.push('templates must be a list')
     else {

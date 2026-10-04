@@ -14,7 +14,7 @@ export function createBridge() {
   const emit = (change) => listeners.forEach((fn) => { try { fn(change) } catch (e) { console.error('[EOTM]', e) } })
 
   return {
-    version: 4,
+    version: 5,
     editing: false,
     // Customer view: the owner sees the site as a visitor does, published
     // documents only and no owner-only parts, with her drafts kept for when she
@@ -25,6 +25,10 @@ export function createBridge() {
     // (schema/custom.js). A site renders a custom section from its fields;
     // `{ type: '$schema' }` arrives when the owner changes them.
     schema: null,
+    // The look the console asks the page to show while the owner edits it
+    // (a Theme's Daylight or Blacklight view): a site with modes switches to it
+    // on { type: '$mode' }. Null: the page keeps its own (5+).
+    mode: null,
 
     // Site side ------------------------------------------------------------
 
@@ -67,6 +71,12 @@ export function createBridge() {
     },
 
     // Console side ---------------------------------------------------------
+
+    showMode(mode) {
+      if (this.mode === mode) return
+      this.mode = mode
+      emit({ type: '$mode', mode })
+    },
 
     setSchema(schema) {
       this.schema = schema

@@ -9,7 +9,7 @@ import { CUSTOM_KINDS, customName, fieldName } from '../schema/custom.js'
 const KIND_LABELS = {
   text: 'Short text', textarea: 'Paragraph', richtext: 'Formatted text', url: 'Link', number: 'Number',
   boolean: 'Yes / no', date: 'Date', datetime: 'Date and time', select: 'Choice from a list', image: 'Photo',
-  color: 'Colour', money: 'Price', list: 'List of items',
+  color: 'Colour', money: 'Price', list: 'List of items', style: 'Style (size, colour, alignment)',
 }
 
 let seq = 0
@@ -19,7 +19,8 @@ const key = () => `k${++seq}`
 function customOf(schema) {
   const pick = (defs) => Object.fromEntries(Object.entries(defs ?? {}).filter(([, d]) => d.custom).map(([n, d]) => {
     const { custom, ...rest } = d
-    return [n, rest]
+    // Fields added from the editor are kept in custom.fields, not here.
+    return [n, { ...rest, fields: (rest.fields ?? []).filter((f) => !f.added) }]
   }))
   return { blocks: pick(schema.blocks), types: pick(schema.types) }
 }
@@ -59,7 +60,8 @@ function toFields(rows) {
 // Renaming what the site ships: the type (and its plural) and every field,
 // lists' own fields included. Names are labels only; content is untouched.
 function RenameFields({ fields, prefix, labels, setLabel }) {
-  return (fields ?? []).map((f) => {
+  // Added fields carry the owner's own label already; only shipped ones rename.
+  return (fields ?? []).filter((f) => !f.added).map((f) => {
     const path = `${prefix}.${f.name}`
     return (
       <div key={path} className="eotm-rename-field">
@@ -210,7 +212,8 @@ export default function CustomTypes({ schema, store, notify, onSaved }) {
   }
 
   const save = async () => {
-    const custom = { blocks: {}, types: {}, labels }
+    // Templates and added fields are kept as they are; only types and names change here.
+    const custom = { ...(schema.custom ?? {}), blocks: {}, types: {}, labels }
     const used = new Set([...Object.keys(schema.blocks ?? {}), ...Object.keys(schema.types ?? {})])
     for (const it of items) {
       let name = it.name

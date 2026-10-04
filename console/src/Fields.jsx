@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE } from '../schema/schema.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
@@ -8,23 +8,95 @@ import { prepareImage } from './images.js'
 // One editor per field kind (schema/SCHEMA.md). `ctx` carries the schema, the
 // store (relations and uploads) and the errors for this document.
 
-export function FieldList({ fields, value, onChange, ctx, path = '' }) {
-  return fields.map((f) => (
-    <Field key={f.name} field={f} value={value?.[f.name]} ctx={ctx} path={path ? `${path}.${f.name}` : f.name}
-      onChange={(v) => onChange({ ...value, [f.name]: v })} />
-  ))
+// `at` names where these fields are defined in the schema ("types.listing",
+// "blocks.hero", "types.siteSettings.socials"): with it, the owner can add a
+// field there (schema/custom.js, custom.fields), and every such element gains it.
+export function FieldList({ fields, value, onChange, ctx, path = '', at = null }) {
+  return (
+    <>
+      {fields.map((f) => (
+        <Field key={f.name} field={f} value={value?.[f.name]} ctx={ctx} path={path ? `${path}.${f.name}` : f.name} at={at}
+          onChange={(v) => onChange({ ...value, [f.name]: v })} />
+      ))}
+      {at && ctx.addField && <AddField at={at} ctx={ctx} />}
+    </>
+  )
 }
 
-function Field({ field, value, onChange, ctx, path }) {
+// What an owner may add to any element: the kinds that need no code to draw.
+const ADD_KINDS = [
+  ['image', 'Photo'], ['text', 'Short text'], ['richtext', 'Formatted text (headings, links, photos)'], ['url', 'Link'],
+  ['textarea', 'Paragraph'], ['number', 'Number'], ['date', 'Date'], ['boolean', 'Yes / no'], ['money', 'Price'],
+  ['color', 'Colour'], ['style', 'Style (size, colour, alignment)'],
+]
+
+// Which elements a field added at `at` reaches, in the owner's words.
+function reachOf(schema, at) {
+  const [kind, name, ...rest] = at.split('.')
+  const def = schema[kind]?.[name]
+  if (rest.length) {
+    let fields = def?.fields
+    let f = null
+    for (const part of rest) { f = fields?.find((x) => x.name === part); fields = f?.fields }
+    return f?.kind === 'group' ? `${f.label ?? f.name}` : `every row of ${f?.label ?? rest.at(-1)}`
+  }
+  if (kind === 'blocks') return `every ${def?.label ?? name} section, on every page`
+  return def?.singleton ? `the ${def.label}` : `every ${def?.label?.toLowerCase() ?? name}`
+}
+
+function AddField({ at, ctx }) {
+  const [open, setOpen] = useState(false)
+  const [label, setLabel] = useState('')
+  const [kind, setKind] = useState('image')
+  const [busy, setBusy] = useState(false)
+  if (!open) return <button type="button" className="eotm-btn is-quiet eotm-add-field" onClick={() => setOpen(true)}>+ Add a field</button>
+  return (
+    <form className="eotm-group eotm-add-field" onSubmit={async (e) => {
+      e.preventDefault()
+      if (!label.trim()) return
+      setBusy(true)
+      try { await ctx.addField(at, { label: label.trim(), kind }); setOpen(false); setLabel('') } catch (err) { ctx.notify(err.message) } finally { setBusy(false) }
+    }}>
+      <p className="eotm-help">Adds a field to {reachOf(ctx.schema, at)}. The site shows it after what is already there.</p>
+      <div className="eotm-row">
+        <input className="eotm-input" aria-label="Field name" placeholder="Field name, e.g. Photo" value={label} maxLength={60} autoFocus onChange={(e) => setLabel(e.target.value)} />
+        <select className="eotm-input" aria-label="What it holds" value={kind} onChange={(e) => setKind(e.target.value)}>
+          {ADD_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+      <div className="eotm-row">
+        <button className="eotm-btn is-primary" disabled={busy || !label.trim()}>{busy ? 'Adding…' : 'Add field'}</button>
+        <button type="button" className="eotm-btn is-quiet" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+    </form>
+  )
+}
+
+// An added field comes off again with two taps. What was typed into it stays
+// in the documents, so adding it back under the same name brings it back.
+function RemoveAdded({ onConfirm }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => { if (armed) { const t = setTimeout(() => setArmed(false), 4000); return () => clearTimeout(t) } }, [armed])
+  return (
+    <button type="button" className={`eotm-btn eotm-remove-field ${armed ? 'is-danger' : 'is-quiet'}`} onClick={() => (armed ? onConfirm() : setArmed(true))}>
+      {armed ? 'Tap again to remove this field everywhere' : 'Remove field'}
+    </button>
+  )
+}
+
+function Field({ field, value, onChange, ctx, path, at }) {
   const id = useId()
   const error = ctx.errors?.find((e) => e.startsWith(`${path}:`))?.slice(path.length + 2)
   const label = field.label ?? field.name
+  const remove = field.added && at && ctx.removeField
+    ? <RemoveAdded onConfirm={() => ctx.removeField(at, field.name).catch((e) => ctx.notify(e.message))} /> : null
   const wrap = (control, { block = false } = {}) => (
     <div className={`eotm-field${error ? ' has-error' : ''}${block ? ' is-block' : ''}`} data-eotm-field={field.name}>
       <label htmlFor={id} className="eotm-label">{label}{field.required && <span aria-hidden="true"> *</span>}</label>
       {control}
       {field.help && <p className="eotm-help">{field.help}</p>}
       {error && <p className="eotm-error" role="alert">{error}</p>}
+      {remove}
     </div>
   )
 
@@ -49,6 +121,8 @@ function Field({ field, value, onChange, ctx, path }) {
       return wrap(<Placement id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
     case 'color':
       return wrap(<Color id={id} value={value} onChange={onChange} />)
+    case 'style':
+      return wrap(<StyleField id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'layout':
       return wrap(<Layout id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'richtext':
@@ -79,6 +153,7 @@ function Field({ field, value, onChange, ctx, path }) {
           <input id={id} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
           <label htmlFor={id}>{label}</label>
           {field.help && <p className="eotm-help">{field.help}</p>}
+          {remove}
         </div>)
     case 'date':
       return wrap(<input id={id} className="eotm-input" type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />)
@@ -102,19 +177,19 @@ function Field({ field, value, onChange, ctx, path }) {
         <details className="eotm-group is-fold" open={field.open} data-eotm-field={field.name}>
           <summary>{label}</summary>
           {field.help && <p className="eotm-help">{field.help}</p>}
-          <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} />
+          <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </details>)
       return (
         <fieldset className="eotm-group" data-eotm-field={field.name}>
           <legend>{label}</legend>
           {field.help && <p className="eotm-help">{field.help}</p>}
-          <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} />
+          <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </fieldset>)
     case 'list':
       return (
         <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path}
           itemTitle={(item, i) => (field.itemLabel && item[field.itemLabel]) || `${field.itemLabel ?? 'Item'} ${i + 1}`}
-          fieldsFor={() => field.fields}
+          fieldsFor={() => field.fields} atFor={() => at && `${at}.${field.name}`}
           add={[{ key: 'item', label: `Add ${field.itemLabel ?? 'item'}`, make: () => newListItem(field, ctx.schema) }]} />)
     case 'blocks':
       return (
@@ -124,7 +199,7 @@ function Field({ field, value, onChange, ctx, path }) {
             const t = b.title || b.heading
             return t ? `${def?.label}: ${t}` : def?.label ?? b._type
           }}
-          fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []}
+          fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []} atFor={(b) => (ctx.schema.blocks[b._type] ? `blocks.${b._type}` : null)}
           add={[
             ...field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) })),
             // The owner's saved templates for these section types: a copy with fresh ids.
@@ -154,7 +229,7 @@ function withOffset(local) {
   return `${local}:00${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`
 }
 
-async function uploadPhoto(file, ctx, limit) {
+export async function uploadPhoto(file, ctx, limit) {
   const { blob, width, height } = await prepareImage(file, limit)
   const src = await ctx.upload(blob)
   return { src, width, height, alt: '' }
@@ -348,7 +423,7 @@ function Relation({ id, field, value, onChange, ctx }) {
 const holds = (item, id) => Boolean(id) && JSON.stringify(item).includes(`"_id":"${id}"`)
 
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
-function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, add, sections }) {
+function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, atFor = () => null, add, sections }) {
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
   // here already expanded and scrolled into view.
   const focused = () => items.find((x) => x._id === ctx.focus || holds(x, ctx.focus))
@@ -443,7 +518,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
               )}
               {isOpen && (
                 <div className="eotm-item-body">
-                  <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} />
+                  <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} at={atFor(item)} />
                   {/* A changed section: keep it as it is, or keep its look as a template too. */}
                   {sections && state && (
                     <div className="eotm-row eotm-item-save">
@@ -516,6 +591,61 @@ function Placement({ id, field, value, onChange, ctx }) {
       {!known && <option value={value}>After “{value}” (no longer listed)</option>}
       {others.map((e) => <option key={e.key} value={e.key}>After “{e.title}”</option>)}
     </select>
+  )
+}
+
+// How one element looks (the `style` kind): size, font, weight, alignment, its
+// text and background colours, and its width. Colours offer the site's named
+// ones first (schema `styleColors`, which follow its themes and modes), then a
+// fixed colour. Every part left blank keeps the site's own.
+const STYLE_PARTS = {
+  size: ['Text size', { small: 'Small', large: 'Large', xlarge: 'Extra large' }],
+  font: ['Font', { heading: 'Heading font', body: 'Body font' }],
+  weight: ['Weight', { normal: 'Regular', bold: 'Bold' }],
+  align: ['Alignment', { left: 'Left', center: 'Centre', right: 'Right' }],
+}
+function StyleField({ id, value, onChange, ctx }) {
+  const v = value ?? {}
+  const set = (k, x) => {
+    const next = { ...v, [k]: x }
+    if (x === '' || x == null) delete next[k]
+    onChange(Object.keys(next).length ? next : null)
+  }
+  const named = ctx.schema.styleColors ?? []
+  const colour = (k, label) => {
+    const isNamed = named.some((c) => c.value === v[k])
+    return (
+      <div className="eotm-style-part">
+        <label className="eotm-label" htmlFor={`${id}-${k}`}>{label}</label>
+        <select id={`${id}-${k}`} className="eotm-input" value={isNamed ? v[k] : v[k] ? '#' : ''}
+          onChange={(e) => set(k, e.target.value === '#' ? '#000000' : e.target.value)}>
+          <option value="">Site’s own</option>
+          {named.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          <option value="#">A fixed colour…</option>
+        </select>
+        {v[k] && !isNamed && <Color value={v[k]} onChange={(x) => set(k, x || '')} />}
+      </div>
+    )
+  }
+  return (
+    <div id={id} className="eotm-style">
+      {Object.entries(STYLE_PARTS).map(([k, [label, names]]) => (
+        <div key={k} className="eotm-style-part">
+          <label className="eotm-label" htmlFor={`${id}-${k}`}>{label}</label>
+          <select id={`${id}-${k}`} className="eotm-input" value={v[k] ?? ''} onChange={(e) => set(k, e.target.value)}>
+            <option value="">Site’s own</option>
+            {STYLE[k].map((o) => <option key={o} value={o}>{names[o]}</option>)}
+          </select>
+        </div>
+      ))}
+      {colour('color', 'Text colour')}
+      {colour('background', 'Background')}
+      <label className="eotm-label eotm-range">
+        Width <output>{v.width ? `${v.width}%` : 'site’s own'}</output>
+        <input type="range" min="10" max="100" step="5" value={v.width ?? 100}
+          onChange={(e) => set('width', Number(e.target.value) === 100 ? '' : Number(e.target.value))} />
+      </label>
+    </div>
   )
 }
 

@@ -4,8 +4,19 @@
 
 export const FIELD_KINDS = [
   'text', 'textarea', 'richtext', 'url', 'number', 'money', 'boolean', 'date',
-  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout', 'color',
+  'datetime', 'select', 'image', 'photos', 'relation', 'group', 'list', 'blocks', 'placement', 'layout', 'color', 'style',
 ]
+
+// A `style` field: how one element looks, each part blank for the site's own.
+// Colours are the site's named colours (schema `styleColors`, which follow its
+// themes and modes) or a fixed #rrggbb. The site turns it into CSS.
+export const STYLE = {
+  size: ['small', 'large', 'xlarge'],
+  font: ['heading', 'body'],
+  align: ['left', 'center', 'right'],
+  weight: ['normal', 'bold'],
+}
+const STYLE_KEYS = ['size', 'font', 'align', 'weight', 'color', 'background', 'width']
 
 const NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/
 
@@ -44,9 +55,29 @@ export function checkSchema(schema) {
     if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
     if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
   }
+  // The site's named colours for style fields: [{ value, label, css }].
+  for (const c of schema.styleColors ?? []) {
+    if (!c?.value || !NAME.test(c.value) || !c.label || typeof c.css !== 'string') errors.push('styleColors: each needs a plain value, a label and its css')
+  }
   // Where a type is listed in the editor's menu: with the content, or under Design.
   for (const [n, t] of Object.entries(types)) {
     if ('group' in t && !['content', 'design'].includes(t.group)) errors.push(`types.${n}: group is content or design`)
+    // Views: one document shown as several cards, each with some of its fields.
+    if ('views' in t) {
+      if (!t.singleton) errors.push(`types.${n}.views: only a singleton has views`)
+      if (!Array.isArray(t.views) || !t.views.length) errors.push(`types.${n}.views: a list of views`)
+      for (const v of Array.isArray(t.views) ? t.views : []) {
+        if (!v?.label) errors.push(`types.${n}.views: each needs a label`)
+        if (!Array.isArray(v?.fields) || !v.fields.length) errors.push(`types.${n}.views.${v?.label}: fields must list field names`)
+        for (const f of v?.fields ?? []) if (!(t.fields ?? []).some((x) => x.name === f)) errors.push(`types.${n}.views.${v.label}: unknown field "${f}"`)
+      }
+    }
+  }
+  // Images: the type holding the site's own photo pairs, which needs a paired photos field.
+  if (schema.images) {
+    const t = types[schema.images.type]
+    if (!t) errors.push(`images: unknown type "${schema.images.type}"`)
+    else if (!(t.fields ?? []).some((f) => f.kind === 'photos' && f.indexes?.length === 2)) errors.push(`images: ${schema.images.type} needs a photos field with two indexes`)
   }
 
   const checkFields = (fields, where) => {
@@ -254,6 +285,18 @@ function checkValue(field, value, at, schema, errors, opts) {
     case 'image':
       checkImage(value, at, errors)
       break
+    case 'style': {
+      if (typeof value !== 'object' || Array.isArray(value)) { errors.push(`${at}: must be an object`); break }
+      const named = (schema.styleColors ?? []).map((c) => c.value)
+      for (const [k, v] of Object.entries(value)) {
+        if (v == null || v === '') continue
+        if (!STYLE_KEYS.includes(k)) errors.push(`${at}.${k}: not a style`)
+        else if (STYLE[k] && !STYLE[k].includes(v)) errors.push(`${at}.${k}: "${v}" is not an option`)
+        else if ((k === 'color' || k === 'background') && !named.includes(v) && !/^#[0-9a-f]{6}$/i.test(v)) errors.push(`${at}.${k}: a site colour or #rrggbb`)
+        else if (k === 'width' && !(Number.isInteger(v) && v >= 10 && v <= 100)) errors.push(`${at}.width: 10 to 100`)
+      }
+      break
+    }
     case 'photos':
       if (!Array.isArray(value)) { errors.push(`${at}: must be a list`); break }
       if (field.maxItems && value.length > field.maxItems) errors.push(`${at}: at most ${field.maxItems}`)

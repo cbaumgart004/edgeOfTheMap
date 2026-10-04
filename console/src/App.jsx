@@ -4,6 +4,8 @@ import { previewPathFor } from './bridge.js'
 import { FieldList } from './Fields.jsx'
 import Targets from './Targets.jsx'
 import CustomTypes from './CustomTypes.jsx'
+import Images from './Images.jsx'
+import { customName, fieldsAt } from '../schema/custom.js'
 import { createPortal } from 'react-dom'
 
 // The nth image of a rich text field set to `pct`% wide; its height follows.
@@ -220,13 +222,16 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   useEffect(() => () => bridge.clear(), [bridge])
 
   const style = brandStyle(schema.brand, mode)
-  const title = view.name === 'edit' ? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
-    : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates' : schema.brand.name
+  const title = view.name === 'edit' ? view.viewLabel ?? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
+    : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates'
+    : view.name === 'images' ? schema.images?.label ?? 'Images' : schema.brand.name
+  // A Theme view (Daylight, Blacklight) shows the page in its own look while it is open.
+  useEffect(() => { bridge.showMode?.(view.mode ?? null) }, [bridge, view.mode])
 
   const header = (
     <header className="eotm-head">
       {view.name !== 'home' && (
-        <button type="button" className="eotm-icon" aria-label="Back" onClick={() => setView(view.name === 'edit' ? { name: 'list', type: view.type } : { name: 'home' })}>←</button>
+        <button type="button" className="eotm-icon" aria-label="Back" onClick={() => setView(view.name === 'edit' && view.back ? view.back : view.name === 'edit' ? { name: 'list', type: view.type } : { name: 'home' })}>←</button>
       )}
       {view.name === 'home' && dashboard && (
         <a className="eotm-icon" href={dashboard} aria-label="Back to your dashboard" title="Back to your dashboard">←</a>
@@ -280,7 +285,29 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     setSchema(next)
     notify(`Saved as the template \u201c${name}\u201d. It is offered when you add a section.`)
   }
-  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate }
+  // "+ Add a field" on any element (Fields.jsx, AddField): kept in the site's
+  // own schema (schema/custom.js, custom.fields), so every element of that
+  // kind gains it at once and the site draws it.
+  const saveAdded = async (at, list) => {
+    const custom = schema.custom ?? {}
+    const fields = { ...(custom.fields ?? {}), [at]: list }
+    if (!list.length) delete fields[at]
+    const { schema: next } = await store.saveCustom({ ...custom, fields })
+    setSchema(next)
+  }
+  const addField = async (at, { label, kind }) => {
+    const taken = new Set((fieldsAt(schema, at) ?? []).map((f) => f.name))
+    const base = customName(label) || 'customField'
+    let name = base
+    for (let n = 2; taken.has(name); n++) name = `${base}${n}`
+    await saveAdded(at, [...(schema.custom?.fields?.[at] ?? []), { name, kind, label }])
+    notify(`Added “${label}”. It is in every one of these now.`)
+  }
+  const removeField = async (at, name) => {
+    await saveAdded(at, (schema.custom?.fields?.[at] ?? []).filter((f) => f.name !== name))
+    notify('Field removed. What was typed in it is kept, in case it comes back.')
+  }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate, addField, removeField }
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
@@ -295,6 +322,20 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       setPeek(false)
       if (size === 'bar') setSize('half')
       setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now() })
+    } catch (e) {
+      notify(e.message)
+    }
+  }
+
+  // One view of a one-of-a-kind document (a Theme's Daylight or Blacklight):
+  // its own fields, then the ones it shares with the other views, folded.
+  const openView = async (type, v) => {
+    try {
+      const doc = (await store.list(type))[0] ?? (await store.create({ type, data: {} }))
+      const views = schema.types[type].views
+      const shared = v.fields.filter((f) => views.some((o) => o !== v && o.fields.includes(f)))
+      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), viewLabel: v.label, mode: v.mode ?? null,
+        only: v.fields.filter((f) => !shared.includes(f)), shared, back: { name: 'home' } })
     } catch (e) {
       notify(e.message)
     }
@@ -352,7 +393,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
-    onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
+    onView={openView} onImages={() => setView({ name: 'images' })} onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
+  else if (view.name === 'images') body = (
+    <Images schema={schema} store={store} bridge={bridge} notify={notify}
+      open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), back: { name: 'images' } })} />)
   else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'templates') body = <Templates schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'list') body = (
@@ -361,7 +405,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   else body = (
     <Editor key={view.id} schema={schema} store={store} bridge={bridge} id={view.id} ctxBase={ctxBase} notify={notify}
       onState={(patch) => setView((v) => ({ ...v, ...patch }))}
-      onGone={() => setView({ name: 'list', type: view.type })}
+      onGone={() => setView(view.back ?? { name: 'list', type: view.type })}
+      only={view.only} shared={view.shared}
       onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
       onFocus={(item) => setView((v) => ({ ...v, focus: item, focusField: null, focusAt: Date.now() }))}
       focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
@@ -517,13 +562,14 @@ const CARD_LIMIT = 6
 // look: themes, layouts, settings, menus). The schema can say (`group`).
 export const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
 
-function Home({ schema, store, wide, open, onTypes, onTemplates, onTool }) {
+function Home({ schema, store, wide, open, onView, onImages, onTypes, onTemplates, onTool }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
   }, [schema, store])
   // A type listed under another (menuUnder) is reached through that one's list.
-  const types = Object.entries(schema.types).filter(([, t]) => !t.menuUnder)
+  // The type Images keeps (schema `images`) is reached through Images.
+  const types = Object.entries(schema.types).filter(([n, t]) => !t.menuUnder && n !== schema.images?.type)
   const under = (name) => Object.entries(schema.types).filter(([, t]) => t.menuUnder === name).map(([n]) => n)
   const countOf = (name) => [name, ...under(name)].reduce((n, t) => (counts[t] == null || n == null ? null : n + counts[t]), 0)
   // The site's own admin pages the schema names (`tools`, e.g. StoryShaped's
@@ -538,14 +584,22 @@ function Home({ schema, store, wide, open, onTypes, onTemplates, onTool }) {
     </li>
   ))
   const templates = schema.custom?.templates ?? []
-  const card = ([name, t]) => (
+  // A type in views (a Theme's Daylight and Blacklight) has a card per view.
+  const card = ([name, t]) => (t.views ? t.views.map((v) => (
+    <li key={`${name}:${v.label}`}>
+      <button type="button" className="eotm-card" onClick={() => onView(name, v)}>
+        <strong>{v.label}</strong>
+        <span>{v.help ?? t.label}</span>
+      </button>
+    </li>
+  )) : (
     <li key={name}>
       <button type="button" className="eotm-card" onClick={() => open(name)}>
         <strong>{t.plural ?? t.label}</strong>
         <span>{countOf(name) ?? '…'}</span>
       </button>
     </li>
-  )
+  ))
   const design = types.filter(([n, t]) => isDesign(n, t))
   const content = types.filter(([n, t]) => !isDesign(n, t))
   // Design: the site's look, and the owner's section templates and types,
@@ -570,7 +624,15 @@ function Home({ schema, store, wide, open, onTypes, onTemplates, onTool }) {
       </ul>
     </>
   )
-  const extra = <>{tools}</>
+  const images = schema.images && (
+    <li key="images">
+      <button type="button" className="eotm-card" onClick={onImages}>
+        <strong>{schema.images.label ?? 'Images'}</strong>
+        <span>{schema.images.summary ?? 'Photo pairs'}</span>
+      </button>
+    </li>
+  )
+  const extra = <>{images}{tools}</>
   if (!wide && types.length > CARD_LIMIT) {
     return (
       <div className="eotm-types-picker">
@@ -698,7 +760,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   )
 }
 
-function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, onFocus, focus, focusField, focusAt, editorApi, pendingSize }) {
+function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, onFocus, focus, focusField, focusAt, editorApi, pendingSize, only, shared }) {
   const [doc, setDoc] = useState(null)
   const [conflict, setConflict] = useState(null)
   const [serverErrors, setServerErrors] = useState([])
@@ -885,7 +947,18 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           ))}
         </nav>
       )}
-      <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} />
+      {only ? (
+        <>
+          {/* The view's own fields are what it is for, so a folded group opens. */}
+          <FieldList fields={type.fields.filter((f) => only.includes(f.name) || f.added).map((f) => (f.collapsible ? { ...f, open: true } : f))} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />
+          {shared?.length > 0 && (
+            <details className="eotm-group is-fold">
+              <summary>Shared by every {type.label.toLowerCase()}</summary>
+              <FieldList fields={type.fields.filter((f) => shared.includes(f.name))} value={doc.data} onChange={change} ctx={ctx} />
+            </details>
+          )}
+        </>
+      ) : <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />}
       <div className="eotm-danger">
         <button type="button" className="eotm-btn is-quiet" onClick={async () => { try { onOpen(await store.duplicate(id)) } catch (e) { notify(e.message) } }}>Duplicate</button>
         <DeleteButton label={type.label} onConfirm={() => act((d) => store.remove(id, d.version), 'Deleted.')} />

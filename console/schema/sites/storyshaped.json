@@ -11,7 +11,8 @@
       "referencePage",
       "theme",
       "siteSettings",
-      "menu"
+      "menu",
+      "imagePair"
     ]
   },
   "tools": [
@@ -21,6 +22,12 @@
       "help": "Stock items, counts, bills of materials; hidden from visitors"
     }
   ],
+  "images": {
+    "type": "imagePair",
+    "label": "Images",
+    "summary": "Daylight and blacklight pairs",
+    "help": "Every daylight and blacklight pair on the site: your Image pairs, your Listings’ photos and your pages’ photos. A side with no photo takes an upload. Image pairs show on the Images page."
+  },
   "brand": {
     "name": "StoryShaped Studios",
     "logo": "/assets/StoryShapedStudiosLogo_GmailOptimized.png",
@@ -68,6 +75,28 @@
       "name": "accent",
       "label": "Accent",
       "className": "text-accent"
+    }
+  ],
+  "styleColors": [
+    {
+      "value": "accent",
+      "label": "Accent (follows the theme)",
+      "css": "var(--accent)"
+    },
+    {
+      "value": "text",
+      "label": "Text",
+      "css": "var(--bone)"
+    },
+    {
+      "value": "muted",
+      "label": "Quiet text",
+      "css": "var(--muted)"
+    },
+    {
+      "value": "background",
+      "label": "Background",
+      "css": "var(--void)"
     }
   ],
   "types": {
@@ -142,7 +171,8 @@
             "card",
             "values",
             "photoFeature",
-            "productCard"
+            "productCard",
+            "pairGallery"
           ],
           "help": "The components this page is made of, in order. Arrange them side by side with its Page layout."
         }
@@ -622,6 +652,32 @@
           ],
           "collapsible": true
         }
+      ],
+      "views": [
+        {
+          "label": "Daylight theme",
+          "mode": "daylight",
+          "help": "Colours of the site in daylight",
+          "fields": [
+            "daylight",
+            "defaultMode",
+            "rememberChoice",
+            "headingFont",
+            "bodyFont"
+          ]
+        },
+        {
+          "label": "Blacklight theme",
+          "mode": "blacklight",
+          "help": "Colours and glow under blacklight",
+          "fields": [
+            "blacklight",
+            "defaultMode",
+            "rememberChoice",
+            "headingFont",
+            "bodyFont"
+          ]
+        }
       ]
     },
     "siteSettings": {
@@ -689,7 +745,6 @@
               "name": "icon",
               "kind": "select",
               "label": "Icon",
-              "required": true,
               "options": [
                 {
                   "value": "etsy",
@@ -707,7 +762,8 @@
                   "value": "instagram",
                   "label": "Instagram"
                 }
-              ]
+              ],
+              "help": "Or add a Photo field to these links (+ Add a field) for your own picture; a photo shows instead of the icon."
             },
             {
               "name": "inBand",
@@ -1186,6 +1242,42 @@
           "patternHelp": "digits only"
         }
       ]
+    },
+    "imagePair": {
+      "label": "Image pair",
+      "plural": "Image pairs",
+      "titleField": "title",
+      "slugFrom": "title",
+      "group": "content",
+      "previewPath": "/images",
+      "fields": [
+        {
+          "name": "title",
+          "kind": "text",
+          "label": "Name",
+          "required": true,
+          "maxLength": 120,
+          "help": "What the piece is. Visitors see it under the photos."
+        },
+        {
+          "name": "photos",
+          "kind": "photos",
+          "label": "Photos",
+          "indexes": [
+            "Light",
+            "Dark"
+          ],
+          "maxItems": 2,
+          "warnMissingIndex": true,
+          "help": "The piece in daylight (Light) and under blacklight (Dark)."
+        },
+        {
+          "name": "caption",
+          "kind": "text",
+          "label": "Caption",
+          "maxLength": 300
+        }
+      ]
     }
   },
   "blocks": {
@@ -1384,6 +1476,22 @@
           "name": "note",
           "kind": "text",
           "label": "Note under it"
+        }
+      ]
+    },
+    "pairGallery": {
+      "label": "Image pairs gallery",
+      "className": "pair-gallery",
+      "fields": [
+        {
+          "name": "heading",
+          "kind": "text",
+          "label": "Heading"
+        },
+        {
+          "name": "intro",
+          "kind": "textarea",
+          "label": "Introduction"
         }
       ]
     }
