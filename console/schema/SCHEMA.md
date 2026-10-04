@@ -107,6 +107,19 @@ content and the site's code do not, so a rename never needs a migration.
 | `data-eotm-text="<field>"` | an element showing a text field | click to type in it on the page and open it in the pane; each keystroke reaches the pane (double-click before 1.2.3) |
 | `data-eotm-in="<_id>"` | beside either of the two above | the row the field belongs to, when not the marked element's item (a value inside a Values grid) |
 | `data-eotm-layout`, `data-eotm-block`, `data-eotm-span` | a page arranged by a `layout` field | Arrange's move and resize boxes |
+| `data-eotm-part="<name>"` | each part of a section (a field's name; a text and its link as one) | what Arrange moves in a Free section (1.5.0+). Named by field, so a duplicated section or a template keeps its arrangement |
+| `data-eotm-frame="free"` | a Free section's outermost element | the canvas its placed parts sit on; `--frame-h` its height |
+| `data-eotm-wrap` | a wrapper between a section and its parts | no box of its own while the section is Free |
+| `data-eotm-group` | several elements moved as one part | no box of its own while the section flows |
+
+## Free sections (StoryShaped ADR-0010)
+
+Any section, row or document may carry `_layout`, declared by no field and checked by `checkFrame`
+(`schema/schema.js`): `{ "mode": "flow" | "free", "height", "parts": { "<part>": { "x", "y", "w", "h"?,
+"z"?, "opacity"? } } }`. `x` and `w` are % of the element's width, `y`, `h` and `height` % of its width
+too, so the arrangement scales with the page; a part with no `h` grows to fit. A Free section stacks
+below 820px, ordered by `y` then `x`. The site draws it from the marks above (StoryShaped:
+`components/Frame.jsx`, `styles/Frame.css`).
 
 ## Documents
 
