@@ -41,7 +41,12 @@ describe('View, Edit and Arrange', () => {
   it('Edit opens a button instead of following it; View lets it work', async () => {
     const { page, host } = await mount()
     const link = page.querySelector('a')
-    const click = () => { const e = new MouseEvent('click', { bubbles: true, cancelable: true }); page.querySelector('img').dispatchEvent(e); return e }
+    const click = () => {
+      const img = page.querySelector('img')
+      img.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }))
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 }))
+      const e = new MouseEvent('click', { bubbles: true, cancelable: true }); img.dispatchEvent(e); return e
+    }
     let e
     await act(async () => { e = click() })
     await tick(20)

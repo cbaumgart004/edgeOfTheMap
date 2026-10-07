@@ -142,7 +142,7 @@ describe('console in a page', () => {
     page.remove()
   })
 
-  it('opens what is clicked on the page, and sizes it by dragging its edge', async () => {
+  it('opens what is clicked on the page in the pane, that section expanded and the rest folded', async () => {
     localStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
@@ -151,49 +151,22 @@ describe('console in a page', () => {
       { _id: 'thai', _type: 'service', title: 'Thai Yoga' },
     ] } })
     const page = document.createElement('div')
-    page.innerHTML = '<section data-eotm-edit="page:' + doc.slug + '" data-eotm-item="thai" data-eotm-label="Thai Yoga" data-eotm-size="width" data-eotm-min="30" data-eotm-max="100"><h2>Thai Yoga</h2></section>'
+    page.innerHTML = '<section data-eotm-edit="page:' + doc.slug + '" data-eotm-item="thai" data-eotm-label="Thai Yoga"><h2>Thai Yoga</h2></section>'
     document.body.append(page)
-    const section = page.firstChild
-    const box = (width) => () => ({ top: 100, left: 0, right: width, bottom: 300, width, height: 200 })
-    section.getBoundingClientRect = box(500)
-    page.getBoundingClientRect = box(1000)
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-
-    await act(async () => section.querySelector('h2').dispatchEvent(new MouseEvent('pointerover', { bubbles: true })))
-    await tick(20)
-    const edit = byText(host, 'button.eotm-target-edit', 'Edit Thai Yoga')
-    expect(edit).toBeTruthy()
-    await act(async () => edit.click())
-    await tick(20)
-    // The document opens with the clicked section expanded.
+    await act(async () => page.querySelector('h2').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })))
+    await tick(50)
     expect(host.querySelector('[data-eotm-item="thai"]').classList.contains('is-open')).toBe(true)
     expect(host.querySelector('[data-eotm-item="intro"]').classList.contains('is-open')).toBe(false)
-
-    // Dragging the right edge 100px wider: 600 of 1000. Snapping (the default)
-    // lands on seven twelfths; free sizing keeps 60%.
-    const dragTo = async (x) => act(async () => {
-      host.querySelector('button.eotm-target-size').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 500 }))
-      window.dispatchEvent(new MouseEvent('pointermove', { clientX: x }))
-      window.dispatchEvent(new MouseEvent('pointerup', {}))
-    })
-    await dragTo(600)
-    await tick(900)
-    expect((await store.get(doc.id)).data.blocks[1].width).toBe(58)
-    await act(async () => byText(host, 'button.eotm-target-snap', 'Snap').click())
-    expect(byText(host, 'button.eotm-target-snap', 'Free')).toBeTruthy()
-    await dragTo(600)
-    await tick(900)
-    expect((await store.get(doc.id)).data.blocks[1].width).toBe(60)
-    localStorage.removeItem('eotm:snap')
     await act(async () => root.unmount())
     page.remove()
   })
 
-  it('one click on page text types it in place and opens that field; the pane and the page agree', async () => {
+  it('a double-click on page text types it in place and opens that field; the pane and the page agree', async () => {
     localStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
@@ -210,12 +183,14 @@ describe('console in a page', () => {
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
 
-    // A click on the heading: no navigation, typeable in place, its section open in the pane.
+    // A click on the heading does not follow its link; a double-click types it
+    // in place, its section open in the pane.
     const h2 = page.querySelector('h2')
     const clicked = new MouseEvent('click', { bubbles: true, cancelable: true })
     await act(async () => h2.dispatchEvent(clicked))
-    await tick(300)
     expect(clicked.defaultPrevented).toBe(true)
+    await act(async () => h2.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true })))
+    await tick(300)
     expect(h2.contentEditable).toBe('plaintext-only')
     expect(host.querySelector('[data-eotm-item="vals"]').classList.contains('is-open')).toBe(true)
     const field = host.querySelector('[data-eotm-item="vals"] [data-eotm-field="title"] input')
@@ -230,7 +205,7 @@ describe('console in a page', () => {
 
     // A click elsewhere in the section opens it too.
     await act(async () => byText(host, 'button', 'Back')?.click())
-    await act(async () => page.querySelector('p').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
+    await act(async () => page.querySelector('p').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })))
     await tick(50)
     expect(host.querySelector('[data-eotm-item="vals"]')).toBeTruthy()
     await act(async () => root.unmount())

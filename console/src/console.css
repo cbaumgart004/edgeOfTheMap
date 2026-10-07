@@ -445,6 +445,11 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 }
 .eotm-arrange-bar { position: fixed; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
 .eotm-arrange-bar > * { pointer-events: auto; }
+/* A phone: one row that scrolls sideways, so the toolbar stays a strip. */
+@media (max-width: 819.98px) {
+  .eotm-arrange-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
+  .eotm-arrange-bar > * { flex: none; }
+}
 .eotm-arrange-seg { background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
 .eotm-arrange-range { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px;
   background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); font: 600 13px var(--eotm-font); }

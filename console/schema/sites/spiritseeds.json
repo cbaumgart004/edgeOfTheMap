@@ -154,6 +154,18 @@
         { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
         { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp"] }
       ]
+    },
+    "pageLayout": {
+      "label": "Page layout",
+      "plural": "Page layouts",
+      "titleField": "title",
+      "slugFrom": "title",
+      "previewPath": "{path}",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Page", "required": true },
+        { "name": "path", "kind": "url", "label": "Address", "required": true, "help": "The page this arranges: / for Home." },
+        { "name": "blocks", "kind": "layout", "label": "Arrangement", "help": "Drag the blocks on the page, or order and size them here." }
+      ]
     }
   },
   "blocks": {

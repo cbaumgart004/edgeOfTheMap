@@ -3,6 +3,7 @@ import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLU
 import { newId } from '../schema/schema.js'
 import { newElement, copyElement } from '../schema/elements.js'
 import { prepareImage } from './images.js'
+import { TEXT, startTyping } from './Targets.jsx'
 
 // Arrange mode (StoryShaped ADR-0010): the page's sections and their parts, on
 // the page itself, with handles. In place of click-to-edit (Targets.jsx) while
@@ -141,7 +142,7 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -154,7 +155,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => removeEventListener('resize', on)
   }, [])
   const latest = useRef({})
-  latest.current = { sel, snap, onChange, onSelect }
+  latest.current = { sel, snap, onChange, onSelect, onText }
 
   // A change written at once (not once a frame): an element and its place.
   const writeNow = (section, field, fn) => latest.current.onChange({ ...targetOf(section), field, value: fn })
@@ -229,12 +230,16 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   useEffect(() => {
     document.documentElement.classList.add('eotm-arranging')
     const onPage = (t) => t instanceof Element && !t.closest('.eotm-root')
+    const typing = (t) => t instanceof Element && t.closest('[contenteditable="true"], [contenteditable="plaintext-only"]')
     const down = (e) => {
-      if (!onPage(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return
-      let section = e.target.closest(SECTION)
+      if (!onPage(e.target) || typing(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return
+      const marked = e.target.closest(SECTION)
+      let section = marked
       while (section && !isSection(section)) section = section.parentElement?.closest(SECTION)
       const cur = latest.current.sel
-      if (!section) { if (cur) setSel(null); return }
+      // Something marked with nothing to arrange (a menu, a setting) still
+      // opens in the pane, as a click did before Edit could size and move.
+      if (!section) { if (cur) setSel(null); if (marked) latest.current.onSelect?.(targetOf(marked)); return }
       // A second finger on the selected part is a pinch, handled by its drag.
       if (cur?.part && e.target.closest(PART) === cur.part && document.querySelector('.eotm-arrange.is-dragging')) return
       e.preventDefault()
@@ -242,14 +247,30 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       const part = e.target.closest(PART)
       const own = part && part.closest(SECTION) === section ? part : null
       setSel({ section, part: own })
-      // The pane follows: the picked section opens there, the rest fold.
-      if (section !== cur?.section) latest.current.onSelect?.(targetOf(section))
+      // The pane follows every pick: what was pressed opens there (a button's
+      // own row, data-eotm-in, and the field around it), the rest fold.
+      const inside = (sel) => { const n = e.target.closest(sel); return n && section.contains(n) ? n : null }
+      const row = inside('[data-eotm-in]')?.dataset.eotmIn
+      latest.current.onSelect?.({ ...targetOf(section), ...(row ? { item: row } : {}), field: inside('[data-eotm-field]')?.dataset.eotmField ?? null })
       if (own) startDrag(section, own, 'move', e)
     }
     const click = (e) => {
-      if (!onPage(e.target) || !e.target.closest(SECTION)) return
+      if (!onPage(e.target) || typing(e.target) || !e.target.closest(SECTION)) return
       e.preventDefault()
       e.stopPropagation()
+    }
+    // Edit mode: a double-click on text types it where it stands, its field
+    // open in the pane (Targets' startTyping); one click selects and sizes.
+    const dbl = (e) => {
+      const typed = latest.current.onText
+      const node = typed && onPage(e.target) ? e.target.closest(TEXT) : null
+      if (!node || node.isContentEditable) return
+      e.preventDefault()
+      e.stopPropagation()
+      setSel(null)
+      startTyping(node, typed)
+      const owner = node.closest('[data-eotm-edit]')
+      if (owner) latest.current.onSelect?.({ ...targetOf(owner), item: node.dataset.eotmIn || owner.dataset.eotmItem || null, field: node.hasAttribute('data-eotm-text') ? node.dataset.eotmText : node.dataset.eotmRichtext })
     }
     const key = (e) => {
       const { sel: s } = latest.current
@@ -268,11 +289,13 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     }
     addEventListener('pointerdown', down, true)
     addEventListener('click', click, true)
+    addEventListener('dblclick', dbl, true)
     addEventListener('keydown', key)
     return () => {
       document.documentElement.classList.remove('eotm-arranging')
       removeEventListener('pointerdown', down, true)
       removeEventListener('click', click, true)
+      removeEventListener('dblclick', dbl, true)
       removeEventListener('keydown', key)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -332,7 +355,13 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const sheet = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
   const room = sheet ? Math.min(innerWidth, sheet.getBoundingClientRect().left) : innerWidth
   const barW = (barRef.current?.offsetWidth ?? 320) * uiScale
-  const barTop = Math.min(Math.max(box.top - 52, 8), innerHeight - 60)
+  // Above the selection when it fits there, else below it, never over the
+  // pane: a toolbar drawn on top of what it acts on hides it (on a phone, wholly).
+  const barH = (barRef.current?.offsetHeight ?? 44) * uiScale
+  const floor = sheet ? innerHeight : Math.min(innerHeight, document.querySelector('.eotm-sheet:not(.is-wide)')?.getBoundingClientRect().top ?? innerHeight)
+  const barTop = box.top - barH - 8 >= 8 ? box.top - barH - 8
+    : box.top + box.height + 8 + barH <= floor - 8 ? box.top + box.height + 8
+    : Math.max(8, Math.min(box.top - barH - 8, floor - barH - 8))
   const barLeft = Math.max(8, Math.min(box.left, room - barW - 8))
 
   const toFreeNow = () => write(section, freer(section))
@@ -463,7 +492,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
         </>
       )}
       {block && sizable && (
-        <button type="button" className="eotm-arrange-handle is-width" style={ui(uiScale, Math.max(b.top, 0) + Math.min(b.height, innerHeight - Math.max(b.top, 0)) / 2, b.right)}
+        <button type="button" className="eotm-arrange-handle is-width" style={ui(uiScale, Math.max(b.top, 0) + Math.min(b.height, innerHeight - Math.max(b.top, 0)) / 2, Math.min(b.right, room - 12))}
           aria-label="Drag to change the section’s width" title={`Section width: ${block.dataset.eotmSpan || COLUMNS} of 12 columns`} onPointerDown={widthDrag} />
       )}
       {!part && (
@@ -551,7 +580,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           title={snap ? 'Snaps to 12 columns and an 8 px step. Click to place freely.' : 'Placing freely. Click to snap to 12 columns and an 8 px step.'}>
           {snap ? 'Snap' : 'Free-hand'}
         </button>
-        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: click a part to move or size it' : 'Click a part to move or size it'}</span>}
+        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}{onText ? '; double-click text to type' : ''}</span>}
       </div>
     </div>
   )

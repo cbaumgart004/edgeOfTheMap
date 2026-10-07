@@ -80,7 +80,7 @@ function sizersIn(el) {
   return out
 }
 
-const TEXT = '[data-eotm-text], [data-eotm-richtext]'
+export const TEXT = '[data-eotm-text], [data-eotm-richtext]'
 const CONTROL = 'a, button, input, select, textarea, label, summary, [role="button"], [contenteditable="true"], [contenteditable="plaintext-only"]'
 
 // The field a click on `node` points at: marked text names its own; anything
@@ -93,7 +93,7 @@ function fieldAt(node, owner) {
 }
 
 // Editing in place: plain text for a text field, HTML for rich text.
-function startTyping(node, onText) {
+export function startTyping(node, onText) {
   const owner = node.closest(MARK)
   if (!owner || node.isContentEditable) return
   const base = targetOf(owner)

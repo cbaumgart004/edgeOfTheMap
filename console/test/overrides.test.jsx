@@ -37,7 +37,7 @@ describe('Edge of the Map: overrides of the site’s own elements', () => {
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
     const h1 = page.querySelector('h1')
-    await act(async () => h1.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
+    await act(async () => h1.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true })))
     await tick(50)
     h1.textContent = 'One workshop, four trades.'
     await act(async () => h1.dispatchEvent(new Event('input', { bubbles: true })))

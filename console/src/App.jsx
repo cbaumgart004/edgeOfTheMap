@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { checkDocument, warnDocument, titleOf, setItemField } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements } from './Fields.jsx'
-import Targets from './Targets.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
@@ -457,14 +456,14 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     const field = t.fields.find((f) => f.kind === 'layout').name
     const found = (await store.list(type)).find((d) => (d.data?.path ?? '') === path)
     if (found) return { type, key: found.id, field }
-    const title = document.title.split('|')[0].trim() || path
+    const title = path === '/' ? 'Home' : document.title.split('|')[0].trim() || path
     const doc = await store.create({ type, data: { title, path } })
     return { type, key: doc.id, field }
   } : null
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
-  const openTarget = async ({ type, key, item, field = null }) => {
+  const openTarget = async ({ type, key, item, field = null, keepPane = false }) => {
     if (!schema.types[type]) return
     try {
       let doc = await findDoc(type, key)
@@ -475,8 +474,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       // the page names it (data-eotm-edit="<type>:<key>").
       if (!doc && schema.types[type].overrides) doc = await store.create({ type, slug: key, data: { page: key } })
       if (!doc) return notify('That part of the page is not in the editor yet.')
-      setPeek(false)
-      if (size === 'bar') setSize('half')
+      // Selecting on the page (Arrange, Edit) keeps the pane as it is, so it
+      // does not cover what was just picked; the Edit button opens it.
+      if (!keepPane) {
+        setPeek(false)
+        if (size === 'bar') setSize('half')
+      }
       setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), onPage: true })
     } catch (e) {
       notify(e.message)
@@ -596,11 +599,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         coordinates, so they are outside the editor's zoom (page width). */}
     <div className="eotm-root eotm-overlay" data-eotm-mode={mode} style={style}>
       <div ref={setOverlay} />
-      {user && overlay && !customer && clickMode !== 'view' && createPortal(clickMode === 'arrange'
-        ? <Arrange onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
-            templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
-            onSelect={(t) => openTarget(t)} />
-        : <Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
+      {/* Edit and Arrange both select on a click, with handles to move and
+          size; Edit also types text on a double-click. */}
+      {user && overlay && !customer && clickMode !== 'view' && createPortal(
+        <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
+          templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
+          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} />, overlay)}
     </div>
     </>
   )
