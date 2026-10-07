@@ -148,5 +148,10 @@
     "version": "1.8.0",
     "integrity": "sha384-4S6+FrKfHaUGL0q3UId3TnBCCwf227iLEcdjcWq9AfinOPYm9yROR2caIbfulL03",
     "releasedAt": "2026-10-04"
+  },
+  {
+    "version": "1.8.1",
+    "integrity": "sha384-9ZaEmWti9TCAht9f15bTKr7JkKGgLcTEQXb+j6GJKAkWWMKZsIoH4xJmvoQLMQRi",
+    "releasedAt": "2026-10-07"
   }
 ]

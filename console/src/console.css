@@ -13,8 +13,10 @@
   -webkit-text-size-adjust: 100%;
 }
 .eotm-root *, .eotm-root *::before, .eotm-root *::after { box-sizing: border-box; }
-/* Not inside a Preview (Fields.jsx): a sample there is drawn by the site's own CSS. */
-.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i):not(.eotm-preview *) {
+/* Not inside a Preview (Fields.jsx): a sample there is drawn by the site's own CSS.
+   Both lists sit in :where() so the reset stays at one class: every component rule
+   after it must outrank it, or all: unset wipes the pane (1.6.0 to 1.8.0). */
+.eotm-root :where(a, button, input, select, textarea, fieldset, legend, label, ul, ol, li, p, h2, h3, h4, img, section, header, form, strong, span, b, i):where(:not(.eotm-preview *)) {
   all: unset; box-sizing: border-box;
 }
 .eotm-root :where(ul, ol, section, header, form, fieldset, p, li) { display: block; }
