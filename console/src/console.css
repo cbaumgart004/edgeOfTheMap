@@ -292,7 +292,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-box-size { top: 50%; right: 4px; width: 32px; height: 64px; margin-top: -32px; border-radius: 16px;
   pointer-events: auto; touch-action: none; cursor: ew-resize; }
 .eotm-drop { position: fixed; border-radius: 3px; background: var(--eotm-accent); }
-.eotm-arrange-bar {
+.eotm-layout-bar {
   position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px);
   display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto;
   background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); border-radius: 999px;
@@ -436,10 +436,12 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 .eotm-arrange-handle.is-n, .eotm-arrange-handle.is-s { cursor: ns-resize; }
 .eotm-arrange-handle.is-e, .eotm-arrange-handle.is-w { cursor: ew-resize; }
 .eotm-arrange-handle.is-height { width: 56px; height: 14px; margin: -7px 0 0 -28px; border-radius: 7px; background: var(--eotm-accent); cursor: ns-resize; }
+.eotm-arrange-handle.is-width { width: 14px; height: 56px; margin: -28px 0 0 -7px; border-radius: 7px; background: var(--eotm-accent); cursor: ew-resize; }
 /* Fingers need bigger targets than a pointer. */
 @media (pointer: coarse) {
   .eotm-arrange-handle { width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 13px; }
   .eotm-arrange-handle.is-height { width: 64px; height: 22px; margin: -11px 0 0 -32px; }
+  .eotm-arrange-handle.is-width { width: 22px; height: 64px; margin: -32px 0 0 -11px; }
 }
 .eotm-arrange-bar { position: fixed; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
 .eotm-arrange-bar > * { pointer-events: auto; }

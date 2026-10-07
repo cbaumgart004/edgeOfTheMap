@@ -448,6 +448,20 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   }
   const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate, addField, removeField, addClass, saveElementTemplate }
 
+  // The page layout document for an address (a type with a `layout` field and a
+  // `path`, StoryShaped's pageLayout): Arrange's section-width handle writes it,
+  // so a page with none yet gets one, named as the page titles itself.
+  const layoutType = Object.entries(schema.types).find(([, t]) => t.fields?.some((f) => f.kind === 'layout') && t.fields.some((f) => f.name === 'path'))
+  const layoutFor = layoutType ? async (path) => {
+    const [type, t] = layoutType
+    const field = t.fields.find((f) => f.kind === 'layout').name
+    const found = (await store.list(type)).find((d) => (d.data?.path ?? '') === path)
+    if (found) return { type, key: found.id, field }
+    const title = document.title.split('|')[0].trim() || path
+    const doc = await store.create({ type, data: { title, path } })
+    return { type, key: doc.id, field }
+  } : null
+
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
   const openTarget = async ({ type, key, item, field = null }) => {
@@ -463,7 +477,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       if (!doc) return notify('That part of the page is not in the editor yet.')
       setPeek(false)
       if (size === 'bar') setSize('half')
-      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now() })
+      setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), onPage: true })
     } catch (e) {
       notify(e.message)
     }
@@ -551,7 +565,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <Editor key={view.id} schema={schema} store={store} bridge={bridge} id={view.id} ctxBase={ctxBase} notify={notify}
       onState={(patch) => setView((v) => ({ ...v, ...patch }))}
       onGone={() => setView(view.back ?? { name: 'list', type: view.type })}
-      only={view.only} shared={view.shared}
+      only={view.only} shared={view.shared} onPage={view.onPage}
       onOpen={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc) })}
       onFocus={(item) => setView((v) => ({ ...v, focus: item, focusField: null, focusAt: Date.now() }))}
       focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
@@ -584,7 +598,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       <div ref={setOverlay} />
       {user && overlay && !customer && clickMode !== 'view' && createPortal(clickMode === 'arrange'
         ? <Arrange onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
-            templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} />
+            templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
+            onSelect={(t) => openTarget(t)} />
         : <Targets onOpen={openTarget} onResize={resizeTarget} onText={textTarget} />, overlay)}
     </div>
     </>
@@ -914,7 +929,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
   )
 }
 
-function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, onFocus, focus, focusField, focusAt, editorApi, pendingSize, only, shared }) {
+function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, onOpen, onFocus, focus, focusField, focusAt, editorApi, pendingSize, only, shared, onPage = false }) {
   const [doc, setDoc] = useState(null)
   const [conflict, setConflict] = useState(null)
   const [serverErrors, setServerErrors] = useState([])
@@ -933,10 +948,20 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
     store.get(id).then((d) => {
       setDoc(d)
       bridge.push(d)
+      // Opened from a click on the page: the page already shows it, and sending
+      // the site to its preview address (/home for Home) would remount the page
+      // under the pointer.
       const path = previewPathFor(schema.types[d.type], d)
-      if (path) bridge.navigate(path)
+      if (path && !onPage) bridge.navigate(path)
     }).catch((e) => { notify(e.message); onGone() })
-    return () => { clearTimeout(timer.current); bridge.drop(docRef.current?.type, id) }
+    // Leaving a document with changes not yet live keeps its draft on the page,
+    // so the page still shows what the owner did after the pane moves on (to
+    // the page layout a width handle writes, or the next section clicked).
+    return () => {
+      clearTimeout(timer.current)
+      const d = docRef.current
+      if (!d || JSON.stringify(d.data) === JSON.stringify(d.publishedData)) bridge.drop(d?.type, id)
+    }
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flush = useCallback(async () => {

@@ -446,13 +446,14 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
   // Save as template: a section's by default (ctx.saveTemplate); an element's when given.
   const saveTemplate = saveAs ?? (sections ? ctx.saveTemplate : null)
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
-  // here already expanded and scrolled into view.
+  // here already expanded and scrolled into view, and the rows around it fold,
+  // so the pane shows only what the pick is about.
   const focused = () => items.find((x) => x._id === ctx.focus || holds(x, ctx.focus))
   const [open, setOpen] = useState(() => new Set(focused() ? [focused()._id] : []))
   useEffect(() => {
     const hit = focused()
     if (!hit) return
-    setOpen((s) => new Set(s).add(hit._id))
+    setOpen(new Set([hit._id]))
     // Scroll only at the row itself; a row holding it opens and the list
     // inside it scrolls.
     if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))

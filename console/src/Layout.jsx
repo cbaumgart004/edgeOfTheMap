@@ -172,7 +172,7 @@ function Arrange({ items, write, setPeek, onDone }) {
 
   return (
     <div className="eotm-arrange">
-      <div className="eotm-arrange-bar" role="status">
+      <div className="eotm-layout-bar" role="status">
         <span>{sizable ? 'Drag ⠿ to move a block, its edge to resize.' : 'Drag ⠿ to move a block. Widths apply on wider screens.'}</span>
         <button type="button" className="eotm-btn is-primary" onClick={onDone}>Done</button>
       </div>

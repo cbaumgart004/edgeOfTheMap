@@ -57,6 +57,38 @@ const isFree = (section) => (phoneEdit(section) ? section?.dataset.eotmPhone ===
 const layoutField = (section) => (section.dataset.eotmFrameKey ? `_layout_${section.dataset.eotmFrameKey}` : '_layout')
 const isText = (part) => !part.querySelector('img, svg, video, picture, canvas')
 
+// The page block holding a section (data-eotm-block inside data-eotm-layout):
+// how many of 12 columns it takes is the page's layout document, not the section.
+const blockOf = (section) => {
+  const b = section.closest('[data-eotm-block]')
+  return b?.parentElement?.hasAttribute('data-eotm-layout') ? b : null
+}
+// A layout value with one block's width changed: the saved order, then any
+// block the page has that it does not name (as Layout.jsx resolves it).
+const spanIn = (old, keys, key, span) => {
+  const list = (Array.isArray(old) ? old : []).filter((b) => keys.includes(b?.key))
+  for (const k of keys) if (!list.some((b) => b.key === k)) list.push({ key: k, span: 12 })
+  return list.map((b) => (b.key === key ? { ...b, span } : b))
+}
+const MIN_SPAN = 3
+
+// What turns a Flow section Free, measured as it is drawn now: an updater that
+// leaves a layout already Free alone. Every handle and nudge goes through it,
+// so any section can be arranged without switching it to Free first.
+function freer(section) {
+  if (isFree(section)) return (old) => old
+  const phone = phoneEdit(section)
+  const s = section.getBoundingClientRect()
+  const measured = {}
+  for (const p of partsOf(section)) {
+    const n = p.dataset.eotmPart
+    const r = rectOf(p)
+    if (!measured[n] && (r.width || r.height)) measured[n] = toUnits(r, s)
+  }
+  const height = (s.height * 100) / (s.width || 1)
+  return (old) => ((phone ? old?.phone === 'free' : old?.mode === 'free') ? old : toFree(old, measured, height, { phone }))
+}
+
 // A part's box. A group (data-eotm-group) is no box of its own while it
 // flows, so it is the box around what it holds.
 function rectOf(el) {
@@ -109,7 +141,7 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -122,13 +154,14 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => removeEventListener('resize', on)
   }, [])
   const latest = useRef({})
-  latest.current = { sel, snap, onChange }
+  latest.current = { sel, snap, onChange, onSelect }
 
   // A change written at once (not once a frame): an element and its place.
   const writeNow = (section, field, fn) => latest.current.onChange({ ...targetOf(section), field, value: fn })
   // The element just added or copied, selected when the page has drawn it.
   const pick = useRef(null)
   const [naming, setNaming] = useState(false)
+  const barRef = useRef(null)
 
   // Write an updater of the section's _layout, at most once a frame.
   const queued = useRef(null)
@@ -143,7 +176,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     })
   }
 
-  // A part dragged by its body, a handle or two fingers.
+  // A part dragged by its body, a handle or two fingers. A Flow section turns
+  // Free on the first real movement, so a plain click only selects.
   const startDrag = (section, part, handle, e) => {
     const name = part.dataset.eotmPart
     const start = partNow(part, section)
@@ -151,12 +185,16 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     const text = isText(part)
     const ratio = start.drawnH && start.w ? start.drawnH / start.w : null
     const phone = phoneEdit(section)
+    const free = freer(section)
     const pointers = new Map([[e.pointerId, { x: e.clientX, y: e.clientY }]])
     let pinch = null
+    let moved = handle !== 'move'
     setDrag({ kind: handle })
     const move = (ev) => {
       if (!pointers.has(ev.pointerId)) return
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+      if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) return
+      moved = true
       let next
       if (pointers.size >= 2) {
         const [a, b] = [...pointers.values()]
@@ -168,7 +206,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
         next = dragPart(start, handle, p.x - e.clientX, p.y - e.clientY, { width, snap: latest.current.snap, text, ratio })
       }
       const { drawnH, ...patch } = next // eslint-disable-line no-unused-vars
-      write(section, (old) => setPart(old, name, patch, { phone }))
+      write(section, (old) => setPart(free(old), name, patch, { phone }))
     }
     const down = (ev) => { if (pointers.size < 2) pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }) }
     const end = (ev) => {
@@ -201,9 +239,11 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       if (cur?.part && e.target.closest(PART) === cur.part && document.querySelector('.eotm-arrange.is-dragging')) return
       e.preventDefault()
       e.stopPropagation()
-      const part = isFree(section) ? e.target.closest(PART) : null
+      const part = e.target.closest(PART)
       const own = part && part.closest(SECTION) === section ? part : null
       setSel({ section, part: own })
+      // The pane follows: the picked section opens there, the rest fold.
+      if (section !== cur?.section) latest.current.onSelect?.(targetOf(section))
       if (own) startDrag(section, own, 'move', e)
     }
     const click = (e) => {
@@ -223,7 +263,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       const start = partNow(s.part, s.section)
       const width = s.section.getBoundingClientRect().width
       const { drawnH, ...next } = dragPart(start, 'move', step[0] * px, step[1] * px, { width, snap: false }) // eslint-disable-line no-unused-vars
-      write(s.section, (old) => setPart(old, s.part.dataset.eotmPart, next, { phone: phoneEdit(s.section) }))
+      const free = freer(s.section)
+      write(s.section, (old) => setPart(free(old), s.part.dataset.eotmPart, next, { phone: phoneEdit(s.section) }))
     }
     addEventListener('pointerdown', down, true)
     addEventListener('click', click, true)
@@ -250,7 +291,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
         let part = s.part && (s.part.isConnected ? s.part : partsOf(section).find((p) => p.dataset.eotmPart === s.part.dataset.eotmPart))
         if (pick.current && pick.current.section.dataset.eotmItem === section.dataset.eotmItem) {
           const fresh = partsOf(section).find((p) => p.dataset.eotmPart === pick.current.name)
-          if (fresh) { pick.current = null; part = isFree(section) ? fresh : null }
+          if (fresh) { pick.current = null; part = fresh }
         }
         return section === s.section && (part ?? null) === s.part ? s : { section, part: part ?? null }
       })
@@ -286,18 +327,15 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const phoneMode = section.dataset.eotmPhone ?? 'stack'
   const box = part ? rectOf(part) : s
   const name = part?.dataset.eotmPart
+  // The toolbar sits above the selection, kept whole on the visible page: left
+  // of a pane docked on the right, and its own drawn width from the screen edge.
+  const sheet = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
+  const room = sheet ? Math.min(innerWidth, sheet.getBoundingClientRect().left) : innerWidth
+  const barW = (barRef.current?.offsetWidth ?? 320) * uiScale
   const barTop = Math.min(Math.max(box.top - 52, 8), innerHeight - 60)
-  const barLeft = Math.min(Math.max(box.left, 8), innerWidth - 320)
+  const barLeft = Math.max(8, Math.min(box.left, room - barW - 8))
 
-  const toFreeNow = () => {
-    const measured = {}
-    for (const p of partsOf(section)) {
-      const n = p.dataset.eotmPart
-      const r = rectOf(p)
-      if (!measured[n] && (r.width || r.height)) measured[n] = toUnits(r, s)
-    }
-    write(section, (old) => toFree(old, measured, (s.height * 100) / (s.width || 1), { phone }))
-  }
+  const toFreeNow = () => write(section, freer(section))
   const opacity = part ? Math.round((parseFloat(part.style.getPropertyValue(phone ? '--qo' : '--o')) || 1) * 100) : 100
   const setPhone = (v) => write(section, (old) => ({ ...old, phone: v }))
 
@@ -344,10 +382,11 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     e.currentTarget.setPointerCapture?.(e.pointerId)
     const startY = e.clientY
     const startH = (s.height * 100) / (s.width || 1)
+    const free = freer(section)
     setDrag({ kind: 'height' })
     const move = (ev) => {
       const h = Math.max(1, Math.min(1000, startH + ((ev.clientY - startY) * 100) / (s.width || 1)))
-      write(section, (old) => setHeight(old, h, { phone }))
+      write(section, (old) => setHeight(free(old), h, { phone }))
     }
     const end = () => {
       setDrag(null)
@@ -360,10 +399,45 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     addEventListener('pointercancel', end)
   }
 
+  // The section's width: its block's columns of 12 in the page's layout
+  // document (found or started by layoutFor), written as the edge moves.
+  const block = !part && layoutFor ? blockOf(section) : null
+  const grid = block?.parentElement
+  const sizable = grid && getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length >= COLUMNS
+  const widthDrag = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    const colW = grid.getBoundingClientRect().width / COLUMNS
+    const w0 = block.getBoundingClientRect().width
+    const x0 = e.clientX
+    const keys = [...grid.querySelectorAll(':scope > [data-eotm-block]')].map((b) => b.dataset.eotmBlock)
+    const key = block.dataset.eotmBlock
+    const ready = layoutFor(location.pathname).catch((err) => { notify(err.message); return null })
+    let last = Number(block.dataset.eotmSpan) || COLUMNS
+    setDrag({ kind: 'width' })
+    const move = (ev) => {
+      const span = Math.max(MIN_SPAN, Math.min(COLUMNS, Math.round((w0 + ev.clientX - x0) / colW)))
+      if (span === last) return
+      last = span
+      ready.then((t) => t && onChange({ type: t.type, key: t.key, item: null, field: t.field, value: (old) => spanIn(old, keys, key, span) }))
+    }
+    const end = () => {
+      setDrag(null)
+      removeEventListener('pointermove', move)
+      removeEventListener('pointerup', end)
+      removeEventListener('pointercancel', end)
+    }
+    addEventListener('pointermove', move)
+    addEventListener('pointerup', end)
+    addEventListener('pointercancel', end)
+  }
+  const b = block?.getBoundingClientRect()
+
   return (
     <div className={`eotm-target eotm-arrange${drag ? ' is-dragging' : ''}`}>
       {banner}
-      {drag && snap && free && (
+      {drag && snap && (
         <div className="eotm-target-grid" style={{ top: s.top, left: s.left, width: s.width, height: s.height }}>
           {Array.from({ length: COLUMNS - 1 }, (_, i) => <span key={i} style={{ left: `${((i + 1) * 100) / COLUMNS}%` }} />)}
         </div>
@@ -388,11 +462,15 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           })}
         </>
       )}
-      {!part && free && (
+      {block && sizable && (
+        <button type="button" className="eotm-arrange-handle is-width" style={ui(uiScale, Math.max(b.top, 0) + Math.min(b.height, innerHeight - Math.max(b.top, 0)) / 2, b.right)}
+          aria-label="Drag to change the section’s width" title={`Section width: ${block.dataset.eotmSpan || COLUMNS} of 12 columns`} onPointerDown={widthDrag} />
+      )}
+      {!part && (
         <button type="button" className="eotm-arrange-handle is-height" style={ui(uiScale, s.top + s.height, s.left + s.width / 2)}
           aria-label="Drag to change the section’s height" title="Section height" onPointerDown={heightDrag} />
       )}
-      <div className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
+      <div ref={barRef} className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
         {part ? (
           <>
             <label className="eotm-arrange-range">Fade
@@ -469,13 +547,11 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
             )}
           </div>
         )}
-        {free && (
-          <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}
-            title={snap ? 'Snaps to 12 columns and an 8 px step. Click to place freely.' : 'Placing freely. Click to snap to 12 columns and an 8 px step.'}>
-            {snap ? 'Snap' : 'Free-hand'}
-          </button>
-        )}
-        {!part && free && <span className="eotm-target-hint">{phone ? 'Phone layout: drag a part to move it' : 'Drag a part to move it'}</span>}
+        <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}
+          title={snap ? 'Snaps to 12 columns and an 8 px step. Click to place freely.' : 'Placing freely. Click to snap to 12 columns and an 8 px step.'}>
+          {snap ? 'Snap' : 'Free-hand'}
+        </button>
+        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: click a part to move or size it' : 'Click a part to move or size it'}</span>}
       </div>
     </div>
   )
