@@ -252,6 +252,17 @@
             "banner"
           ],
           "help": "The components this page is made of, in order. Arrange them side by side with its Page layout."
+        },
+        {
+          "name": "librarySidebar",
+          "kind": "group",
+          "label": "Library sidebar",
+          "collapsible": true,
+          "help": "Used on the Library page only: the headings over its Most viewed and Contents lists.",
+          "fields": [
+            { "name": "mostViewed", "kind": "text", "label": "Most viewed heading", "default": "Most viewed" },
+            { "name": "contents", "kind": "text", "label": "Contents heading", "default": "Contents" }
+          ]
         }
       ],
       "previewPath": "/{slug}"
