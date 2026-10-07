@@ -80,15 +80,21 @@ async function poolFor(param) {
       // without a connect timeout a dead socket holds the request to the 20 s limit.
       const pool = new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 8_000 })
       pool.on('error', (err) => console.warn('[pool]', param, 'idle client dropped:', err.message))
+      // Try the lock rather than wait on it: the editor opens a dozen requests at
+      // once, each cold container came here together, and waiting ones sat on the
+      // lock to the 20 s timeout. The holder is running the same migrations.
       const client = await pool.connect()
+      let locked = false
       try {
-        await client.query('SELECT pg_advisory_lock($1)', [MIGRATE_LOCK])
-        const applied = await runMigrations(client, param === process.env.CONTROL_DATABASE_PARAM ? 'control' : 'site')
-        if (applied.length) console.log('[migrate]', param, 'applied', applied.join(', '))
+        locked = (await client.query('SELECT pg_try_advisory_lock($1) AS ok', [MIGRATE_LOCK])).rows[0].ok
+        if (locked) {
+          const applied = await runMigrations(client, param === process.env.CONTROL_DATABASE_PARAM ? 'control' : 'site')
+          if (applied.length) console.log('[migrate]', param, 'applied', applied.join(', '))
+        }
       } catch (err) {
         console.error('[migrate]', param, 'failed:', err.message)
       } finally {
-        await client.query('SELECT pg_advisory_unlock($1)', [MIGRATE_LOCK]).catch(() => {})
+        if (locked) await client.query('SELECT pg_advisory_unlock($1)', [MIGRATE_LOCK]).catch(() => {})
         client.release()
       }
       return pool

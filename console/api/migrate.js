@@ -16,7 +16,8 @@ export async function migrate(client, target, dir = new URL(`./migrations/${targ
   await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
     name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`)
   const done = new Set((await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name))
-  const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort()
+  // No folder for a target (site has none yet) is nothing to apply, not a failure.
+  const files = (await readdir(dir).catch((err) => (err.code === 'ENOENT' ? [] : Promise.reject(err)))).filter((f) => f.endsWith('.sql')).sort()
   const applied = []
   for (const file of files) {
     if (done.has(file)) continue
