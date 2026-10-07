@@ -75,7 +75,11 @@ const MIGRATE_LOCK = 727_001
 async function poolFor(param) {
   if (!pools.has(param)) {
     pools.set(param, (async () => {
-      const pool = new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000 })
+      // A frozen container keeps idle clients Neon has since closed. Without a
+      // listener the pool's 'error' kills the process (Runtime.ExitError), and
+      // without a connect timeout a dead socket holds the request to the 20 s limit.
+      const pool = new pg.Pool({ connectionString: await connectionFor(param), max: 2, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 8_000 })
+      pool.on('error', (err) => console.warn('[pool]', param, 'idle client dropped:', err.message))
       const client = await pool.connect()
       try {
         await client.query('SELECT pg_advisory_lock($1)', [MIGRATE_LOCK])
