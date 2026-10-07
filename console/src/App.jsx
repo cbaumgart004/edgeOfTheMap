@@ -289,6 +289,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   }
   // Unpublished changes (To the Developer's count), and what closing does with them.
   const [unpublished, setUnpublished] = useState(0)
+  const [publishing, setPublishing] = useState(false)
+  const [published, setPublished] = useState(0) // bumps after a publish, so the counts refresh
   const [leaving, setLeaving] = useState(false)
   const unsaved = view.saveState === 'pending' || view.saveState === 'saving'
   // Leaving the page with changes not yet live, or not yet saved: the browser
@@ -355,6 +357,13 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
         ))}
       </div>
+      {/* The one way to make changes live: a summary of them, then Publish. */}
+      {user && (
+        <button type="button" className="eotm-btn is-primary eotm-publish" onClick={() => setPublishing(true)}
+          title={unpublished ? `${unpublished} change${unpublished === 1 ? '' : 's'} not live yet` : 'Everything is live'}>
+          Publish{unpublished ? ` (${unpublished})` : ''}
+        </button>
+      )}
       {/* Two ways to look at the page, named for what each shows: the owner's
           changes before they are live, or the live site as customers get it. */}
       {size !== 'bar' && (
@@ -538,13 +547,15 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   }
 
   let body
-  if (leaving) body = (
+  if (publishing) body = (
+    <PublishDialog schema={schema} store={store} notify={notify} save={() => editorApi.current?.save?.()}
+      onClose={() => setPublishing(false)} onDone={() => { setPublishing(false); setPublished((n) => n + 1) }} />
+  )
+  else if (leaving) body = (
     <div className="eotm-warn" role="alertdialog" aria-label="Changes not yet live">
       <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} saved but not yet live. What should happen to {unpublished === 1 ? 'it' : 'them'}?</p>
       <div className="eotm-row">
-        <button type="button" className="eotm-btn is-primary" onClick={async () => {
-          try { const r = await store.pushRelease({}); if (r.pending.length) { notify('Some changes need attention first; see To the Developer.'); setLeaving(false); return } onClose() } catch (e) { notify(e.message); setLeaving(false) }
-        }}>Push to Production</button>
+        <button type="button" className="eotm-btn is-primary" onClick={() => { setLeaving(false); setPublishing(true) }}>Review and publish</button>
         <button type="button" className="eotm-btn" onClick={onClose}>Keep as drafts</button>
         <button type="button" className="eotm-btn is-danger" onClick={async () => {
           try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); onClose() } catch (e) { notify(e.message); setLeaving(false) }
@@ -591,7 +602,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
             <button type="button" className="eotm-btn is-quiet" onClick={signOut}>Sign out</button>
           </p>
         )}
-        {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={view.saveState === 'saved' ? view.title : view.name} />}
+        {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={`${view.saveState === 'saved' ? view.title : view.name}:${published}:${publishing}`} />}
       </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
     </div>
@@ -645,14 +656,12 @@ function SignIn({ auth, onSignedIn }) {
 // document in the schema's release types first and publishes all of them or
 // none (core/service.js, publishAll).
 const DEV_ACTIONS = [
-  { value: 'push', label: 'Push to Production', help: 'Checks every change, then makes them all live. Nothing goes live if a check fails.' },
-  { value: 'push-request', label: 'Push and Request Changes', help: 'Makes your changes live, then sends your note to the developer.' },
-  { value: 'request', label: 'Request Changes', help: 'Sends your note to the developer. Nothing goes live.' },
+  { value: 'request', label: 'Request Changes', help: 'Sends your note to the developer. Nothing goes live; Publish, at the top, does that.' },
 ]
 
 function ToDeveloper({ schema, store, notify, refreshKey, onCount }) {
   const [pending, setPending] = useState(null)
-  const [action, setAction] = useState('push')
+  const [action, setAction] = useState('request')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const load = useCallback(() => store.pending?.().then((r) => setPending(r.pending)).catch(() => setPending(null)), [store])
@@ -661,7 +670,7 @@ function ToDeveloper({ schema, store, notify, refreshKey, onCount }) {
 
   const needsNote = action !== 'push'
   const count = pending?.length ?? 0
-  const status = pending === null ? 'Checking…' : count ? `${count} change${count === 1 ? '' : 's'} not yet pushed to production` : 'Everything is live'
+  const status = pending === null ? 'Checking…' : count ? `${count} change${count === 1 ? '' : 's'} not live yet: Publish, at the top` : 'Everything is live'
   const label = (d) => `${schema.types[d.type]?.label ?? d.type}: ${d.title}`
 
   const send = async (e) => {
@@ -1034,7 +1043,7 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
     // After typing on the page: let the page catch up with the document.
     const flushPage = () => bridge.push(docRef.current)
     const d = docRef.current
-    editorApi.current = { id: d.id, slug: d.slug, setField, flushPage }
+    editorApi.current = { id: d.id, slug: d.slug, setField, flushPage, save: flush }
     const mine = pendingSize.current.filter((p) => p.key === d.id || p.key === d.slug)
     pendingSize.current = pendingSize.current.filter((p) => !mine.includes(p))
     for (const p of mine) setField(p.item, p.field, p.value, p.imageIndex)
@@ -1122,7 +1131,6 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           <button type="button" className="eotm-btn is-quiet" disabled={!canUndo} onClick={undo} title="Undo (Ctrl+Z)">Undo</button>
           <button type="button" className="eotm-btn is-quiet" onClick={saveNow} title="Save now (it also saves by itself as you go)">Save</button>
           {doc.status === 'changed' && <DiscardButton onConfirm={() => act((d) => store.discard(id, d.version), 'Back to what is live.')} />}
-          {doc.status !== 'published' && <PublishButton warnings={warnDocument(schema, doc.type, doc.data)} onPublish={() => act((d) => store.publish(id, d.version), 'Published. It is live now.')} />}
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
       </div>
@@ -1242,19 +1250,65 @@ function AddClass({ onAdd, notify }) {
   )
 }
 
-// Publish, or, when the document has something worth a second look (a Listing
-// with no blacklight photo), say what and ask first. Never a browser confirm().
-function PublishButton({ warnings, onPublish }) {
-  const [asking, setAsking] = useState(false)
-  if (!asking || !warnings.length) {
-    return <button type="button" className="eotm-btn is-primary" onClick={() => (warnings.length ? setAsking(true) : onPublish())}>Publish</button>
+// Publish: every change not yet live, listed with anything that stops it, then
+// Publish or Cancel. The open document is saved first, so what was just typed
+// goes too. What passes its checks goes live; a draft with a problem stays
+// one, named with why (publishAll).
+// Visitors get it once the site's cached copy expires (the public API is
+// cached for 30 s, then refreshed in the background), so the message says so.
+function PublishDialog({ schema, store, notify, save, onClose, onDone }) {
+  const [pending, setPending] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    let active = true
+    Promise.resolve(save?.()).catch(() => {}).then(() => store.pending()).then((r) => active && setPending(r.pending)).catch((e) => { notify(e.message); onClose() })
+    return () => { active = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const label = (d) => `${schema.types[d.type]?.label ?? d.type}: ${d.title}`
+  const isHeld = (d) => d.errors.length > 0 || d.warnings.length > 0
+  const ready = (pending ?? []).filter((d) => !isHeld(d))
+  const held = (pending ?? []).filter(isHeld)
+  const n = ready.length
+  const plural = (k, one, many) => `${k} ${k === 1 ? one : many}`
+  const publish = async () => {
+    setBusy(true)
+    try {
+      const r = await store.pushRelease({})
+      const done = r.published?.length ?? 0
+      const parts = [`Published ${plural(done, 'change', 'changes')}; visitors see ${done === 1 ? 'it' : 'them'} within about a minute.`]
+      if (r.held?.length) parts.push(`${plural(r.held.length, 'draft stays', 'drafts stay')} unpublished until fixed.`)
+      if (r.failed?.length) parts.push(`${plural(r.failed.length, 'was', 'were')} changed in another tab meanwhile and stayed as drafts.`)
+      notify(parts.join(' '))
+      onDone()
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setBusy(false)
+    }
   }
+  const row = (d, why) => (
+    <li key={d.id}>
+      <span>{label(d)}</span> <span className={`eotm-chip is-${d.status}`}>{d.status === 'draft' ? 'New' : 'Changed'}</span>
+      {why && [...d.errors, ...d.warnings].map((m) => <p key={m} className="eotm-error">{m}</p>)}
+    </li>
+  )
   return (
-    <div className="eotm-warn" role="alertdialog" aria-label="Publish anyway?">
-      {warnings.map((w) => <p key={w}>{w}</p>)}
+    <div className="eotm-warn eotm-publish-dialog" role="alertdialog" aria-label="Publish">
+      {pending === null ? <p>Checking what has changed…</p> : !pending.length ? <p>Everything is live. There is nothing to publish.</p> : (
+        <>
+          {n > 0 ? <p>{plural(n, 'change goes', 'changes go')} live:</p> : <p>Nothing is ready to go live.</p>}
+          {n > 0 && <ul className="eotm-dev-list">{ready.map((d) => row(d, false))}</ul>}
+          {held.length > 0 && (
+            <>
+              <p>{plural(held.length, 'draft stays', 'drafts stay')} unpublished until fixed:</p>
+              <ul className="eotm-dev-list">{held.map((d) => row(d, true))}</ul>
+            </>
+          )}
+        </>
+      )}
       <div className="eotm-row">
-        <button type="button" className="eotm-btn" onClick={() => setAsking(false)}>Keep editing</button>
-        <button type="button" className="eotm-btn is-primary" onClick={() => { setAsking(false); onPublish() }}>Publish anyway</button>
+        {n > 0 && <button type="button" className="eotm-btn is-primary" disabled={busy} onClick={publish}>{busy ? 'Publishing…' : `Publish ${plural(n, 'change', 'changes')}`}</button>}
+        <button type="button" className="eotm-btn" disabled={busy} onClick={onClose}>{n ? 'Cancel' : 'Close'}</button>
       </div>
     </div>
   )

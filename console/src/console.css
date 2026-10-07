@@ -491,3 +491,7 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 .eotm-arrange-add label.eotm-target-snap { display: inline-flex; align-items: center; }
 .eotm-arrange-name { display: inline-flex; gap: 6px; }
 .eotm-arrange-name .eotm-input { min-height: 36px; width: 160px; }
+
+/* The one Publish, beside the click modes; its dialog lists what goes live. */
+.eotm-publish { margin-inline-start: auto; }
+.eotm-publish-dialog .eotm-dev-list { max-height: 40vh; overflow: auto; }

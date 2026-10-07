@@ -188,20 +188,17 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
       return out
     },
 
-    // "Push to Production": publish every pending document, or none. Every
-    // check runs first; a single error or warning stops the push before
-    // anything is published. The publishes that follow are one at a time, not
-    // one transaction: a document edited in another tab between the check and
-    // its publish is refused (409) and named in `failed`, the rest go live.
+    // Publish: every pending document that passes its checks goes live; one
+    // with an error or warning stays a draft and is named in `held` with why,
+    // so an unfinished draft elsewhere never stops the rest. The publishes are
+    // one at a time, not one transaction: a document edited in another tab
+    // between the check and its publish is refused (409) and named in `failed`.
     async publishAll(user) {
       const pending = await this.pending()
-      const blocked = pending.filter((d) => d.errors.length || d.warnings.length)
-      if (blocked.length) {
-        throw new ServiceError(422, `Nothing was pushed: ${blocked.length === 1 ? '1 change needs' : `${blocked.length} changes need`} attention first.`, { pending })
-      }
+      const held = pending.filter((d) => d.errors.length || d.warnings.length)
       const published = []
       const failed = []
-      for (const d of pending) {
+      for (const d of pending.filter((x) => !held.includes(x))) {
         try {
           await this.publish(d.id, { baseVersion: d.version }, user)
           published.push({ id: d.id, type: d.type, title: d.title })
@@ -209,7 +206,7 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
           failed.push({ id: d.id, type: d.type, title: d.title, error: e.message })
         }
       }
-      return { published, failed }
+      return { published, failed, held }
     },
 
     // What visitors see: published copies only.

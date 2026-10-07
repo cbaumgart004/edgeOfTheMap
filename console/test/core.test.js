@@ -173,25 +173,24 @@ describe('page-scoped suggestions and sizing', () => {
   })
 })
 
-describe('push to production', () => {
-  it('lists what is not yet live in the release types, and publishes all or none', async () => {
+describe('publish', () => {
+  it('lists everything not yet live, of every type, and publishes what passes, holding the rest', async () => {
     const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
     const good = await s.create({ type: 'page', data: { title: 'Policies' } })
     const bad = await s.create({ type: 'page', data: { title: '' } })
-    await s.create({ type: 'libraryArticle', data: { title: 'Not a release type' } })
+    const article = await s.create({ type: 'libraryArticle', data: { title: 'An article' } })
 
     const pending = await s.pending()
-    expect(pending.map((d) => d.id).sort()).toEqual([good.id, bad.id].sort())
+    expect(pending.map((d) => d.id).sort()).toEqual([good.id, bad.id, article.id].sort())
     expect(pending.find((d) => d.id === bad.id).errors.length).toBeGreaterThan(0)
 
-    await expect(s.publishAll()).rejects.toMatchObject({ status: 422, pending: expect.any(Array) })
-    expect((await s.get(good.id)).status).toBe('draft')
-
-    await s.remove(bad.id, { baseVersion: bad.version })
     const r = await s.publishAll()
     expect(r.published.map((d) => d.id)).toEqual([good.id])
+    expect(r.held.map((d) => d.id).sort()).toEqual([bad.id, article.id].sort())
     expect(r.failed).toEqual([])
-    expect(await s.pending()).toEqual([])
+    expect((await s.get(good.id)).status).toBe('published')
+    expect((await s.get(bad.id)).status).toBe('draft')
+    expect((await s.pending()).map((d) => d.id).sort()).toEqual([bad.id, article.id].sort())
   })
 })
 

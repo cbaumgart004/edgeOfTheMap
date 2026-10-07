@@ -4,18 +4,6 @@
     {"label": "Social links", "type": "siteSettings", "field": "socials", "detail": "Shown in the site footer."}
   ],
   "version": 1,
-  "release": {
-    "types": [
-      "page",
-      "pageLayout",
-      "referencePage",
-      "theme",
-      "siteSettings",
-      "menu",
-      "imagePair",
-      "classes"
-    ]
-  },
   "tools": [
     {
       "label": "Inventory",
