@@ -65,12 +65,15 @@
 .eotm-sheet.is-bar { touch-action: none; } /* the whole bar drags */
 .eotm-tuck { min-width: 30px; min-height: 22px; padding: 0 8px; border-radius: 8px; font-size: 16px; line-height: 1; color: var(--eotm-muted); cursor: pointer; }
 .eotm-tuck:hover { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); color: var(--eotm-ink); }
-/* Tucked against an edge (App.jsx, Sheet): a small tab that brings the bar back. */
+/* Tucked against an edge (App.jsx, Sheet): a small tab that brings the bar back.
+   It drags up and down its edge; the hand says so on a phone, which has no cursor. */
 .eotm-tab {
-  position: fixed; z-index: 2; bottom: calc(80px + env(safe-area-inset-bottom)); width: 26px; height: 64px;
-  display: grid; place-items: center; font-size: 20px; cursor: pointer;
+  position: fixed; z-index: 2; bottom: calc(80px + env(safe-area-inset-bottom)); width: 28px; height: 88px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  font-size: 20px; line-height: 1; cursor: grab; touch-action: none; user-select: none;
   background: var(--eotm-accent); color: var(--eotm-accent-ink); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
+.eotm-tab:active { cursor: grabbing; }
 .eotm-tab.is-left { left: 0; border-radius: 0 12px 12px 0; }
 .eotm-tab.is-right { right: 0; border-radius: 12px 0 0 12px; }
 .eotm-grip span { display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--eotm-line); }

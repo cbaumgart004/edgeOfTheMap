@@ -151,6 +151,13 @@ const BAR_TUCK = 'eotm:bar-tuck'
 const readTuck = () => {
   try { const t = localStorage.getItem(BAR_TUCK); return t === 'left' || t === 'right' ? t : null } catch { return null }
 }
+// How far down the tucked tab sits: its top in px, or null to follow the bar.
+// Kept apart from BAR_POS so moving the tab never sets where the bar floats.
+const TAB_Y = 'eotm:tab-y'
+const readTabY = () => {
+  try { const y = Number(localStorage.getItem(TAB_Y)); return localStorage.getItem(TAB_Y) != null && Number.isFinite(y) ? y : null } catch { return null }
+}
+const clampTabY = (y, h) => Math.max(4, Math.min(innerHeight - h - 4, y))
 // Keeps the whole bar on screen, however the window has changed since.
 const clampPos = (pos, el) => {
   if (!pos || !el) return pos
@@ -160,6 +167,16 @@ const clampPos = (pos, el) => {
     y: Math.max(4, Math.min(innerHeight - height - 4, pos.y)),
   }
 }
+
+// An open hand: the tucked tab can be moved (Lucide "hand", ISC).
+const HandIcon = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+    <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
+    <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+  </svg>
+)
 
 function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) {
   const drag = useRef(null)
@@ -183,6 +200,30 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     try { if (side) localStorage.setItem(BAR_TUCK, side); else localStorage.removeItem(BAR_TUCK) } catch { /* private mode */ }
   }
   const dragged = useRef(false)
+  // The tab drags up and down its edge; a tap (or Enter) brings the bar back.
+  const [tabY, setTabY] = useState(readTabY)
+  const tabDrag = useRef(null)
+  const tabDragged = useRef(false)
+  const onTabDown = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    tabDrag.current = { y: e.clientY, top: rect.top, h: rect.height, moved: false }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  const onTabMove = (e) => {
+    const d = tabDrag.current
+    if (!d) return
+    const dy = e.clientY - d.y
+    if (!d.moved && Math.abs(dy) < 8) return
+    d.moved = true
+    setTabY(clampTabY(d.top + dy, d.h))
+  }
+  const onTabUp = (e) => {
+    const d = tabDrag.current
+    tabDrag.current = null
+    if (!d?.moved) return
+    tabDragged.current = true // the click that ends a drag is not a tap
+    try { localStorage.setItem(TAB_Y, String(clampTabY(d.top + e.clientY - d.y, d.h))) } catch { /* private mode */ }
+  }
   useEffect(() => {
     if (!bar) return undefined
     const fit = () => setPos((p) => clampPos(p, sheet.current))
@@ -225,10 +266,15 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   }
   const floating = bar && pos
   const loose = !bar && panelPos
+  const tabTop = tabY ?? pos?.y
   if (bar && !wide && tuck) return (
-    <button type="button" className={`eotm-tab is-${tuck}`} style={{ ...style, ...(pos ? { top: pos.y, bottom: 'auto' } : null) }}
-      aria-label="Show the editor" title="Show the editor" onClick={() => setTuck(null)}>
-      {tuck === 'left' ? '›' : '‹'}
+    <button type="button" className={`eotm-tab is-${tuck}`}
+      style={{ ...style, ...(tabTop != null ? { top: clampTabY(tabTop, 88), bottom: 'auto' } : null) }}
+      aria-label="Show the editor" title="Drag up or down to move; tap to show the editor"
+      onPointerDown={onTabDown} onPointerMove={onTabMove} onPointerUp={onTabUp} onPointerCancel={() => { tabDrag.current = null }}
+      onClick={() => { if (tabDragged.current) { tabDragged.current = false; return } setTuck(null) }}>
+      <HandIcon />
+      <span aria-hidden="true">{tuck === 'left' ? '›' : '‹'}</span>
     </button>
   )
   // Minimised, the whole bar drags (not its buttons); open, only the grip.

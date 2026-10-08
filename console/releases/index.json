@@ -168,5 +168,10 @@
     "version": "1.11.0",
     "integrity": "sha384-NaB5fIcxgIyY7qzVpWUKMAGadvHJFPa6x1qDpNz/n/8cTxIA2WFK39qBh62KKhwn",
     "releasedAt": "2026-10-07"
+  },
+  {
+    "version": "1.12.0",
+    "integrity": "sha384-EPCWzkarF85RdcoiG+c9nx6pj1Qy12Y5JeIvn/xpZukPiXtvaU0Iz9W1E9hRDyDx",
+    "releasedAt": "2026-10-08"
   }
 ]
