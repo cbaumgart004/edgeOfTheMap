@@ -180,7 +180,9 @@ function pageView() {
 // back when the visitor moves to a page without it. Search engines that run
 // JavaScript read it; link previews, which do not, still see the site's HTML.
 let seoPages = null
-const ownTitle = { value: null }
+// The site's own title, to put back on a page without one: a pre-rendered
+// page (the console API's /page) keeps it on <title data-eotm-orig>.
+const ownTitle = { value: document.querySelector('title[data-eotm-orig]')?.dataset.eotmOrig ?? null }
 function headMeta(attr, key, value) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`)
   if (!value) {
@@ -203,10 +205,11 @@ function applySeo() {
   if (p.title) {
     ownTitle.value ??= document.title
     document.title = p.title
-  } else if (ownTitle.value !== null) {
-    document.title = ownTitle.value
-    ownTitle.value = null
-  }
+  } else if (ownTitle.value !== null) document.title = ownTitle.value
+  // A pre-rendered page's address follows the visitor to the next page.
+  const here = location.origin + path
+  document.head.querySelector('link[rel="canonical"][data-eotm-seo]')?.setAttribute('href', here)
+  document.head.querySelector('meta[property="og:url"][data-eotm-seo]')?.setAttribute('content', here)
   headMeta('name', 'description', p.description)
   headMeta('property', 'og:title', p.title)
   headMeta('property', 'og:description', p.description)

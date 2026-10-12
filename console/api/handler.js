@@ -13,6 +13,7 @@ import { checkSchema, withSeo, publishedPages } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
+import { createPrerender, pageMeta } from './prerender.js'
 import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -73,6 +74,7 @@ export function createHandler(deps) {
   const helpTries = new Map()
   const requests = createRequests(deps)
   const traffic = createTraffic({ control: deps.control })
+  const prerender = createPrerender({ fetch: deps.fetch })
   const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => siteCache.delete(slug) })
 
   function allow(tries, ip, now = Date.now()) {
@@ -138,6 +140,16 @@ export function createHandler(deps) {
     if (site.schema.sitemap || !deps.siteSchema) return site.schema
     const shipped = await deps.siteSchema(site.slug).catch(() => null)
     return shipped?.sitemap ? { ...site.schema, sitemap: shipped.sitemap } : site.schema
+  }
+
+  // The address a public request came in on (Amplify's X-Forwarded-Host) when
+  // it is one of the site's own, else its first; a preview address is kept
+  // from search engines.
+  function askingHost(event, site) {
+    const fwd = String(event.headers?.['x-forwarded-host'] ?? '').split(',')[0].trim().toLowerCase()
+    const own = site.allowed_origins.find((o) => o.toLowerCase() === `https://${fwd}`)
+    const base = own ?? site.allowed_origins[0]
+    return { base, preview: /^https:\/\/(preview\.|[^/]*\.amplifyapp\.com$)/i.test(base) }
   }
 
   async function serviceFor(site) {
@@ -272,7 +284,7 @@ export function createHandler(deps) {
       // admin page (same origin, so no header at all) stopped the site's loader
       // from opening the editor until it expired. They carry no credentials
       // and anyone can read them without a browser, so * gives nothing away.
-      const isPublic = method === 'GET' && (['/boot', '/seo', '/sitemap.xml', '/robots.txt'].includes(rest) || rest.startsWith('/public/'))
+      const isPublic = method === 'GET' && (['/boot', '/seo', '/sitemap.xml', '/robots.txt'].includes(rest) || rest.startsWith('/public/') || /^\/page(\/|$)/.test(rest))
       headers = isPublic ? { 'access-control-allow-origin': '*' } : cors(origin, site)
       // A browser request from anywhere else gets no CORS headers, so the
       // browser refuses the response; refusing here as well saves the work.
@@ -312,13 +324,15 @@ export function createHandler(deps) {
       // for the loader to put in the head (schema.js, SEO_FIELD). Only pages
       // with something set are listed.
       if (method === 'GET' && rest === '/seo') {
+        // As the pre-rendered page has them (prerender.js, pageMeta): the owner's
+        // values, else the page's own title, first words and first photo.
         const svc = await serviceFor(site)
+        const schema = await withSitemap(site)
+        const { base } = askingHost({ headers: { 'x-forwarded-host': String(origin ?? '').replace(/^https:\/\//, '') } }, site)
         const pages = {}
-        for (const [path, doc] of await publishedPages(await withSitemap(site), (t) => svc.listPublished(t))) {
-          const s = doc.data?.seo ?? {}
-          const entry = Object.fromEntries(Object.entries({
-            title: s.title?.trim(), description: s.description?.trim(), image: s.image?.src, noindex: s.noindex === true || undefined,
-          }).filter(([, v]) => v))
+        for (const [path, doc] of await publishedPages(schema, (t) => svc.listPublished(t))) {
+          const m = pageMeta(schema, site.name, path, doc, base)
+          const entry = Object.fromEntries(Object.entries({ title: m.title, description: m.description, image: m.image, noindex: m.noindex || undefined }).filter(([, v]) => v))
           if (Object.keys(entry).length) pages[path] = entry
         }
         return json(200, { pages }, { ...headers, 'cache-control': 'public, max-age=60, stale-while-revalidate=300' })
@@ -330,10 +344,7 @@ export function createHandler(deps) {
       // when it is one of the site's own, else its first address. A preview
       // address (preview.*, *.amplifyapp.com) is closed to crawlers entirely.
       if (method === 'GET' && (rest === '/sitemap.xml' || rest === '/robots.txt')) {
-        const fwd = String(event.headers?.['x-forwarded-host'] ?? '').split(',')[0].trim().toLowerCase()
-        const own = site.allowed_origins.find((o) => o.toLowerCase() === `https://${fwd}`)
-        const base = own ?? site.allowed_origins[0]
-        const preview = /^https:\/\/(preview\.|[^/]*\.amplifyapp\.com$)/i.test(base)
+        const { base, preview } = askingHost(event, site)
         const cache = { 'cache-control': 'public, max-age=300, stale-while-revalidate=3600', vary: 'X-Forwarded-Host' }
         if (rest === '/robots.txt') {
           const body = preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /_edit/\nDisallow: /preview\n\nSitemap: ${base}/sitemap.xml\n`
@@ -351,6 +362,30 @@ export function createHandler(deps) {
           .map(([p, at]) => `  <url><loc>${esc(base + p)}</loc>${at ? `<lastmod>${new Date(at).toISOString().slice(0, 10)}</lastmod>` : ''}</url>`)
         const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`
         return { statusCode: 200, headers: { ...headers, ...cache, 'content-type': 'application/xml; charset=utf-8' }, body }
+      }
+
+      // Public: a page of the site, pre-rendered (api/prerender.js). The site's
+      // Amplify app rewrites its page addresses here; its files have rules of
+      // their own ahead of that one, and a file that reaches here anyway is sent
+      // to /_static/, which the app serves from its build.
+      const pg = rest.match(/^\/page(\/.*)?$/)
+      if (method === 'GET' && pg) {
+        let path = '/'
+        try { path = decodeURIComponent(pg[1] ?? '/').replace(/(.)\/+$/, '$1') || '/' } catch { /* as / */ }
+        if (/\.[a-z0-9]+$/i.test(path)) {
+          console.warn('[console-api] a file reached the page route; add a rule for it on the Amplify app', site.slug, path)
+          return { statusCode: 302, headers: { location: `/_static${path}`, 'cache-control': 'public, max-age=300' }, body: '' }
+        }
+        const { base, preview } = askingHost(event, site)
+        // The site's project is opened inside prerender's fallback, so a
+        // database that cannot be reached still serves the bare page.
+        let svc = null
+        const { html } = await prerender({
+          schema: await withSitemap(site), siteName: site.name, base, path, preview,
+          listPublished: async (t) => (svc ??= await serviceFor(site)).listPublished(t),
+        })
+        return { statusCode: 200, headers: { 'content-type': 'text/html; charset=utf-8', vary: 'X-Forwarded-Host',
+          'cache-control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400' }, body: html }
       }
 
       // Everything else edits, so it needs a member's login.

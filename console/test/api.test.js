@@ -47,7 +47,7 @@ function fakeSiteDb() {
   }
 }
 
-function setup({ member = true, site = SITE, media, monitors } = {}) {
+function setup({ member = true, site = SITE, media, monitors, fetch } = {}) {
   const db = fakeSiteDb()
   const handle = createHandler({
     control: {
@@ -62,6 +62,7 @@ function setup({ member = true, site = SITE, media, monitors } = {}) {
     presign: async ({ bucket, key }) => `https://${bucket}.s3.amazonaws.com/${key}?sig`,
     media,
     monitors,
+    fetch,
     sanitize: (s) => (type, data) => sanitizeDocumentData(s, type, data, purify),
   })
   const call = (method, path, { body, token = 'good', origin = ORIGIN, query, headers = {} } = {}) =>
@@ -157,7 +158,44 @@ describe('console API', () => {
     await call('POST', `${base}/documents/${quiet.id}/publish`, { body: { baseVersion: quiet.version } })
     const r = await call('GET', `${base}/seo`, { token: null, origin: 'https://anywhere.example' })
     expect(r.headers['access-control-allow-origin']).toBe('*')
-    expect(r.json.pages).toEqual({ [`/events/${created.slug}`]: { title: 'New moon circle in Lafayette', description: 'A monthly gathering.' } })
+    expect(r.json.pages[`/events/${created.slug}`]).toEqual({ title: 'New moon circle in Lafayette', description: 'A monthly gathering.' })
+    // Without the owner's values: the page's own title with the site's name, and its first words.
+    expect(r.json.pages[`/events/${quiet.slug}`]).toEqual({ title: 'Quiet | Spirit Seeds', description: 'Quiet Join us here Book' })
+  })
+
+  it('pre-renders a published page into the site’s own index.html, and leaves the rest as it is', async () => {
+    const template = '<!doctype html><html><head><title>Spirit Seeds</title><meta name="description" content="Site words"><link rel="canonical" href="https://spiritseedswellness.com/"></head><body><div id="root"></div><script src="/assets/app.js"></script></body></html>'
+    const fetched = []
+    const fakeFetch = async (url, opts) => {
+      fetched.push([url, opts?.headers?.['if-none-match'] ?? null])
+      if (opts?.headers?.['if-none-match'] === 'v1') return new Response(null, { status: 304 })
+      return new Response(template, { status: 200, headers: { etag: 'v1' } })
+    }
+    const { call } = setup({ fetch: fakeFetch })
+    const seo = { description: 'Monthly, by the new moon.', image: { src: '/uploads/moon.webp', alt: '' } }
+    const d = (await call('POST', `${base}/documents`, { body: { type: 'event', data: { ...event, seo } } })).json
+    await call('POST', `${base}/documents/${d.id}/publish`, { body: { baseVersion: d.version } })
+    const get = (path) => call('GET', `${base}/page${path}`, { token: null, origin: null, headers: { 'x-forwarded-host': 'spiritseedswellness.com' } })
+    const page = await get(`/events/${d.slug}`)
+    expect(page.statusCode).toBe(200)
+    expect(page.headers['content-type']).toMatch(/text\/html/)
+    expect(page.headers['cache-control']).toContain('stale-if-error')
+    const html = page.body
+    expect(html).toContain('<title data-eotm-orig="Spirit Seeds">New moon circle | Spirit Seeds</title>')
+    expect(html).toContain('<meta name="description" content="Monthly, by the new moon." data-eotm-seo="added">')
+    expect(html).not.toContain('Site words')
+    expect(html).toContain(`<link rel="canonical" href="https://spiritseedswellness.com/events/${d.slug}" data-eotm-seo="added">`)
+    expect(html).toContain('<meta property="og:image" content="https://spiritseedswellness.com/uploads/moon.webp"')
+    expect(html).toMatch(/<noscript data-eotm-prerendered><main><h1>New moon circle<\/h1>/)
+    expect(html).toContain('<script src="/assets/app.js"></script>') // the app still runs
+    expect(html).not.toContain('onclick') // rich text as it was sanitised on save
+    // A path with no page is the template untouched; the second fetch revalidates by ETag.
+    expect((await get('/somewhere-else')).body).toBe(template)
+    expect(fetched.at(-1)).toEqual(['https://spiritseedswellness.com/index.html', 'v1'])
+    // A file sent here by mistake goes to the build's copy.
+    const file = await get('/favicon.png')
+    expect(file.statusCode).toBe(302)
+    expect(file.headers.location).toBe('/_static/favicon.png')
   })
 
   it('serves a sitemap of published pages and a robots.txt per host, closing previews', async () => {
