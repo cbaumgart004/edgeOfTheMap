@@ -296,6 +296,20 @@ no login.
   domain must be one of its addresses, or its robots.txt is the first address's: StoryShaped's
   first address is its Amplify preview, which closed `storyshapedstudios.com` to crawlers until its
   rules were taken off again.
+- **Pre-rendered pages** (`api/prerender.js`): `GET /api/sites/<site>/page/<path>` (public) returns the
+  site's own `index.html`, fetched from the asking address and revalidated by ETag, with the page's
+  title, description, canonical, Open Graph tags and its words in a `<noscript>`: the owner's Search
+  and sharing, else the page's title with the site's name, the words under its heading and its first
+  photo (`/seo` gives the loader the same). A path with no page, or a database failure, gets the
+  template as it is. Cached at the edge for five minutes (`s-maxage=300`), served stale for a day on
+  error. Spirit Seeds and StoryShaped (2026-10-12) rewrite `/` and `/<*>` here on their Amplify apps,
+  after pass-through rules for their files (`/index.html`, `/assets/<*>`, their public folders and
+  icons) and `/_static/<*>` to `/<*>`; a file without a rule reaches the API, which sends it to
+  `/_static/` and logs a warning naming it. **A new top-level file or folder in a site's `public/`
+  needs a pass-through rule.** Amplify does not serve a nested `index.html` ahead of its rewrites
+  (probed 2026-10-12), refuses a regular-expression source for a rewrite to another host, and a
+  `404-200` rule to another host answers 404, which is why the rules are shaped this way. Edge of the
+  Map's own site has no pages in the console and is not rewritten.
 - **Update all editors:** "Update all to <version>" above Sites on the Manage page moves every site
   that is behind onto the newest release (`POST /api/manage/sites/update-editors`). Each site's schema
   stays as saved; a site's own Save still reloads it.
