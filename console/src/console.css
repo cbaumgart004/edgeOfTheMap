@@ -211,6 +211,13 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-item.has-error { border-color: var(--eotm-danger); }
 .eotm-item-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; }
 .eotm-item-title { flex: 1; min-width: 0; padding: 10px 0; cursor: pointer; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A narrow pane: the name on a line of its own (two at most), its buttons
+   under it, so a row is never just "Conte…". */
+@media (max-width: 1023px) {
+  .eotm-item-head { flex-wrap: wrap; padding: 4px 6px 4px 10px; }
+  .eotm-item-title { flex: 1 1 100%; padding: 6px 0 2px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+  .eotm-item-head > .eotm-row { margin-left: auto; }
+}
 .eotm-item-body { padding: 10px 12px 2px; border-top: 1px solid var(--eotm-line); }
 .eotm-palette { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -446,12 +453,19 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
   .eotm-arrange-handle.is-height { width: 64px; height: 22px; margin: -11px 0 0 -32px; }
   .eotm-arrange-handle.is-width { width: 22px; height: 64px; margin: -32px 0 0 -11px; }
 }
-.eotm-arrange-bar { position: fixed; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
-.eotm-arrange-bar > * { pointer-events: auto; }
-/* A phone: one row that scrolls sideways, so the toolbar stays a strip. */
+/* The selection's name on a line of its own, its controls under it, so the
+   controls never cover what is chosen. */
+.eotm-arrange-bar { position: fixed; display: grid; gap: 4px; justify-items: start; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
+.eotm-arrange-label { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; border: 0; pointer-events: auto; max-width: 100%; padding: 2px 10px; border-radius: 999px; font: 600 12px/1.6 var(--eotm-font, system-ui);
+  background: var(--eotm-accent); color: var(--eotm-accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
+.eotm-arrange-label.is-open { white-space: normal; text-align: left; border-radius: 10px; }
+.eotm-arrange-caret { font-size: 10px; opacity: 0.8; }
+.eotm-arrange-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%; pointer-events: none; }
+.eotm-arrange-tools > * { pointer-events: auto; }
+/* A phone: the controls are one row that scrolls sideways, so the toolbar stays a strip. */
 @media (max-width: 819.98px) {
-  .eotm-arrange-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
-  .eotm-arrange-bar > * { flex: none; }
+  .eotm-arrange-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
+  .eotm-arrange-tools > * { flex: none; }
 }
 .eotm-arrange-seg { background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
 .eotm-arrange-range { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px;

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, warnDocument, titleOf, setItemField } from '../schema/schema.js'
+import { checkDocument, warnDocument, titleOf, setItemField, sectionName } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
@@ -599,6 +599,21 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
+  // Arrange's path: the section by what it holds, the document by its kind and title.
+  const describe = async ({ type, key, item }) => {
+    const def = schema.types[type]
+    const doc = def && (def.singleton ? (await store.list(type))[0] : await findDoc(type, key))
+    const docName = def ? `${def.label}${doc && !def.singleton ? `: ${titleOf(schema, doc)}` : ''}` : null
+    let block = null
+    const seek = (v) => {
+      if (block || !v || typeof v !== 'object') return
+      if (Array.isArray(v)) { v.forEach(seek); return }
+      if (v._id === item) { block = v; return }
+      Object.values(v).forEach(seek)
+    }
+    if (item && doc) seek(doc.data)
+    return { doc: docName, section: block ? (block._type ? sectionName(schema, block) : titleOf(schema, { type, data: block }) || null) : docName }
+  }
   const openTarget = async ({ type, key, item, field = null, keepPane = false }) => {
     if (!schema.types[type]) return
     try {
@@ -742,7 +757,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       {user && overlay && !customer && clickMode !== 'view' && createPortal(
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
-          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} />, overlay)}
+          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} describe={describe} />, overlay)}
     </div>
     </>
   )

@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName } from '../schema/schema.js'
 import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement } from '../schema/elements.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
@@ -213,11 +213,7 @@ function Field({ field, value, onChange, ctx, path, at }) {
     case 'blocks':
       return (
         <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path} sections
-          itemTitle={(b) => {
-            const def = ctx.schema.blocks[b._type]
-            const t = b.title || b.heading
-            return t ? `${def?.label}: ${t}` : def?.label ?? b._type
-          }}
+          itemTitle={(b) => sectionName(ctx.schema, b)}
           fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []} atFor={(b) => (ctx.schema.blocks[b._type] ? `blocks.${b._type}` : null)}
           add={[
             ...field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) })),
@@ -515,7 +511,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
           return (
             <li key={key} data-eotm-item={key} className={`eotm-item${isOpen ? ' is-open' : ''}${hasError ? ' has-error' : ''}`}>
               <div className="eotm-item-head">
-                <button type="button" className="eotm-item-title" aria-expanded={isOpen} onClick={() => toggle(key)}>
+                <button type="button" className="eotm-item-title" aria-expanded={isOpen} onClick={() => toggle(key)} title={itemTitle(item, i)}>
                   {itemTitle(item, i)}
                   {state && <span className={`eotm-badge is-${state}`}>{state === 'new' ? 'New, not live' : 'Not live'}</span>}
                 </button>

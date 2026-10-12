@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLUMNS } from './arrange.js'
 import { newId } from '../schema/schema.js'
-import { newElement, copyElement } from '../schema/elements.js'
+import { newElement, copyElement, ELEMENT_LABELS } from '../schema/elements.js'
 import { prepareImage } from './images.js'
 import { TEXT, startTyping } from './Targets.jsx'
 
@@ -129,6 +129,47 @@ function elementFromPart(part, id) {
   return newElement('text', id, { text, tag })
 }
 
+// What the selection is called, on the toolbar's first line: its own name,
+// and, opened, every level it sits in: the parts around it, its section (named
+// by what it holds, App's describe) and the page. A part is called by its own
+// label (data-eotm-label), an element by its kind and first words, else by its
+// name made readable ("taglineHeading" is Tagline heading).
+const readable = (name) => String(name ?? '').replace(/[-_]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/^./, (c) => c.toUpperCase())
+function partName(part) {
+  const kind = part.dataset.eotmElement
+  const words = (part.innerText ?? part.textContent ?? '').trim().replace(/\s+/g, ' ')
+  return part.dataset.eotmLabel ? readable(part.dataset.eotmLabel)
+    : kind ? `${ELEMENT_LABELS[kind] ?? readable(kind)}${words ? `: ${words.length > 32 ? `${words.slice(0, 30)}…` : words}` : ''}`
+    : readable(part.dataset.eotmPart)
+}
+// Innermost first: the part, the parts holding it, the section, the page.
+function pathOf(section, part, names) {
+  const out = []
+  for (let p = part; p && p !== section && section.contains(p); p = p.parentElement?.closest(PART)) out.push(partName(p))
+  out.push(names?.section ?? (section.dataset.eotmLabel ? readable(section.dataset.eotmLabel) : 'Section'))
+  if (names?.doc) out.push(names.doc)
+  return out
+}
+function PathLabel({ section, part, describe }) {
+  const [open, setOpen] = useState(false)
+  const [names, setNames] = useState(null)
+  const id = `${section.dataset.eotmEdit}|${section.dataset.eotmItem ?? ''}`
+  useEffect(() => {
+    let live = true
+    setNames(null)
+    describe?.(targetOf(section)).then((n) => { if (live) setNames(n) }).catch(() => {})
+    return () => { live = false }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const path = pathOf(section, part, names)
+  return (
+    <button type="button" className={`eotm-arrange-label${open ? ' is-open' : ''}`} aria-expanded={open}
+      title={path.join(' ‹ ')} onClick={() => setOpen((o) => !o)}>
+      {open ? path.join(' ‹ ') : path[0]}
+      {path.length > 1 && <span aria-hidden="true" className="eotm-arrange-caret">{open ? '▾' : '▸'}</span>}
+    </button>
+  )
+}
+
 // What to tell the owner about the screen they arrange on, once a visit each.
 function promptFor() {
   if (matchMedia(PHONE).matches) return { key: 'phone', text: 'Edits on a phone change the phone view only. To arrange the desktop layout, turn your phone sideways or set the page to Desktop width.' }
@@ -142,7 +183,7 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -500,6 +541,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           aria-label="Drag to change the section’s height" title="Section height" onPointerDown={heightDrag} />
       )}
       <div ref={barRef} className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
+        <PathLabel section={section} part={part} describe={describe} />
+        <div className="eotm-arrange-tools">
         {part ? (
           <>
             <label className="eotm-arrange-range">Fade
@@ -581,6 +624,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           {snap ? 'Snap' : 'Free-hand'}
         </button>
         {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}{onText ? '; double-click text to type' : ''}</span>}
+        </div>
       </div>
     </div>
   )

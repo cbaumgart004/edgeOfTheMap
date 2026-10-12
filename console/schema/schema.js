@@ -581,3 +581,27 @@ export async function publishedPages(schema, listPublished) {
   }
   return pages
 }
+
+// What a section is called in the editor: its heading, else the first words
+// it holds (a text field, then rich text, then its own elements), else its
+// first photo's description or file name; led by its kind ("Content
+// section"), and by a layout choice when that names it ("Splash").
+export function sectionName(schema, block) {
+  const def = schema.blocks?.[block?._type]
+  const kind = def?.label ?? block?._type ?? 'Section'
+  const layout = def?.fields?.find((f) => f.name === 'layout' && f.kind === 'select')
+  const shape = layout && optionsOf(schema, layout).find((o) => o.value === block.layout)?.label
+  const plain = (html) => String(html ?? '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+  const fields = def?.fields ?? []
+  const pick = (kinds) => fields.filter((f) => kinds.includes(f.kind)).map((f) => (f.kind === 'richtext' ? plain(block[f.name]) : String(block[f.name] ?? '').trim())).find(Boolean)
+  const els = Array.isArray(block?._elements) ? block._elements : []
+  const photo = fields.filter((f) => f.kind === 'image').map((f) => block[f.name]).find((i) => i?.src)
+    ?? fields.filter((f) => f.kind === 'photos').flatMap((f) => block[f.name] ?? []).find((i) => i?.src)
+  const words = (block?.title || block?.heading || pick(['text', 'textarea']) || pick(['richtext'])
+    || els.map((e) => String(e.text ?? e.label ?? plain(e.html)).trim()).find(Boolean)
+    || photo?.alt || (photo?.src ? decodeURIComponent(photo.src.split('/').pop().replace(/\.[a-z0-9]+$/i, '')).replace(/[-_]+/g, ' ') : ''))
+  const short = words.length > 48 ? `${words.slice(0, 46).replace(/\s+\S*$/, '')}…` : words
+  // "Splash / hero (text over a full-width image)" is a Splash.
+  const lead = shape ? shape.split(/\s*[/(]/)[0].trim() || kind : kind
+  return short ? `${lead}: ${short}` : lead
+}

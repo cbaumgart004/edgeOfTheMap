@@ -97,6 +97,11 @@ describe('Arrange on the page', () => {
     // A click on a part selects it (no movement, so the section stays Flow);
     // Section steps out to the section's own choices.
     expect(document.querySelectorAll('.eotm-arrange-handle:not(.is-height):not(.is-width)')).toHaveLength(8)
+    // The selection is named; opened, its path: the section by what it holds, then the page.
+    const label = document.querySelector('.eotm-arrange-label')
+    expect(label.textContent).toBe('Heading▸')
+    await act(async () => label.click())
+    expect(label.textContent).toMatch(/^Heading ‹ .+: Hello ‹ .+: Home▾$/)
     await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Section').click())
     await tick(20)
     await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())
