@@ -158,7 +158,10 @@ export function createHandler(deps) {
   }
 
   return async function handle(event) {
-    const method = event.requestContext?.http?.method ?? event.httpMethod
+    // HEAD is answered as GET (the function URL drops the body): uptime
+    // monitors check pages with HEAD, and the pre-rendered pages are pages.
+    const asked = event.requestContext?.http?.method ?? event.httpMethod
+    const method = asked === 'HEAD' ? 'GET' : asked
     const path = (event.rawPath ?? event.path ?? '').replace(/\/+$/, '')
     const origin = event.headers?.origin ?? event.headers?.Origin
     const query = event.queryStringParameters ?? {}

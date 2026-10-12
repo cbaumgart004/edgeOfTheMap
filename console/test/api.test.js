@@ -192,6 +192,9 @@ describe('console API', () => {
     // A path with no page is the template untouched; the second fetch revalidates by ETag.
     expect((await get('/somewhere-else')).body).toBe(template)
     expect(fetched.at(-1)).toEqual(['https://spiritseedswellness.com/index.html', 'v1'])
+    // An uptime monitor's HEAD gets the page's answer, not a sign-in error.
+    const head = await call('HEAD', `${base}/page/events/${d.slug}`, { token: null, origin: null, headers: { 'x-forwarded-host': 'spiritseedswellness.com' } })
+    expect(head.statusCode).toBe(200)
     // A file sent here by mistake goes to the build's copy.
     const file = await get('/favicon.png')
     expect(file.statusCode).toBe(302)
