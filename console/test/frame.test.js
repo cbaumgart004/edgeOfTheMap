@@ -52,7 +52,7 @@ describe('elements of a section', () => {
     ]
     expect(checkDocument(merged, 'page', page(ok))).toEqual([])
     expect(checkDocument(merged, 'page', page([{ _id: 'e1', kind: 'video' }, { _id: 'e1', kind: 'button', url: 'javascript:x', class: 'nope' }]))).toEqual([
-      'sections[0]._elements[0]: kind is text, richtext, image, button, box',
+      'sections[0]._elements[0]: kind is text, richtext, image, button, box, design',
       'sections[0]._elements[1]: id used twice',
       'sections[0]._elements[1].class: no class "nope"',
       'sections[0]._elements[1].url: must be a link (https://, mailto:, tel: or /path)',

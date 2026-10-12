@@ -1,6 +1,7 @@
-import React, { useEffect, useId, useState } from 'react'
+import React, { useEffect, useId, useMemo, useState } from 'react'
 import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName } from '../schema/schema.js'
-import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement } from '../schema/elements.js'
+import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement, fsToPoints, pointsToFs } from '../schema/elements.js'
+import { googleHas, closestFonts, loadFont, kindOf } from './fonts.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
@@ -16,7 +17,7 @@ export function FieldList({ fields, value, onChange, ctx, path = '', at = null }
   return (
     <>
       {fields.map((f) => (
-        <Field key={f.name} field={f} value={value?.[f.name]} ctx={ctx} path={path ? `${path}.${f.name}` : f.name} at={at}
+        <Field key={f.name} field={f} value={value?.[f.name]} ctx={ctx} path={path ? `${path}.${f.name}` : f.name} at={at} owner={value}
           onChange={(v) => onChange({ ...value, [f.name]: v })} />
       ))}
       {at && ctx.addField && <AddField at={at} ctx={ctx} />}
@@ -85,7 +86,7 @@ function RemoveAdded({ onConfirm }) {
   )
 }
 
-function Field({ field, value, onChange, ctx, path, at }) {
+function Field({ field, value, onChange, ctx, path, at, owner = null }) {
   const id = useId()
   const error = ctx.errors?.find((e) => e.startsWith(`${path}:`))?.slice(path.length + 2)
   const label = field.label ?? field.name
@@ -123,7 +124,7 @@ function Field({ field, value, onChange, ctx, path, at }) {
     case 'color':
       return wrap(<Color id={id} value={value} onChange={onChange} />)
     case 'style':
-      return wrap(<StyleField id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
+      return wrap(<StyleField id={id} value={value} onChange={onChange} ctx={ctx} words={String(owner?.text ?? owner?.label ?? '').slice(0, 60)} />, { block: true })
     case 'layout':
       return wrap(<Layout id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'richtext':
@@ -538,7 +539,10 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
                 <div className="eotm-item-body">
                   <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} at={atFor(item)} />
                   {/* A section's own elements, beyond its fields (schema/elements.js). */}
-                  {(sections || item._elements?.length > 0) && <Elements value={item._elements} onChange={(els) => update(i, { ...item, _elements: els })} ctx={ctx} path={`${path}[${i}]._elements`} />}
+                  {(sections || item._elements?.length > 0 || item.kind === 'design') && (item.kind === 'design'
+                    // A design's own elements, with their text sizes in points (its _layout).
+                    ? <Elements value={item._elements} design={item} onDesign={(d) => update(i, d)} ctx={ctx} path={`${path}[${i}]._elements`} />
+                    : <Elements value={item._elements} onChange={(els) => update(i, { ...item, _elements: els })} ctx={ctx} path={`${path}[${i}]._elements`} />)}
                   {/* A changed section: keep it as it is, or keep its look as a template too. */}
                   {sections && state && (
                     <div className="eotm-row eotm-item-save">
@@ -592,9 +596,27 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
 // photo, a button or a box, each with its own id, a class and a Style. Added,
 // duplicated and saved as templates here or from Arrange; each shows on the page
 // at once (the page draws the draft), and in a Free section it is placed.
-export function Elements({ value, onChange, ctx, path }) {
-  const items = Array.isArray(value) ? value : []
+// Inside a design (`design`, written whole through `onDesign`): no design in
+// a design, and each text's size in points, which is its part's `fs` in the
+// design's _layout, the same a corner drag in Arrange changes.
+const SIZED = ['text', 'richtext', 'button']
+export function Elements({ value, onChange, ctx, path, design = null, onDesign = null }) {
   const classes = classOptions(ctx.schema)
+  const parts = design?._layout?.parts ?? {}
+  const items = (Array.isArray(value) ? value : []).map((el) => (design && SIZED.includes(el.kind) ? { ...el, _pt: fsToPoints(parts[el._id]?.fs, design.width) } : el))
+  if (design) {
+    onChange = (els) => {
+      const next = { ...parts }
+      const clean = els.map(({ _pt, ...el }) => {
+        if (_pt != null && _pt !== '' && Number(_pt) > 0 && Number(_pt) !== fsToPoints(parts[el._id]?.fs, design.width) && next[el._id]) {
+          next[el._id] = { ...next[el._id], fs: Math.max(10, Math.min(500, pointsToFs(Number(_pt), design.width))) }
+        }
+        return el
+      })
+      onDesign({ ...design, _elements: clean, _layout: { ...(design._layout ?? {}), parts: next } })
+    }
+  }
+  const sizeField = { name: '_pt', kind: 'number', label: 'Text size (points)', min: 2, max: 400, step: 0.5, help: 'As in Canva. Dragging a corner in Arrange changes it too.' }
   const templates = ctx.schema.custom?.elementTemplates ?? []
   const label = (el) => {
     const own = el.text || el.label || el.image?.alt || (el.html ?? '').replace(/<[^>]*>/g, ' ').trim().slice(0, 40)
@@ -603,10 +625,10 @@ export function Elements({ value, onChange, ctx, path }) {
   return (
     <Repeater label="Elements" help="Anything more you want in this section. In Arrange, a Free section places them anywhere."
       items={items} onChange={onChange} ctx={ctx} path={path}
-      itemTitle={(el) => label(el)} fieldsFor={(el) => elementFields(el.kind, classes)}
+      itemTitle={(el) => label(el)} fieldsFor={(el) => (design && SIZED.includes(el.kind) ? [sizeField, ...elementFields(el.kind, classes)] : elementFields(el.kind, classes))}
       saveTemplate={ctx.saveElementTemplate}
       add={[
-        ...ELEMENT_KINDS.map((k) => ({ key: k, label: ELEMENT_LABELS[k], make: () => newElement(k, newId()) })),
+        ...ELEMENT_KINDS.filter((k) => k !== 'design').map((k) => ({ key: k, label: ELEMENT_LABELS[k], make: () => newElement(k, newId()) })),
         ...templates.map((t, i) => ({ key: `et-${i}`, label: `${t.name} (template)`, make: () => copyElement(t.element, newId()) })),
       ]} />
   )
@@ -670,7 +692,62 @@ const STYLE_PARTS = {
   weight: ['Weight', { normal: 'Regular', bold: 'Bold' }],
   align: ['Alignment', { left: 'Left', center: 'Centre', right: 'Right' }],
 }
-function StyleField({ id, value, onChange, ctx }) {
+// The fonts this site already uses: its schema's font choices that name a
+// font (not a role), and its brand fonts.
+function siteFonts(schema) {
+  const names = new Set()
+  const walk = (fields) => (fields ?? []).forEach((f) => {
+    if (f.kind === 'select' && f.preview === 'font') (f.options ?? []).forEach((o) => { if (!['heading', 'subheading', 'body', ''].includes(o.value)) names.add(o.value) })
+    if (f.fields) walk(f.fields)
+  })
+  Object.values(schema.types ?? {}).forEach((t) => walk(t.fields))
+  Object.values(schema.blocks ?? {}).forEach((b) => walk(b.fields))
+  for (const f of Object.values(schema.brand?.fonts ?? {})) { const n = String(f).split(',')[0].replace(/['"]/g, '').trim(); if (n) names.add(n) }
+  return [...names].sort()
+}
+
+// A font by name: one the site uses, or any Google Fonts serves. A name it
+// does not serve is not a free web font, so it says so and offers the closest
+// free ones, each showing these words; a choice shows on the page at once.
+function FamilyField({ id, value, onChange, schema, sample }) {
+  const [text, setText] = useState(value ?? '')
+  const [state, setState] = useState(null) // { has, options }
+  useEffect(() => setText(value ?? ''), [value])
+  const own = useMemo(() => siteFonts(schema), [schema])
+  useEffect(() => {
+    let live = true
+    const name = (value ?? '').trim()
+    if (!name || own.includes(name)) { setState(null); return undefined }
+    googleHas(name).then(async (has) => {
+      if (!live) return
+      if (has !== false) { loadFont(name); setState({ has, options: [] }); return }
+      const options = await closestFonts(name, sample || name)
+      if (live) setState({ has, options })
+    })
+    return () => { live = false }
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+  const commit = () => { const v = text.trim(); if (v !== (value ?? '')) onChange(v) }
+  return (
+    <div className="eotm-style-part eotm-family">
+      <label className="eotm-label" htmlFor={id}>Font by name</label>
+      <input id={id} className="eotm-input" list={`${id}-list`} value={text} placeholder="Site’s own" spellCheck={false}
+        onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }} />
+      <datalist id={`${id}-list`}>{own.map((f) => <option key={f} value={f} />)}</datalist>
+      {state?.has === false && (
+        <div className="eotm-warn" role="alert">
+          <p><strong>{value}</strong> is not a free web font, so the site cannot show it. Closest free {kindOf(value) === 'script' ? 'script ' : ''}fonts:</p>
+          {state.options.map((o) => (
+            <button key={o.family} type="button" className="eotm-font-option" onClick={() => onChange(o.family)}>
+              <span className="eotm-help">{o.family}</span><span style={{ fontFamily: `'${o.family}'` }}>{sample || o.family}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StyleField({ id, value, onChange, ctx, words = '' }) {
   const v = value ?? {}
   const set = (k, x) => {
     const next = { ...v, [k]: x }
@@ -697,7 +774,7 @@ function StyleField({ id, value, onChange, ctx }) {
   // lookToCss): a named colour is the site's own variable.
   const colourCss = (c) => (!c ? undefined : named.find((n) => n.value === c)?.css ?? c)
   const sample = {
-    fontSize: { small: '0.875em', large: '1.25em', xlarge: '1.6em' }[v.size], fontFamily: v.font ? `var(--font-${v.font})` : undefined,
+    fontSize: { small: '0.875em', large: '1.25em', xlarge: '1.6em' }[v.size], fontFamily: v.family ? `'${v.family}'` : v.font ? `var(--font-${v.font})` : undefined,
     fontWeight: v.weight === 'bold' ? 700 : v.weight === 'normal' ? 400 : undefined, textAlign: v.align,
     color: colourCss(v.color), background: colourCss(v.background), padding: v.background ? '0.5em 0.75em' : undefined,
   }
@@ -713,6 +790,7 @@ function StyleField({ id, value, onChange, ctx }) {
           </select>
         </div>
       ))}
+      <FamilyField id={`${id}-family`} value={v.family} onChange={(x) => set('family', x)} schema={ctx.schema} sample={words} />
       {colour('color', 'Text colour')}
       {colour('background', 'Background')}
       <label className="eotm-label eotm-range">

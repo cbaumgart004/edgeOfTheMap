@@ -64,7 +64,7 @@ says what each key means.
 | `image` | `{ src, alt, width, height, rotate?, flip?, opacity? }` | The owner can turn it (`rotate` 0, 90, 180, 270), mirror it (`flip`) and fade it (`opacity` 10 to 100); the site applies them as CSS. "Site photos" reuses one already on the site, or takes a pasted address. Uploads are scaled to 1600 px, 600 KB; `"wide": true` (a banner or full-bleed background) allows 2560 px, 1.2 MB. After an upload, "Sharper (larger file)" sends the same photo again at up to 3200 px, 2.5 MB (`src/images.js`, `LIMITS`) |
 | `photos` | `[{ src, alt, width, height, index }]` | `indexes: ["Light", "Dark"]` labels each photo. StoryShaped's daylight/blacklight pairs. `warnMissingIndex: true`: Publish asks the owner to confirm when there are photos but none under one index (`missingIndexHelp` adds a sentence). `maxItems`. Takes `wide` as `image` does |
 | `relation` | document id, or an array of ids when `many` | `to: "<type>"` |
-| `style` | `{ size?, font?, weight?, align?, color?, background?, width? }`, each part optional | How one element looks. `size` small, large, xlarge; `font` heading, body; `weight` normal, bold; `align` left, center, right; `color` and `background` a value from the schema's `styleColors` or `#rrggbb`; `width` 10 to 100 (%). The site turns it into CSS on the element holding it |
+| `style` | `{ size?, font?, family?, weight?, align?, color?, background?, width? }`, each part optional | How one element looks. `size` small, large, xlarge; `font` heading, body; `family` a font by name (the site's, or one Google Fonts serves, which the site loads when asked: 1.15.0+); `weight` normal, bold; `align` left, center, right; `color` and `background` a value from the schema's `styleColors` or `#rrggbb`; `width` 10 to 100 (%). The site turns it into CSS on the element holding it |
 | `group` | object | `fields` |
 | `list` | array of objects, each with an `_id` | `fields`, `itemLabel` (field shown per row), `maxItems` |
 | `blocks` | array of `{ _id, _type, ...fields }` | `of: ["<block>", ...]` |
@@ -148,6 +148,16 @@ the site's classes with `"optionsFrom": "classes"`.
   duplicated from Arrange (a site's own part duplicates as an element with its content) or the panel's Elements
   list; saved as templates in `custom.elementTemplates: [{ name, element }]`. A site draws them with its
   Elements component, marking each `data-eotm-element="<kind>"` and `data-eotm-in="<_id>"`.
+- **`design`** (1.15.0+): an element holding elements, `{ _id, kind: 'design', label, width, _elements, _layout }`,
+  made by "+ Canva PDF" in Arrange (`src/canva.js`, `src/ImportDesign.jsx`): each text of the PDF a text element
+  with its font (`style.family`), colour and place, each picture a photo with its opacity as the part's Fade, on
+  a Free `_layout` the page's shape (`height` its height as % of its width). `width` is the page's width in
+  points; a piece's `fs` is % of 4% of the design's width (`DESIGN_BASE`), so the pane shows text sizes in points
+  (`fsToPoints`) and a design scales as one at every width. A design holds no design. A site draws it as a part
+  of its section that is also a section of its own pieces (`data-eotm-edit` copied from the section around it,
+  `data-eotm-item` its `_id`), sizing each piece's text from the design (`calc(var(--fs) * 0.04cqw)` on the piece:
+  a box's own cqw is its container's). Fonts Google Fonts does not serve are flagged at import with the closest
+  free ones, ranked by comparing the PDF's own font with each, drawn in the owner's words (`src/fonts.js`).
 
 ## Free sections (StoryShaped ADR-0010)
 

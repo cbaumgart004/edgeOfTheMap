@@ -46,7 +46,10 @@ const targetOf = (el) => {
   const [type, ...rest] = (el.dataset.eotmEdit ?? '').split(':')
   return { type, key: rest.join(':'), item: el.dataset.eotmItem || null }
 }
-const partsOf = (section) => [...section.querySelectorAll(PART)].filter((p) => p.closest(SECTION) === section)
+// The section a part belongs to. A part that is a section itself (a design,
+// which arranges its own pieces) is a part of the section around it.
+const ownerOf = (p) => (p.matches(SECTION) ? p.parentElement?.closest(SECTION) : p.closest(SECTION))
+const partsOf = (section) => [...section.querySelectorAll(PART)].filter((p) => ownerOf(p) === section)
 const isSection = (el) => el && (el.hasAttribute('data-eotm-frame') || partsOf(el).length > 0)
 // Whether this screen arranges the section's phone layout: on a phone, unless
 // the section shows the desktop layout scaled down there (then it is that
@@ -142,15 +145,24 @@ function partName(part) {
     : kind ? `${ELEMENT_LABELS[kind] ?? readable(kind)}${words ? `: ${words.length > 32 ? `${words.slice(0, 30)}…` : words}` : ''}`
     : readable(part.dataset.eotmPart)
 }
-// Innermost first: the part, the parts holding it, the section, the page.
+// Innermost first: the part, the parts holding it, the section, the sections
+// around it (a design inside a section), the page. Each level that can be
+// chosen carries what choosing it selects: { name, pick? }.
 function pathOf(section, part, names) {
   const out = []
-  for (let p = part; p && p !== section && section.contains(p); p = p.parentElement?.closest(PART)) out.push(partName(p))
-  out.push(names?.section ?? (section.dataset.eotmLabel ? readable(section.dataset.eotmLabel) : 'Section'))
-  if (names?.doc) out.push(names.doc)
+  for (let p = part; p && p !== section && section.contains(p); p = p.parentElement?.closest(PART)) out.push({ name: partName(p), pick: { section, part: p } })
+  out.push({ name: section.dataset.eotmLabel && section.matches(PART) ? readable(section.dataset.eotmLabel) : names?.section ?? (section.dataset.eotmLabel ? readable(section.dataset.eotmLabel) : 'Section'), pick: { section, part: null } })
+  // A section that is a part of another (a design): that one, with it chosen in it.
+  for (let s = section; s.matches(PART);) {
+    const outer = s.parentElement?.closest(SECTION)
+    if (!outer) break
+    out.push({ name: names?.section ?? 'Section', pick: { section: outer, part: s }, outer: true })
+    s = outer
+  }
+  if (names?.doc) out.push({ name: names.doc })
   return out
 }
-function PathLabel({ section, part, describe }) {
+function PathLabel({ section, part, describe, onPick }) {
   const [open, setOpen] = useState(false)
   const [names, setNames] = useState(null)
   const id = `${section.dataset.eotmEdit}|${section.dataset.eotmItem ?? ''}`
@@ -161,12 +173,23 @@ function PathLabel({ section, part, describe }) {
     return () => { live = false }
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
   const path = pathOf(section, part, names)
-  return (
-    <button type="button" className={`eotm-arrange-label${open ? ' is-open' : ''}`} aria-expanded={open}
-      title={path.join(' ‹ ')} onClick={() => setOpen((o) => !o)}>
-      {open ? path.join(' ‹ ') : path[0]}
-      {path.length > 1 && <span aria-hidden="true" className="eotm-arrange-caret">{open ? '▾' : '▸'}</span>}
+  const all = path.map((l) => l.name).join(' ‹ ')
+  if (!open) return (
+    <button type="button" className="eotm-arrange-label" aria-expanded={false} title={all} onClick={() => setOpen(true)}>
+      {path[0].name}{path.length > 1 && <span aria-hidden="true" className="eotm-arrange-caret">▸</span>}
     </button>
+  )
+  // Open: each level a button that chooses it, the page last, plain.
+  return (
+    <div className="eotm-arrange-label is-open" role="group" aria-label="Where it is">
+      {path.map((l, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span aria-hidden="true">‹</span>}
+          {l.pick && i > 0 ? <button type="button" className="eotm-arrange-level" onClick={() => onPick(l.pick)} title={`Choose ${l.name}`}>{l.name}</button> : <span>{l.name}</span>}
+        </React.Fragment>
+      ))}
+      <button type="button" className="eotm-arrange-level" aria-label="Close" onClick={() => setOpen(false)}>▾</button>
+    </div>
   )
 }
 
@@ -183,7 +206,7 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -286,7 +309,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       e.preventDefault()
       e.stopPropagation()
       const part = e.target.closest(PART)
-      const own = part && part.closest(SECTION) === section ? part : null
+      const own = part && ownerOf(part) === section ? part : null
       setSel({ section, part: own })
       // The pane follows every pick: what was pressed opens there (a button's
       // own row, data-eotm-in, and the field around it), the rest fold.
@@ -541,7 +564,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           aria-label="Drag to change the section’s height" title="Section height" onPointerDown={heightDrag} />
       )}
       <div ref={barRef} className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
-        <PathLabel section={section} part={part} describe={describe} />
+        <PathLabel section={section} part={part} describe={describe} onPick={(s) => setSel(s)} />
         <div className="eotm-arrange-tools">
         {part ? (
           <>
@@ -610,6 +633,9 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
             )}
             <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('button', newId()))}>+ Button</button>
             <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('box', newId()))}>+ Box</button>
+            {onImport && !section.matches('[data-eotm-element="design"]') && (
+              <button type="button" className="eotm-target-snap" onClick={() => onImport(targetOf(section))} title="Bring in a design made in Canva, from its PDF">+ Canva PDF</button>
+            )}
             {templates.length > 0 && (
               <select className="eotm-target-snap" value="" aria-label="Add from a template"
                 onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) addElement(copyElement(t.element, newId())) }}>

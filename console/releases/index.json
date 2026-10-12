@@ -193,5 +193,10 @@
     "version": "1.14.0",
     "integrity": "sha384-WSudkdwercoenZIfmzAtQEPDcbPQEt7964VCXpiyrNoG3BBj7dVl8tqlUfdiz6sW",
     "releasedAt": "2026-10-12"
+  },
+  {
+    "version": "1.15.0",
+    "integrity": "sha384-oebtZ+vhns9TgNIu2Ol3q8fgZ7zXteK8jLtvIGzEoVEqmiEXCmguFDmgEBzLcpPC",
+    "releasedAt": "2026-10-12"
   }
 ]

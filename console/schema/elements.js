@@ -9,10 +9,22 @@
 //   { _id, kind: 'image', image: { src, alt, ... } }
 //   { _id, kind: 'button', label, url, look?, icon? }
 //   { _id, kind: 'box' }
+//   { _id, kind: 'design', label, width, _elements, _layout }
+//       a design brought in whole (a Canva PDF, src/canva.js): its own elements
+//       on a free canvas the shape of the page it came from (_layout, height
+//       its height as % of its width), drawn so it scales as one. `width` is
+//       the page's width in points, so a text size reads in points as in
+//       Canva. A design holds no design.
 //   every kind also: class? (a class: the site's own or the owner's), style? (a Style)
 
-export const ELEMENT_KINDS = ['text', 'richtext', 'image', 'button', 'box']
-export const ELEMENT_LABELS = { text: 'Text', richtext: 'Formatted text', image: 'Photo', button: 'Button', box: 'Box' }
+export const ELEMENT_KINDS = ['text', 'richtext', 'image', 'button', 'box', 'design']
+export const ELEMENT_LABELS = { text: 'Text', richtext: 'Formatted text', image: 'Photo', button: 'Button', box: 'Box', design: 'Design' }
+// A design's text sizes are % (a part's `fs`) of this share of its width, so
+// they scale with it: 100 is 4% of the design's width.
+export const DESIGN_BASE = 4
+// Points at a design's own width, for the pane, from a part's fs, and back.
+export const fsToPoints = (fs, width) => Math.round(((fs ?? 100) / 100) * (DESIGN_BASE / 100) * width * 10) / 10
+export const pointsToFs = (pt, width) => Math.round(((pt / width) * 100 * 100) / DESIGN_BASE * 10) / 10
 export const MAX_ELEMENTS = 60
 const TAGS = ['h2', 'h3', 'p']
 
@@ -29,6 +41,7 @@ export function elementFields(kind, classOptions) {
       ...common]
     case 'richtext': return [{ name: 'html', kind: 'richtext', label: 'Text' }, ...common]
     case 'image': return [{ name: 'image', kind: 'image', label: 'Photo' }, ...common]
+    case 'design': return [{ name: 'label', kind: 'text', label: 'Name', help: 'What the editor calls it.' }, ...common]
     case 'button': return [
       { name: 'label', kind: 'text', label: 'Button text' },
       { name: 'url', kind: 'url', label: 'Goes to' },
@@ -79,6 +92,10 @@ export function checkElements(list, at, schema, errors, fieldCheck) {
     if (!ELEMENT_KINDS.includes(el.kind)) return errors.push(`${where}: kind is ${ELEMENT_KINDS.join(', ')}`)
     if (el.class != null && el.class !== '' && !classes.has(el.class)) errors.push(`${where}.class: no class "${el.class}"`)
     if (el.tag != null && el.tag !== '' && !TAGS.includes(el.tag)) errors.push(`${where}.tag: h2, h3 or p`)
+    if (el.kind === 'design') {
+      if (!(typeof el.width === 'number' && el.width > 0 && el.width <= 20000)) errors.push(`${where}.width: the page's width in points`)
+      if (Array.isArray(el._elements) && el._elements.some((e) => e?.kind === 'design')) errors.push(`${where}: a design holds no design`)
+    }
     const fields = elementFields(el.kind, []).filter((f) => f.name !== 'tag' && f.name !== 'class')
     fieldCheck(fields, el, where)
   })

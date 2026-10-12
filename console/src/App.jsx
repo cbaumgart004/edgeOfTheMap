@@ -5,6 +5,7 @@ import { FieldList, Elements } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
+import ImportDesign from './ImportDesign.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
 import { CLASS_TYPE } from '../schema/classes.js'
 import { createPortal } from 'react-dom'
@@ -437,7 +438,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const rootStyle = page.scale < 1 ? { ...style, zoom: 1 / page.scale } : style
   const title = view.name === 'edit' ? view.viewLabel ?? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
     : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates'
-    : view.name === 'images' ? schema.images?.label ?? 'Images' : schema.brand.name
+    : view.name === 'images' ? schema.images?.label ?? 'Images' : view.name === 'import' ? 'Import from Canva' : schema.brand.name
   // A Theme view (Daylight, Blacklight) shows the page in its own look while it is open.
   useEffect(() => { bridge.showMode?.(view.mode ?? null) }, [bridge, view.mode])
 
@@ -557,6 +558,32 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), { name, label }] })
     setSchema(next)
     notify(`Added the class “${label}”. Give it a style here, then give it to any element.`)
+  }
+  // A design brought in from Canva (ImportDesign.jsx): its new classes added
+  // to the site's own, each piece given its class, then the design written
+  // into the section it was asked for from, and that section opened.
+  const importDesign = async (target, { design, refs, newClasses }) => {
+    const custom = schema.custom ?? {}
+    const taken = new Set([...(schema.classes ?? []), ...(custom.classes ?? [])].map((c) => c.name))
+    const byLabel = new Map([...(schema.classes ?? []), ...(custom.classes ?? [])].map((c) => [c.label.toLowerCase(), c.name]))
+    const added = []
+    for (const label of newClasses) {
+      if (byLabel.has(label.toLowerCase())) continue
+      const base = customName(label).slice('custom'.length).replace(/^./, (c) => c.toLowerCase()) || 'class'
+      let name = base
+      for (let n = 2; taken.has(name); n++) name = `${base}${n}`
+      taken.add(name)
+      byLabel.set(label.toLowerCase(), name)
+      added.push({ name, label })
+    }
+    if (added.length) {
+      const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), ...added] })
+      setSchema(next)
+    }
+    const classOf = new Map(refs.map(([id, c]) => [id, c.ref ?? byLabel.get(c.label.toLowerCase())]))
+    const element = { ...design, _elements: design._elements.map((el) => (classOf.get(el._id) ? { ...el, class: classOf.get(el._id) } : el)) }
+    setView({ name: 'home' })
+    await resizeTarget({ ...target, field: '_elements', value: (old) => [...(Array.isArray(old) ? old : []), element] })
   }
   // An element saved as a template (Fields.jsx Elements, Arrange): offered when
   // adding an element to any section.
@@ -712,6 +739,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   else if (view.name === 'images') body = (
     <Images schema={schema} store={store} bridge={bridge} notify={notify}
       open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), back: { name: 'images' } })} />)
+  else if (view.name === 'import') body = (
+    <ImportDesign schema={schema} upload={(blob) => store.upload(blob)} notify={notify}
+      onCancel={() => setView(view.back ?? { name: 'home' })} apply={(made) => importDesign(view.target, made)} />
+  )
   else if (view.name === 'types') body = <CustomTypes schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'templates') body = <Templates schema={schema} store={store} notify={notify} onSaved={setSchema} />
   else if (view.name === 'list') body = (
@@ -757,7 +788,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       {user && overlay && !customer && clickMode !== 'view' && createPortal(
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
-          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} describe={describe} />, overlay)}
+          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
+          onImport={(target) => { setView({ name: 'import', target, back: view }); setPeek(false); if (size === 'bar') setSize('half') }} />, overlay)}
     </div>
     </>
   )

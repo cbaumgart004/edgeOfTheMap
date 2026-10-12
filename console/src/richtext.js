@@ -43,7 +43,14 @@ export function sanitizeDocumentData(schema, typeName, data, purify) {
     const out = { ...d }
     // The owner's own elements (schema/elements.js): formatted text is HTML too.
     if (Array.isArray(out._elements)) {
-      out._elements = out._elements.map((el) => (el && typeof el.html === 'string' ? { ...el, html: sanitizeRichText(el.html, schema, purify) } : el))
+      // A design's own elements too (one level: a design holds no design).
+      const clean = (el) => {
+        if (!el || typeof el !== 'object') return el
+        let next = typeof el.html === 'string' ? { ...el, html: sanitizeRichText(el.html, schema, purify) } : el
+        if (Array.isArray(next._elements)) next = { ...next, _elements: next._elements.map(clean) }
+        return next
+      }
+      out._elements = out._elements.map(clean)
     }
     for (const f of fields) {
       const v = out[f.name]

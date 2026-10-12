@@ -13,6 +13,9 @@ if (existsSync(dest)) {
 }
 execFileSync(process.execPath, ['scripts/build.js'], { stdio: 'inherit' })
 cpSync(new URL(`../dist/console/${pkg.version}/`, import.meta.url), dest, { recursive: true, filter: (src) => !src.endsWith('.map') })
+// The vendored libraries the console loads at run time (console/vendor/), each
+// in a folder named for its version, so one already released is left as it is.
+cpSync(new URL('../dist/console/vendor/', import.meta.url), new URL('../releases/console/vendor/', import.meta.url), { recursive: true, force: false, errorOnExist: false })
 const integrity = `sha384-${createHash('sha384').update(readFileSync(new URL('console.js', dest))).digest('base64')}`
 const index = new URL('../releases/index.json', import.meta.url)
 const list = existsSync(index) ? JSON.parse(readFileSync(index)) : []
