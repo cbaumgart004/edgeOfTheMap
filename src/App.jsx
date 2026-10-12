@@ -19,6 +19,7 @@ import HomePage from './HomePage.jsx'
 import KeeperPage from './KeeperPage.jsx'
 import StorytellerPage from './StorytellerPage.jsx'
 import { Link, navigate, useRoute } from './router.jsx'
+import { useRouteHead } from './head.js'
 import { CONSOLE_SIGN_IN, SiteTheme, usePaths } from './siteConsole.jsx'
 import { EditsPage, Region, E } from './edits.jsx'
 import ClassStyles from './ClassStyles.jsx'
@@ -189,6 +190,7 @@ function App() {
 
   useScrollReveal(route)
   useRouteScroll(route)
+  useRouteHead(route)
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
