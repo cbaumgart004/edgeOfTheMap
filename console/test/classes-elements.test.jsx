@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { readFileSync } from 'node:fs'
@@ -19,6 +19,9 @@ const settle = async (store, id, pick, has) => {
   return pick((await store.get(id)).data)
 }
 
+const roots = []
+afterEach(async () => { await act(async () => roots.splice(0).forEach((r) => r.unmount())) })
+
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   document.body.innerHTML = ''
@@ -31,7 +34,9 @@ async function mount(data) {
   const doc = data ? await store.create({ type: 'page', data }) : null
   const host = document.createElement('div')
   document.body.append(host)
-  await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+  const root = createRoot(host)
+  roots.push(root)
+  await act(async () => root.render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
   await tick()
   return { store, doc, host }
 }
