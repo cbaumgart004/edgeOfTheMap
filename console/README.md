@@ -290,8 +290,12 @@ no login.
   shipped one. Addresses use the asking host (`X-Forwarded-Host`) when it is one of the site's own;
   a preview host (`preview.*`, `*.amplifyapp.com`) gets a robots.txt that disallows everything. Each
   site serves them through Amplify rewrites (200) from its own `/sitemap.xml` and `/robots.txt`, set
-  in the Amplify console before the SPA catch-all. **Unverified:** that Amplify sends
-  `X-Forwarded-Host` on an external rewrite (Neon Auth sees it on `/_edit/auth`, above).
+  in the Amplify console before the SPA catch-all, targeting the Lambda's function URL as
+  `/_edit/auth` does. Amplify sends `X-Forwarded-Host` on these rewrites (verified 2026-10-12:
+  `preview.spiritseedswellness.com/robots.txt` answers the preview's disallow-all). A site's production
+  domain must be one of its addresses, or its robots.txt is the first address's: StoryShaped's
+  first address is its Amplify preview, which closed `storyshapedstudios.com` to crawlers until its
+  rules were taken off again.
 - **Update all editors:** "Update all to <version>" above Sites on the Manage page moves every site
   that is behind onto the newest release (`POST /api/manage/sites/update-editors`). Each site's schema
   stays as saved; a site's own Save still reloads it.
