@@ -21,6 +21,11 @@ function world({ operator = true } = {}) {
         if (m) m.role = p[2]
         return { rowCount: m ? 1 : 0 }
       }
+      if (sql.includes('IS DISTINCT FROM')) {
+        const moved = sites.filter((s) => s.console_version !== p[0])
+        moved.forEach((s) => { s.console_version = p[0]; s.console_integrity = p[1] })
+        return { rows: moved.map((s) => ({ slug: s.slug })) }
+      }
       if (sql.startsWith('UPDATE sites')) { updates.push({ sql, p }); return { rowCount: 1 } }
       if (sql.includes('FROM sites ORDER BY name')) return { rows: sites }
       if (sql.includes('FROM site_members m')) return { rows: members }
@@ -82,6 +87,15 @@ describe('management page API', () => {
     expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { consoleVersion: '0.1.2' } })).status).toBe(200)
     expect(w.updates[0].p).toEqual(['0.1.2', 'sha384-new', 'storyshaped'])
     expect((await w.call('PUT', '/api/manage/sites/storyshaped', { body: { consoleVersion: '9.9.9' } })).status).toBe(400)
+  })
+
+  it('moves every site behind onto the newest editor in one call', async () => {
+    const w = world()
+    const r = await w.call('POST', '/api/manage/sites/update-editors', { body: {} })
+    expect(r.json).toEqual({ version: '0.1.2', updated: ['storyshaped'] })
+    expect((await w.call('POST', '/api/manage/sites/update-editors', { body: {} })).json.updated).toEqual([])
+    expect((await w.call('POST', '/api/manage/sites/update-editors', { body: { consoleVersion: '9.9.9' } })).status).toBe(400)
+    expect((await w.call('POST', '/api/manage/sites/update-editors', { token: 'editor', body: {} })).status).toBe(403)
   })
 
   it('sets the site addresses, first as the default, and refuses paths or http', async () => {

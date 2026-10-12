@@ -191,6 +191,18 @@ export function createManage(deps, { onSiteChange }) {
     onSiteChange(slug)
   }
 
+  // Every site onto one release (the newest unless named), in one click instead
+  // of a Save per site. Only the version moves; each site's schema stays as saved.
+  async function updateAllEditors(body) {
+    const releases = await deps.releases()
+    const release = body.consoleVersion ? releases.find((r) => r.version === body.consoleVersion) : releases.at(-1)
+    if (!release) throw new ServiceError(400, `Console ${body.consoleVersion} is not released.`)
+    const { rows } = await q(`UPDATE sites SET console_version = $1, console_integrity = $2, updated_at = now()
+                              WHERE console_version IS DISTINCT FROM $1 RETURNING slug`, [release.version, release.integrity])
+    rows.forEach((r) => onSiteChange(r.slug))
+    return { version: release.version, updated: rows.map((r) => r.slug) }
+  }
+
   // rest: the path after /api/manage
   return async function manage(method, rest, body, user) {
     await requireOperator(user)
@@ -210,6 +222,7 @@ export function createManage(deps, { onSiteChange }) {
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }
     if (method === 'DELETE' && rest === '/push') { await deps.requests.unsubscribe(user, body.endpoint); return { ok: true } }
     if (method === 'POST' && rest === '/push/test') return deps.requests.test(user, body.kind)
+    if (method === 'POST' && rest === '/sites/update-editors') return updateAllEditors(body ?? {})
     if (method === 'POST' && rest === '/operators') {
       const found = await userByEmail(cleanEmail(body.email))
       if (!found) throw new ServiceError(404, 'No login uses that email. Add the user first.')

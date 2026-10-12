@@ -294,6 +294,11 @@ async function loadManage({ quiet = false, parts: given = null } = {}) {
   // A save re-renders the cards; keep open whichever details were open.
   const openDetails = new Set([...document.querySelectorAll('details.company[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
   const openSites = new Set([...document.querySelectorAll('details.site-fold[open]')].map((d) => d.closest('[data-slug]').dataset.slug))
+  // One click moves every site that is behind onto the newest editor.
+  const behind = state.sites.filter((s) => s.console_version !== versions[0])
+  $('#m-update-all').hidden = !behind.length
+  $('#m-update-all').innerHTML = behind.length ? `<span class="meta">${behind.length} of ${state.sites.length} site${state.sites.length === 1 ? '' : 's'} behind editor ${esc(versions[0])}.</span>
+    <button type="button" id="update-all" data-version="${esc(versions[0])}">Update all to ${esc(versions[0])}</button>` : ''
   // Each site folds to its name, so a long list is quick to find a way through.
   $('#m-sites').innerHTML = state.sites.map((s) => `
     <li class="card" data-slug="${esc(s.slug)}"><details class="fold site-fold">
@@ -670,6 +675,13 @@ $('#sites').addEventListener('toggle', (e) => {
 $('#manage-open').addEventListener('click', run(loadManage))
 $('#manage-back').addEventListener('click', run(async () => { say(''); history.replaceState({}, '', '/'); await loadSites() }))
 
+$('#m-update-all').addEventListener('click', run(async (e) => {
+  const version = e.target.closest('#update-all')?.dataset.version
+  if (!version) return
+  const r = await api('POST', '/api/manage/sites/update-editors', { consoleVersion: version })
+  say(r.updated.length ? `Editor ${r.version} for ${r.updated.join(', ')}. Each picks it up within a minute.` : 'Every site already has it.')
+  await loadManage({ quiet: true })
+}))
 $('#m-sites').addEventListener('submit', run(async (e) => {
   const form = e.target
   const slug = form.closest('[data-slug]').dataset.slug
