@@ -6,7 +6,7 @@ const KEY = `eotm:local:${site}`
 // The loader, exactly as a site includes it, in local mode.
 const loader = document.createElement('script')
 loader.src = '/dist/loader.js'
-Object.assign(loader.dataset, { site, local: '', schema: `/schema/sites/${site}.json`, console: '/dist/console/0.1.0/console.js' })
+Object.assign(loader.dataset, { site, local: '', schema: `/schema/sites/${site}.json`, console: '/dist/console/current/console.js' })
 document.body.append(loader)
 
 function published(type) {

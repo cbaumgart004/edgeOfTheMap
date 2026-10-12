@@ -273,9 +273,10 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   const onDown = (e) => {
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
     if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, .eotm-resize, a, input, select')) return
-    // Open, the grip and the header's empty space drag it (the faded preview
-    // bar too); its title, buttons and form do what they do.
-    if (!bar && e.target.closest?.('.eotm-scroll, button, label, textarea')) return
+    // Open, the grip and the header drag it (the faded preview bar too), its
+    // title included, which a tap still folds; its other buttons and the form
+    // do what they do.
+    if (!bar && e.target.closest?.('.eotm-scroll, button:not(.eotm-title), label, textarea')) return
     const rect = sheet.current.getBoundingClientRect()
     drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false, grip: !!e.target.closest?.('.eotm-grip'), panel: !bar }
     // In the faded preview only the header takes the pointer, so it holds the drag.
