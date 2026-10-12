@@ -1,5 +1,6 @@
 {
   "site": "edgeofthemap",
+  "sitemap": { "paths": ["/", "/keeper", "/storyteller"] },
   "version": 1,
   "brand": {
     "name": "Edge of the Map",

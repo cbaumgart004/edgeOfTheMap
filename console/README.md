@@ -283,6 +283,15 @@ no login.
   title, description, Open Graph and robots tags on each navigation, restoring the site's own on a page
   without them. No site change is needed. Crawlers that do not run JavaScript (link previews) still see
   only the site's HTML; that needs pages rendered at publish.
+- **Sitemap and robots.txt:** `GET /api/sites/<site>/sitemap.xml` and `/robots.txt` (public). The
+  sitemap lists every published page (types with a page of their own, as `/seo` does) not marked
+  hidden, with its publish date, plus the schema's `sitemap.paths`, through `sitemap.aliases`
+  ("/home" to "/") and less `sitemap.exclude`; a site saved before its schema had `sitemap` uses the
+  shipped one. Addresses use the asking host (`X-Forwarded-Host`) when it is one of the site's own;
+  a preview host (`preview.*`, `*.amplifyapp.com`) gets a robots.txt that disallows everything. Each
+  site serves them through Amplify rewrites (200) from its own `/sitemap.xml` and `/robots.txt`, set
+  in the Amplify console before the SPA catch-all. **Unverified:** that Amplify sends
+  `X-Forwarded-Host` on an external rewrite (Neon Auth sees it on `/_edit/auth`, above).
 - **Update all editors:** "Update all to <version>" above Sites on the Manage page moves every site
   that is behind onto the newest release (`POST /api/manage/sites/update-editors`). Each site's schema
   stays as saved; a site's own Save still reloads it.

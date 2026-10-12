@@ -1,5 +1,6 @@
 {
   "site": "spiritseeds",
+  "sitemap": { "aliases": { "/home": "/" } },
   "connections": [
     {"label": "Newsletter (Kit)", "field": "newsletterFormId", "help": "Signups from the site and the Connect window go to this Kit form."},
     {"label": "Teaching schedule", "detail": "Collected every night from the studios' booking pages.", "help": "Classes appear on the site without being typed in."},

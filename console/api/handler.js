@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
-import { checkSchema, withSeo, hasOwnPage, previewPathFor } from '../schema/schema.js'
+import { checkSchema, withSeo, publishedPages } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
@@ -129,6 +129,15 @@ export function createHandler(deps) {
     // An editor token opens one site only.
     if (user.site && user.site !== site.slug) throw new ServiceError(403, 'This sign-in is for another site.')
     return { ...user, role: rows[0].role }
+  }
+
+  // The site's sitemap settings (schema.js, checkSchema): the saved schema's,
+  // else the one shipped with this deploy, so a new or changed `sitemap` works
+  // before the site is saved on the Manage page.
+  async function withSitemap(site) {
+    if (site.schema.sitemap || !deps.siteSchema) return site.schema
+    const shipped = await deps.siteSchema(site.slug).catch(() => null)
+    return shipped?.sitemap ? { ...site.schema, sitemap: shipped.sitemap } : site.schema
   }
 
   async function serviceFor(site) {
@@ -263,7 +272,7 @@ export function createHandler(deps) {
       // admin page (same origin, so no header at all) stopped the site's loader
       // from opening the editor until it expired. They carry no credentials
       // and anyone can read them without a browser, so * gives nothing away.
-      const isPublic = method === 'GET' && (rest === '/boot' || rest === '/seo' || rest.startsWith('/public/'))
+      const isPublic = method === 'GET' && (['/boot', '/seo', '/sitemap.xml', '/robots.txt'].includes(rest) || rest.startsWith('/public/'))
       headers = isPublic ? { 'access-control-allow-origin': '*' } : cors(origin, site)
       // A browser request from anywhere else gets no CORS headers, so the
       // browser refuses the response; refusing here as well saves the work.
@@ -305,17 +314,43 @@ export function createHandler(deps) {
       if (method === 'GET' && rest === '/seo') {
         const svc = await serviceFor(site)
         const pages = {}
-        for (const [name, type] of Object.entries(site.schema.types).filter(([, t]) => hasOwnPage(t))) {
-          for (const doc of await svc.listPublished(name)) {
-            const s = doc.data?.seo ?? {}
-            const path = previewPathFor(type, doc)
-            const entry = Object.fromEntries(Object.entries({
-              title: s.title?.trim(), description: s.description?.trim(), image: s.image?.src, noindex: s.noindex === true || undefined,
-            }).filter(([, v]) => v))
-            if (path && Object.keys(entry).length) pages[path.replace(/(.)\/+$/, '$1')] = entry
-          }
+        for (const [path, doc] of await publishedPages(await withSitemap(site), (t) => svc.listPublished(t))) {
+          const s = doc.data?.seo ?? {}
+          const entry = Object.fromEntries(Object.entries({
+            title: s.title?.trim(), description: s.description?.trim(), image: s.image?.src, noindex: s.noindex === true || undefined,
+          }).filter(([, v]) => v))
+          if (Object.keys(entry).length) pages[path] = entry
         }
         return json(200, { pages }, { ...headers, 'cache-control': 'public, max-age=60, stale-while-revalidate=300' })
+      }
+
+      // Public: the site's sitemap and robots.txt, which each site serves at its
+      // own /sitemap.xml and /robots.txt through an Amplify rewrite (200) to
+      // here. Addresses use the host that asked (Amplify's X-Forwarded-Host)
+      // when it is one of the site's own, else its first address. A preview
+      // address (preview.*, *.amplifyapp.com) is closed to crawlers entirely.
+      if (method === 'GET' && (rest === '/sitemap.xml' || rest === '/robots.txt')) {
+        const fwd = String(event.headers?.['x-forwarded-host'] ?? '').split(',')[0].trim().toLowerCase()
+        const own = site.allowed_origins.find((o) => o.toLowerCase() === `https://${fwd}`)
+        const base = own ?? site.allowed_origins[0]
+        const preview = /^https:\/\/(preview\.|[^/]*\.amplifyapp\.com$)/i.test(base)
+        const cache = { 'cache-control': 'public, max-age=300, stale-while-revalidate=3600', vary: 'X-Forwarded-Host' }
+        if (rest === '/robots.txt') {
+          const body = preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /_edit/\nDisallow: /preview\n\nSitemap: ${base}/sitemap.xml\n`
+          return { statusCode: 200, headers: { ...headers, ...cache, 'content-type': 'text/plain; charset=utf-8' }, body }
+        }
+        const svc = await serviceFor(site)
+        const sm = (await withSitemap(site)).sitemap ?? {}
+        const exclude = new Set(sm.exclude ?? [])
+        const urls = new Map((sm.paths ?? []).map((p) => [p, null]))
+        for (const [path, doc] of await publishedPages(await withSitemap(site), (t) => svc.listPublished(t))) {
+          if (doc.data?.seo?.noindex !== true && !urls.get(path)) urls.set(path, doc.publishedAt ?? null)
+        }
+        const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        const entries = [...urls].filter(([p]) => !exclude.has(p)).sort(([a], [b]) => (a === '/' ? -1 : b === '/' ? 1 : a.localeCompare(b)))
+          .map(([p, at]) => `  <url><loc>${esc(base + p)}</loc>${at ? `<lastmod>${new Date(at).toISOString().slice(0, 10)}</lastmod>` : ''}</url>`)
+        const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`
+        return { statusCode: 200, headers: { ...headers, ...cache, 'content-type': 'application/xml; charset=utf-8' }, body }
       }
 
       // Everything else edits, so it needs a member's login.

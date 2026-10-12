@@ -1,5 +1,6 @@
 {
   "site": "storyshaped",
+  "sitemap": { "aliases": { "/home": "/" } },
   "connections": [
     {"label": "Social links", "type": "siteSettings", "field": "socials", "detail": "Shown in the site footer."}
   ],

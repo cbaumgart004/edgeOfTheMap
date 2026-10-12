@@ -64,10 +64,10 @@ function setup({ member = true, site = SITE, media, monitors } = {}) {
     monitors,
     sanitize: (s) => (type, data) => sanitizeDocumentData(s, type, data, purify),
   })
-  const call = (method, path, { body, token = 'good', origin = ORIGIN, query } = {}) =>
+  const call = (method, path, { body, token = 'good', origin = ORIGIN, query, headers = {} } = {}) =>
     handle({ requestContext: { http: { method } }, rawPath: path, queryStringParameters: query,
-      headers: { origin, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body && JSON.stringify(body) })
-      .then((r) => ({ ...r, json: r.body ? JSON.parse(r.body) : null }))
+      headers: { ...(origin ? { origin } : {}), ...headers, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body && JSON.stringify(body) })
+      .then((r) => ({ ...r, json: r.body && /json/.test(r.headers?.['content-type'] ?? '') ? JSON.parse(r.body) : null }))
   return { call }
 }
 
@@ -158,6 +158,34 @@ describe('console API', () => {
     const r = await call('GET', `${base}/seo`, { token: null, origin: 'https://anywhere.example' })
     expect(r.headers['access-control-allow-origin']).toBe('*')
     expect(r.json.pages).toEqual({ [`/events/${created.slug}`]: { title: 'New moon circle in Lafayette', description: 'A monthly gathering.' } })
+  })
+
+  it('serves a sitemap of published pages and a robots.txt per host, closing previews', async () => {
+    const site = { ...SITE, allowed_origins: [ORIGIN, 'https://preview.spiritseedswellness.com'],
+      schema: { ...schema, sitemap: { aliases: { '/home': '/' }, paths: ['/about'], exclude: ['/secret'] } } }
+    const { call } = setup({ site })
+    const make = async (data) => {
+      const d = (await call('POST', `${base}/documents`, { body: { type: 'page', data } })).json
+      await call('POST', `${base}/documents/${d.id}/publish`, { body: { baseVersion: d.version } })
+    }
+    await make({ title: 'Home', blocks: [] })
+    await make({ title: 'Classes', blocks: [] })
+    await make({ title: 'Hidden', blocks: [], seo: { noindex: true } })
+    await make({ title: 'Secret', blocks: [] })
+    await call('POST', `${base}/documents`, { body: { type: 'page', data: { title: 'Draft', blocks: [] } } })
+    // As Amplify's rewrite sends it: no Origin, the site's host forwarded.
+    const get = (path, host) => call('GET', `${base}${path}`, { token: null, origin: null, headers: { 'x-forwarded-host': host } })
+    const sm = await get('/sitemap.xml', 'spiritseedswellness.com')
+    expect(sm.headers['content-type']).toMatch(/xml/)
+    const locs = [...sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+    expect(locs).toEqual([`${ORIGIN}/`, `${ORIGIN}/about`, `${ORIGIN}/classes`])
+    expect(sm.body).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/)
+    const robots = await get('/robots.txt', 'spiritseedswellness.com')
+    expect(robots.body).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`)
+    expect(robots.body).toContain('Disallow: /_edit/')
+    expect((await get('/robots.txt', 'preview.spiritseedswellness.com')).body).toBe('User-agent: *\nDisallow: /\n')
+    // A host that is not the site's own gets the first address.
+    expect((await get('/robots.txt', 'evil.example')).body).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`)
   })
 
   it('signs an upload into the site bucket and refuses other file types', async () => {

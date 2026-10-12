@@ -80,6 +80,15 @@ export function checkSchema(schema) {
     if (c?.field && !NAME.test(c.field)) errors.push(`connections.${c.label}: field must be a plain name`)
     if (c?.type && !types[c.type]) errors.push(`connections.${c.label}: unknown type "${c.type}"`)
   }
+  // Search engines (handler.js, /sitemap.xml and /seo): `aliases` maps a
+  // document's preview path to the address the site serves it at ("/home" to
+  // "/"); `paths` adds routes no document makes; `exclude` drops some.
+  const sm = schema.sitemap
+  if (sm != null) {
+    const isPath = (p) => typeof p === 'string' && p.startsWith('/')
+    if (sm.aliases && !Object.entries(sm.aliases).every(([a, b]) => isPath(a) && isPath(b))) errors.push('sitemap.aliases: each maps a path to a path, both starting with /')
+    for (const k of ['paths', 'exclude']) if (sm[k] && !(Array.isArray(sm[k]) && sm[k].every(isPath))) errors.push(`sitemap.${k}: a list of paths starting with /`)
+  }
   // Section templates the site ships ("Banner"), offered beside the owner's.
   for (const t of schema.templates ?? []) {
     if (!t?.name || !blocks[t.block?._type]) errors.push(`templates.${t?.name}: names no section type`)
@@ -553,4 +562,22 @@ export function withSeo(schema) {
     types[name] = hasOwnPage(t) && !(t.fields ?? []).some((f) => f.name === 'seo') ? { ...t, fields: [...(t.fields ?? []), SEO_FIELD] } : t
   }
   return { ...schema, types }
+}
+
+// Every published page's address as the site serves it, with its document:
+// the preview path through the schema's sitemap aliases, without trailing
+// slash, first document per address. For /seo and /sitemap.xml.
+export async function publishedPages(schema, listPublished) {
+  const aliases = schema.sitemap?.aliases ?? {}
+  const pages = new Map()
+  for (const [name, type] of Object.entries(schema.types).filter(([, t]) => hasOwnPage(t))) {
+    for (const doc of await listPublished(name)) {
+      let path = previewPathFor(type, doc)
+      if (!path) continue
+      path = path.replace(/(.)\/+$/, '$1')
+      path = aliases[path] ?? path
+      if (!pages.has(path)) pages.set(path, doc)
+    }
+  }
+  return pages
 }
