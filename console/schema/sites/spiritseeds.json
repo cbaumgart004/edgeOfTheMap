@@ -93,6 +93,9 @@
             { "value": "Assistant", "label": "Assistant (light sans)" } ] },
         { "name": "textSize", "kind": "number", "label": "Text size (%)", "slider": true, "min": 85, "max": 125, "step": 5, "default": 100,
           "help": "Scales all the site's text together. 100 is the original size." },
+        { "name": "phonePadding", "kind": "select", "label": "Space inside sections on a phone", "default": "tight",
+          "help": "The room between a section's edge and its contents on a narrow screen. A computer keeps its own.", "options": [
+          { "value": "tight", "label": "Tight" }, { "value": "comfortable", "label": "Comfortable" }, { "value": "roomy", "label": "Roomy (as on a computer)" } ] },
         { "name": "navCtaLabel", "kind": "text", "label": "Menu button text", "help": "Shown in the menu bar on the Editorial, Sanctuary and Immersive styles. Blank hides it." },
         { "name": "navCtaUrl", "kind": "url", "label": "Menu button link" },
         { "name": "contactEmail", "kind": "text", "label": "Contact email" },
@@ -216,6 +219,9 @@
         { "name": "taglineLine", "kind": "textarea", "label": "Tagline line", "maxLength": 240, "help": "Blank: the artwork’s line, ending “Lasting Health”. Longer text wraps." },
         { "name": "taglineSize", "kind": "number", "label": "Tagline text size", "integer": true, "min": 50, "max": 200, "step": 5, "slider": true, "unit": "%", "sliderDefault": 100,
           "help": "Grows or shrinks all the tagline’s lettering together. 100% is the artwork’s." },
+        { "name": "taglinePhone", "kind": "select", "label": "Tagline on a phone", "default": "stacked",
+          "help": "On a narrow screen the artwork is small, and its lettering with it. Stacked sets the heading and line as readable text above the artwork.", "options": [
+          { "value": "stacked", "label": "Words above the artwork, readable size" }, { "value": "art", "label": "Words on the artwork, as on a computer" } ] },
         { "name": "taglineHeadingFont", "kind": "select", "label": "Tagline heading font", "blankLabel": "The site’s heading font", "preview": "font", "previewDefault": "heading", "previewText": "Your Integrative Healer;",
           "help": "Blank follows the site’s heading font (Euphoria Script, the artwork’s, unless the look changes it). Pick a role to follow that, or a font to fix it.", "options": [
           { "value": "subheading", "label": "The site’s subheading font" }, { "value": "body", "label": "The site’s body font" },
