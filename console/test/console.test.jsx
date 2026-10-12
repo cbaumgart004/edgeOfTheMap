@@ -274,6 +274,39 @@ describe('console in a page', () => {
     await act(async () => root.unmount())
   })
 
+  it('moves the open editor by its header, the faded preview too, and sizes its height', async () => {
+    localStorage.clear()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => root.render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await tick()
+    const sheet = host.querySelector('.eotm-sheet')
+    const fire = (el, type, clientX, clientY) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }))
+    // Preview current changes leaves only the header; it still drags the editor.
+    await act(async () => byText(host, 'button', 'Preview current changes').click())
+    expect(sheet.classList.contains('is-peek')).toBe(true)
+    const head = host.querySelector('.eotm-head')
+    // A browser ends a drag with a click where it ended, which is swallowed.
+    await act(async () => { fire(head, 'pointerdown', 10, 10); fire(head, 'pointermove', 110, 210); fire(head, 'pointerup', 110, 210); head.click() })
+    expect(sheet.classList.contains('is-loose')).toBe(true)
+    expect(JSON.parse(localStorage.getItem('eotm:panel-pos'))).toEqual({ x: 100, y: 200 })
+    // Its buttons stay buttons: a press on one is not a drag.
+    await act(async () => byText(host, 'button', 'Back to editing').click())
+    expect(sheet.classList.contains('is-peek')).toBe(false)
+    // Moved, its top stays put, so the bottom edge sizes it; double-click forgets.
+    const edge = host.querySelector('.eotm-resize.is-bottom')
+    await act(async () => { fire(edge, 'pointerdown', 0, 500); fire(edge, 'pointermove', 0, 400); fire(edge, 'pointerup', 0, 400) })
+    expect(sheet.style.height).toBe('140px') // 0 tall in jsdom, so the least it can be
+    expect(localStorage.getItem('eotm:panel-h')).toBe('140')
+    await act(async () => { fire(edge, 'pointerdown', 0, 400); fire(edge, 'pointermove', 0, 700); fire(edge, 'pointerup', 0, 700) })
+    expect(sheet.style.height).toBe('300px')
+    await act(async () => edge.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })))
+    expect(sheet.style.height).toBe('')
+    expect(localStorage.getItem('eotm:panel-h')).toBeNull()
+    await act(async () => root.unmount())
+  })
+
   it('drags the tucked tab up and down its edge without bringing the bar back', async () => {
     localStorage.clear()
     localStorage.setItem('eotm:bar-tuck', 'left')

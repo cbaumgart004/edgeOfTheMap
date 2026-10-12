@@ -138,6 +138,14 @@ const readPanelPos = () => {
   try { return JSON.parse(localStorage.getItem(PANEL_POS)) } catch { return null }
 }
 
+// The open editor's height as the owner sized it, in px, or null for its own
+// (half, full, or the whole height docked right). Kept in this browser.
+const PANEL_H = 'eotm:panel-h'
+const readPanelH = () => {
+  try { const h = Number(localStorage.getItem(PANEL_H)); return h > 0 ? h : null } catch { return null }
+}
+const clampH = (h) => Math.max(140, Math.min(innerHeight - 8, h))
+
 // Where the owner left the minimised editor, kept in this browser for every
 // site: { x, y } of its top-left corner, or null for the default spot along
 // the bottom.
@@ -189,6 +197,36 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     setPanelPos(null)
     try { localStorage.removeItem(PANEL_POS) } catch { /* private mode */ }
   }
+  // The open panel's height: its sizing edge drags it (the bottom edge where
+  // the top stays put, docked right or moved; the top edge of a phone's bottom
+  // sheet), a double-click puts its own back, and ▴ ▾ choose half or full again.
+  const [panelH, setPanelH] = useState(readPanelH)
+  const sizing = useRef(null)
+  const forgetH = () => {
+    setPanelH(null)
+    try { localStorage.removeItem(PANEL_H) } catch { /* private mode */ }
+  }
+  const lastSize = useRef(size)
+  useEffect(() => {
+    if (lastSize.current !== size && lastSize.current !== 'bar' && size !== 'bar') forgetH()
+    lastSize.current = size
+  }, [size])
+  const onSizeDown = (e) => {
+    e.stopPropagation()
+    sizing.current = { y: e.clientY, h: sheet.current.getBoundingClientRect().height }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  const onSizeMove = (e, edge) => {
+    const d = sizing.current
+    if (!d) return
+    setPanelH(clampH(d.h + (edge === 'bottom' ? 1 : -1) * (e.clientY - d.y)))
+  }
+  const onSizeUp = (e, edge) => {
+    const d = sizing.current
+    sizing.current = null
+    if (!d) return
+    try { localStorage.setItem(PANEL_H, String(clampH(d.h + (edge === 'bottom' ? 1 : -1) * (e.clientY - d.y)))) } catch { /* private mode */ }
+  }
   // Minimised, the editor floats: drag it by its grip or its title anywhere on
   // the page, so it is never parked over the part being looked at. A tap on
   // the grip opens it. On a phone ‹ and › tuck it against that edge, leaving a
@@ -234,10 +272,14 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
 
   const onDown = (e) => {
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
-    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, a, input, select')) return
+    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, .eotm-resize, a, input, select')) return
+    // Open, the grip and the header's empty space drag it (the faded preview
+    // bar too); its title, buttons and form do what they do.
+    if (!bar && e.target.closest?.('.eotm-scroll, button, label, textarea')) return
     const rect = sheet.current.getBoundingClientRect()
     drag.current = { x: e.clientX, y: e.clientY, size, left: rect.left, top: rect.top, moved: false, grip: !!e.target.closest?.('.eotm-grip'), panel: !bar }
-    e.currentTarget.setPointerCapture?.(e.pointerId)
+    // In the faded preview only the header takes the pointer, so it holds the drag.
+    ;(bar ? e.currentTarget : e.target.closest?.('.eotm-head, .eotm-grip') ?? e.currentTarget).setPointerCapture?.(e.pointerId)
   }
   const onMove = (e) => {
     const d = drag.current
@@ -261,11 +303,14 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
       return
     }
     if (d.panel && d.moved) {
+      dragged.current = true // the click that ends a drag is not a tap
       try { localStorage.setItem(PANEL_POS, JSON.stringify(clampPos({ x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y }, sheet.current))) } catch { /* private mode */ }
     }
   }
   const floating = bar && pos
   const loose = !bar && panelPos
+  const sizeEdge = loose || wide ? 'bottom' : 'top'
+  const height = !bar && panelH ? { height: clampH(panelH) } : null
   const tabTop = tabY ?? pos?.y
   if (bar && !wide && tuck) return (
     <button type="button" className={`eotm-tab is-${tuck}`}
@@ -277,14 +322,20 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
       <span aria-hidden="true">{tuck === 'left' ? '›' : '‹'}</span>
     </button>
   )
-  // Minimised, the whole bar drags (not its buttons); open, only the grip.
+  // The whole bar drags (not its buttons); open, the grip and the header.
   const dragOn = { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp }
   return (
-    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}${loose ? ' is-loose' : ''}`}
-      style={floating ? { ...style, left: pos.x, top: pos.y } : loose ? { ...style, left: panelPos.x, top: panelPos.y } : style} aria-label="Site editor"
-      {...(bar ? dragOn : null)}
+    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}${loose ? ' is-loose' : ''}${height ? ' is-sized' : ''}`}
+      style={{ ...(floating ? { ...style, left: pos.x, top: pos.y } : loose ? { ...style, left: panelPos.x, top: panelPos.y } : style), ...height }} aria-label="Site editor"
+      {...dragOn}
       onClickCapture={(e) => { if (dragged.current) { dragged.current = false; e.preventDefault(); e.stopPropagation() } }}>
-      <div className="eotm-grip" {...(bar ? null : dragOn)} title={bar ? 'Drag to move the editor; tap to open it' : 'Drag to move the editor anywhere'}>
+      {!bar && !peek && (
+        <div className={`eotm-resize is-${sizeEdge}`} role="separator" aria-orientation="horizontal" aria-label="Editor height"
+          title="Drag to make the editor taller or shorter; double-click for its own height"
+          onPointerDown={onSizeDown} onPointerMove={(e) => onSizeMove(e, sizeEdge)} onPointerUp={(e) => onSizeUp(e, sizeEdge)}
+          onPointerCancel={() => { sizing.current = null }} onDoubleClick={forgetH} />
+      )}
+      <div className="eotm-grip" title={bar ? 'Drag to move the editor; tap to open it' : 'Drag to move the editor anywhere'}>
         {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the left edge" title="Tuck to the left" onClick={() => setTuck('left')}>‹</button>}
         <span aria-hidden="true" />
         {loose && <button type="button" className="eotm-dock" onClick={dock} title="Put the editor back in its place">Dock</button>}
