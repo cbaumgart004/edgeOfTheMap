@@ -281,6 +281,18 @@
     .status-body h3 { margin: 0 0 4px; font-size: 14px; }
     .status-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
     .status-body li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+    .status-body li > span:first-child { overflow-wrap: anywhere; }
+    .periods { display: flex; gap: 12px; }
+    .periods .is-on { color: var(--ink); font-weight: 600; text-decoration: none; }
+    .figures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .figures div { display: grid; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+    .figures strong { font-size: 22px; line-height: 1.2; }
+    .traffic-chart { width: 100%; height: 80px; display: block; }
+    .traffic-chart .views, .key.views { fill: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+    .traffic-chart .visitors, .key.visitors { fill: var(--accent); background: var(--accent); }
+    .legend { margin: 0; font-size: 12px; }
+    .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 6px; vertical-align: -1px; }
+    .key:first-child { margin-left: 0; }
     .dot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
     .dot::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--dot, #9ca3af); }
     .dot.is-ok { --dot: #16a34a; } .dot.is-warn { --dot: #d97706; } .dot.is-bad { --dot: #dc2626; }

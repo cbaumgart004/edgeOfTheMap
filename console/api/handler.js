@@ -12,6 +12,7 @@ import { createPgRepo } from './repo-pg.js'
 import { checkSchema } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
+import { createTraffic } from './traffic.js'
 import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -71,6 +72,7 @@ export function createHandler(deps) {
   const resetTries = new Map() // ip -> timestamps, per warm container
   const helpTries = new Map()
   const requests = createRequests(deps)
+  const traffic = createTraffic({ control: deps.control })
   const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => siteCache.delete(slug) })
 
   function allow(tries, ip, now = Date.now()) {
@@ -281,6 +283,22 @@ export function createHandler(deps) {
         return json(200, docs, { ...headers, 'cache-control': 'public, max-age=30, stale-while-revalidate=300' })
       }
 
+      // A page view from the loader's beacon (api/traffic.js). Only from one of
+      // the site's own addresses, which the origin check above has confirmed.
+      // Never fails the page: a problem is logged and the view goes uncounted.
+      if (method === 'POST' && rest === '/hit') {
+        if (origin) {
+          try {
+            const h = event.headers ?? {}
+            const ip = String(h['x-forwarded-for'] ?? '').split(',')[0].trim() || event.requestContext?.http?.sourceIp || 'unknown'
+            await traffic.record(site, parseBody(event), { ip, userAgent: h['user-agent'] ?? event.requestContext?.http?.userAgent })
+          } catch (err) {
+            console.warn('[console-api] page view not counted', err?.message)
+          }
+        }
+        return { statusCode: 204, headers: { ...headers, 'cache-control': 'no-store' }, body: '' }
+      }
+
       // Everything else edits, so it needs a member's login.
       // Never cacheable: CloudFront sits in front of this API and keys on the path,
       // so a cached draft list would be served to the next caller.
@@ -349,6 +367,8 @@ export function createHandler(deps) {
         })
         return json(200, { origins, connections }, headers)
       }
+      // Visitors over the last 30 days (or ?days=), for the admin page's Visitors fold.
+      if (method === 'GET' && rest === '/traffic') return json(200, await traffic.report(site, query.days ?? 30), headers)
       // "Request a change" from the editor on the site itself.
       if (method === 'POST' && rest === '/requests') return json(201, await requests.submit(site, user, parseBody(event)), headers)
       const svc = await serviceFor(site)

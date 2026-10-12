@@ -157,3 +157,28 @@ addEventListener('keydown', (e) => {
     open()
   }
 })
+
+// Visitors (api/traffic.js): one beacon per page view, including a client
+// router's pushState, with nothing kept in the browser. The owner's own visits
+// (signed in, or editing) are not counted, nor the demo's.
+let lastPath = null
+function pageView() {
+  if (cfg.local || !cfg.site || signedIn() || bridge.editing || !navigator.sendBeacon) return
+  if (location.pathname === lastPath) return
+  const first = lastPath === null
+  lastPath = location.pathname
+  try {
+    navigator.sendBeacon(`${cfg.apiBase}/api/sites/${cfg.site}/hit`, JSON.stringify({
+      path: location.pathname, referrer: first ? document.referrer : '', width: innerWidth,
+    }))
+  } catch { /* never in the visitor's way */ }
+}
+const pushState = history.pushState
+history.pushState = function (...args) {
+  const r = pushState.apply(this, args)
+  pageView()
+  return r
+}
+addEventListener('popstate', pageView)
+if (document.readyState === 'loading') addEventListener('DOMContentLoaded', pageView, { once: true })
+else pageView()

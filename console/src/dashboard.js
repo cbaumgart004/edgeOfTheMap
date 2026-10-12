@@ -117,7 +117,7 @@ async function loadSites() {
   $('#sites').innerHTML = data.sites.length
     ? data.sites.map((s) => `<li><a class="site" data-site="${esc(s.slug)}" href="${esc(s.url)}/?edit">${logo(s)}<div><strong>${esc(s.name)}</strong><span>${esc(s.url.replace(/^https:\/\//, ''))} · ${esc(s.role)}</span></div></a>${
       // A site with a preview (or a second domain): open that one instead.
-      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}<details class="status" data-status="${esc(s.slug)}"><summary>Changes and connections</summary><div class="status-body"><p class="meta">Loading…</p></div></details></li>`).join('')
+      (s.origins ?? []).length > 1 ? `<p class="meta alts">Also open: ${s.origins.slice(1).map((o) => `<button type="button" class="link" data-site="${esc(s.slug)}" data-origin="${esc(o)}">${esc(o.replace(/^https:\/\//, ''))}</button>`).join(' · ')}</p>` : ''}<details class="status" data-status="${esc(s.slug)}"><summary>Changes and connections</summary><div class="status-body"><p class="meta">Loading…</p></div></details><details class="status traffic" data-traffic="${esc(s.slug)}"><summary>Visitors</summary><div class="status-body"><p class="meta">Loading…</p></div></details></li>`).join('')
     : '<li class="empty">No sites yet. Ask Edge of the Map to add you to one.</li>'
   // ?site=<slug> (the editor's settings button): that site's status, open.
   const asked = new URLSearchParams(location.search).get('site')
@@ -667,8 +667,40 @@ async function loadStatus(box) {
     body.innerHTML = `<p class="meta">Could not load this: ${esc(err.message)}</p>`
   }
 }
+// Visitors to a site (api/traffic.js), read when its fold is opened: totals for
+// the period, a bar a day, and the top pages, referrers and devices.
+const num = (n) => n.toLocaleString()
+async function loadTraffic(box, days = Number(box.dataset.days) || 30) {
+  box.dataset.days = days
+  const body = box.querySelector('.status-body')
+  try {
+    const t = await api('GET', `/api/sites/${box.dataset.traffic}/traffic?days=${days}`)
+    const peak = Math.max(1, ...t.daily.map((d) => d.views))
+    const w = 100 / t.daily.length
+    const bars = t.daily.map((d, i) => `<g><title>${esc(d.day)}: ${num(d.visitors)} visitor${d.visitors === 1 ? '' : 's'}, ${num(d.views)} view${d.views === 1 ? '' : 's'}</title>
+      <rect x="${i * w + w * 0.12}" y="${40 - (d.views / peak) * 40}" width="${w * 0.76}" height="${(d.views / peak) * 40}" class="views" />
+      <rect x="${i * w + w * 0.12}" y="${40 - (d.visitors / peak) * 40}" width="${w * 0.76}" height="${(d.visitors / peak) * 40}" class="visitors" /></g>`).join('')
+    const list = (title, rows, key, empty) => `<h3>${title}</h3><ul>${rows.length
+      ? rows.map((r) => `<li><span>${esc(r[key])}</span><span class="meta">${num(r.views)}</span></li>`).join('')
+      : `<li class="meta">${empty}</li>`}</ul>`
+    body.innerHTML = `<div class="periods" role="group" aria-label="Period">${[7, 30, 90].map((d) => `<button type="button" class="link${d === days ? ' is-on' : ''}" data-days="${d}" aria-pressed="${d === days}">${d} days</button>`).join('')}</div>
+      <div class="figures"><div><strong>${num(t.visitors)}</strong><span class="meta">visitors</span></div><div><strong>${num(t.views)}</strong><span class="meta">page views</span></div></div>
+      <svg class="traffic-chart" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="Page views and visitors per day, last ${days} days">${bars}</svg>
+      <p class="meta legend"><span class="key views"></span>page views <span class="key visitors"></span>visitors · counted without cookies; your own visits while signed in are left out</p>
+      ${list('Top pages', t.pages, 'path', 'No visits yet.')}
+      ${list('Came from', t.referrers, 'referrer', 'No other sites yet: visitors typed the address or used a bookmark.')}
+      ${list('Devices', t.devices, 'device', 'No visits yet.')}`
+  } catch (err) {
+    body.innerHTML = `<p class="meta">Could not load this: ${esc(err.message)}</p>`
+  }
+}
+$('#sites').addEventListener('click', (e) => {
+  const b = e.target.closest?.('details.traffic [data-days]')
+  if (b) loadTraffic(b.closest('details.traffic'), Number(b.dataset.days))
+})
 $('#sites').addEventListener('toggle', (e) => {
   const box = e.target
+  if (box.matches?.('details.traffic') && box.open && !box.dataset.loaded) { box.dataset.loaded = '1'; return loadTraffic(box) }
   if (box.matches?.('details.status') && box.open && !box.dataset.loaded) { box.dataset.loaded = '1'; loadStatus(box) }
 }, true)
 

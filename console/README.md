@@ -268,6 +268,17 @@ no login.
   card (`/?manage#ticket-<id>`). "Test a new-ticket alert" pushes one to your own devices, saving
   nothing. **Unverified:** email to a requester while SES is in the sandbox; it fails for any
   unverified address and is logged, the push still goes.
+- **Visitors** (`api/traffic.js`, control migration `010`): the loader sends a beacon per page view
+  (`POST /api/sites/<site>/hit`, its own addresses only), skipping a browser holding an editor token, so
+  every site on the loader is counted with no change to the site. No cookies: a visitor is a hash of the
+  day's salt, the site, the address and the browser, and each salt is deleted after a day. Members see
+  it under "Visitors" on the admin page (`GET /api/sites/<site>/traffic?days=`); hits older than 400
+  days are deleted. **Unverified:** that the Amplify rewrite passes the visitor's address in
+  `X-Forwarded-For`; if it does not, every visitor on a day counts as one, and the fallback is the
+  rewrite's own address.
+- **Update all editors:** "Update all to <version>" above Sites on the Manage page moves every site
+  that is behind onto the newest release (`POST /api/manage/sites/update-editors`). Each site's schema
+  stays as saved; a site's own Save still reloads it.
 - **Folding on the Manage page:** Monitors and each site's card fold to one line (the site's name,
   member count and editor version). Monitors opens by itself when one is down or none is connected.
   Each ticket folds to its state, title (the request's first line, there being no title field), site
