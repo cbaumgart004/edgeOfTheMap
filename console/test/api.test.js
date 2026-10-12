@@ -144,6 +144,22 @@ describe('console API', () => {
     expect(pub[0].data.location).toBe('Lafayette')
   })
 
+  it('gives every page type Search and sharing, and lists what is published by path', async () => {
+    const { call } = setup()
+    const boot = (await call('GET', `${base}/boot`, { token: null })).json
+    expect(boot.schema.types.event.fields.at(-1).name).toBe('seo')
+    expect(boot.schema.types.page.fields.at(-1).name).toBe('seo')
+    expect(boot.schema.types.banner.fields.some((f) => f.name === 'seo')).toBe(false) // no page of its own
+    const seo = { title: 'New moon circle in Lafayette', description: '  A monthly gathering.  ', noindex: false }
+    const created = (await call('POST', `${base}/documents`, { body: { type: 'event', data: { ...event, seo } } })).json
+    const quiet = (await call('POST', `${base}/documents`, { body: { type: 'event', data: { ...event, title: 'Quiet' } } })).json
+    await call('POST', `${base}/documents/${created.id}/publish`, { body: { baseVersion: created.version } })
+    await call('POST', `${base}/documents/${quiet.id}/publish`, { body: { baseVersion: quiet.version } })
+    const r = await call('GET', `${base}/seo`, { token: null, origin: 'https://anywhere.example' })
+    expect(r.headers['access-control-allow-origin']).toBe('*')
+    expect(r.json.pages).toEqual({ [`/events/${created.slug}`]: { title: 'New moon circle in Lafayette', description: 'A monthly gathering.' } })
+  })
+
   it('signs an upload into the site bucket and refuses other file types', async () => {
     const { call } = setup()
     const ok = await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })

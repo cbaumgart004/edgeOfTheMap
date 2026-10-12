@@ -276,6 +276,13 @@ no login.
   days are deleted. **Unverified:** that the Amplify rewrite passes the visitor's address in
   `X-Forwarded-For`; if it does not, every visitor on a day counts as one, and the fallback is the
   rewrite's own address.
+- **Search and sharing:** every type whose documents are pages of their own (a `previewPath` naming
+  the document) gets a "Search and sharing" group when the site's schema loads (`withSeo` in
+  `schema/schema.js`): title, description, share image, hide from search. `GET /api/sites/<site>/seo`
+  (public) lists the published values by path; the loader fetches it once per visit and sets the
+  title, description, Open Graph and robots tags on each navigation, restoring the site's own on a page
+  without them. No site change is needed. Crawlers that do not run JavaScript (link previews) still see
+  only the site's HTML; that needs pages rendered at publish.
 - **Update all editors:** "Update all to <version>" above Sites on the Manage page moves every site
   that is behind onto the newest release (`POST /api/manage/sites/update-editors`). Each site's schema
   stays as saved; a site's own Save still reloads it.

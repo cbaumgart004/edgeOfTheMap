@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
-import { checkSchema } from '../schema/schema.js'
+import { checkSchema, withSeo, hasOwnPage, previewPathFor } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
@@ -91,7 +91,7 @@ export function createHandler(deps) {
     if (site) {
       // The owner's own types over the shipped schema (schema/custom.js).
       site.base_schema = site.schema
-      site.schema = mergeCustom(site.schema, site.custom_schema)
+      site.schema = withSeo(mergeCustom(site.schema, site.custom_schema))
       const problems = checkSchema(site.schema)
       if (problems.length) throw new ServiceError(500, `Site schema is invalid: ${problems[0]}`)
     }
@@ -263,7 +263,7 @@ export function createHandler(deps) {
       // admin page (same origin, so no header at all) stopped the site's loader
       // from opening the editor until it expired. They carry no credentials
       // and anyone can read them without a browser, so * gives nothing away.
-      const isPublic = method === 'GET' && (rest === '/boot' || rest.startsWith('/public/'))
+      const isPublic = method === 'GET' && (rest === '/boot' || rest === '/seo' || rest.startsWith('/public/'))
       headers = isPublic ? { 'access-control-allow-origin': '*' } : cors(origin, site)
       // A browser request from anywhere else gets no CORS headers, so the
       // browser refuses the response; refusing here as well saves the work.
@@ -297,6 +297,25 @@ export function createHandler(deps) {
           }
         }
         return { statusCode: 204, headers: { ...headers, 'cache-control': 'no-store' }, body: '' }
+      }
+
+      // Public: each published page's Search and sharing values by its path,
+      // for the loader to put in the head (schema.js, SEO_FIELD). Only pages
+      // with something set are listed.
+      if (method === 'GET' && rest === '/seo') {
+        const svc = await serviceFor(site)
+        const pages = {}
+        for (const [name, type] of Object.entries(site.schema.types).filter(([, t]) => hasOwnPage(t))) {
+          for (const doc of await svc.listPublished(name)) {
+            const s = doc.data?.seo ?? {}
+            const path = previewPathFor(type, doc)
+            const entry = Object.fromEntries(Object.entries({
+              title: s.title?.trim(), description: s.description?.trim(), image: s.image?.src, noindex: s.noindex === true || undefined,
+            }).filter(([, v]) => v))
+            if (path && Object.keys(entry).length) pages[path.replace(/(.)\/+$/, '$1')] = entry
+          }
+        }
+        return json(200, { pages }, { ...headers, 'cache-control': 'public, max-age=60, stale-while-revalidate=300' })
       }
 
       // Everything else edits, so it needs a member's login.

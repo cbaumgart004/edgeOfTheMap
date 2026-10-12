@@ -523,3 +523,34 @@ export function setItemField(data, itemId, field, value) {
   const out = walk(data)
   return found ? out : data
 }
+
+export function previewPathFor(type, doc) {
+  const template = type?.previewPath
+  if (!template) return null
+  // Slashes survive, so a template of "{path}" can name any page, "/" included.
+  return template.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(key === 'slug' ? doc.slug ?? '' : doc.data?.[key] ?? '').replace(/%2F/gi, '/'))
+}
+
+// Search and sharing: every type whose documents are pages of their own (a
+// previewPath naming the document, "/{slug}" or "{path}") gets this group,
+// so each site has it without a schema change. The loader puts the published
+// values in the page's head (src/loader.js, GET /api/sites/<site>/seo).
+export const SEO_FIELD = {
+  name: 'seo', kind: 'group', label: 'Search and sharing',
+  help: 'How this page appears in search results and when its link is shared. Blank uses the site’s own.',
+  fields: [
+    { name: 'title', kind: 'text', label: 'Title in search results', maxLength: 70, help: 'Up to about 60 characters; the words people search for first.' },
+    { name: 'description', kind: 'textarea', label: 'Description', maxLength: 200, help: 'One or two sentences, about 150 characters, shown under the title.' },
+    { name: 'image', kind: 'image', label: 'Image when shared', help: 'Shown when the link is posted on social media or in a message. Wide works best (1200 × 630).' },
+    { name: 'noindex', kind: 'boolean', label: 'Hide this page from search engines' },
+  ],
+}
+export const hasOwnPage = (t) => !t.singleton && /\{\w+\}/.test(t.previewPath ?? '')
+export function withSeo(schema) {
+  if (!schema?.types) return schema
+  const types = {}
+  for (const [name, t] of Object.entries(schema.types)) {
+    types[name] = hasOwnPage(t) && !(t.fields ?? []).some((f) => f.name === 'seo') ? { ...t, fields: [...(t.fields ?? []), SEO_FIELD] } : t
+  }
+  return { ...schema, types }
+}

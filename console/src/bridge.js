@@ -122,9 +122,5 @@ export function createBridge() {
   }
 }
 
-export function previewPathFor(type, doc) {
-  const template = type?.previewPath
-  if (!template) return null
-  // Slashes survive, so a template of "{path}" can name any page, "/" included.
-  return template.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(key === 'slug' ? doc.slug ?? '' : doc.data?.[key] ?? '').replace(/%2F/gi, '/'))
-}
+// In schema.js since the API needs it too (the /seo map).
+export { previewPathFor } from '../schema/schema.js'

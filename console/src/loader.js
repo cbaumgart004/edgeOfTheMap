@@ -173,12 +173,65 @@ function pageView() {
     }))
   } catch { /* never in the visitor's way */ }
 }
+
+// Search and sharing (schema.js, SEO_FIELD): each published page's title,
+// description, share image and noindex, fetched once per visit and put in the
+// head on every navigation. Only what the owner set is touched, and it is put
+// back when the visitor moves to a page without it. Search engines that run
+// JavaScript read it; link previews, which do not, still see the site's HTML.
+let seoPages = null
+const ownTitle = { value: null }
+function headMeta(attr, key, value) {
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`)
+  if (!value) {
+    if (el?.dataset.eotmSeo === 'added') el.remove()
+    else if (el && 'eotmOrig' in el.dataset) { el.content = el.dataset.eotmOrig; delete el.dataset.eotmOrig }
+    return
+  }
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attr, key)
+    el.dataset.eotmSeo = 'added'
+    document.head.append(el)
+  } else if (el.dataset.eotmSeo !== 'added' && !('eotmOrig' in el.dataset)) el.dataset.eotmOrig = el.content
+  el.content = value
+}
+function applySeo() {
+  if (!seoPages || bridge.editing) return
+  const path = location.pathname.replace(/(.)\/+$/, '$1')
+  const p = seoPages[path] ?? {}
+  if (p.title) {
+    ownTitle.value ??= document.title
+    document.title = p.title
+  } else if (ownTitle.value !== null) {
+    document.title = ownTitle.value
+    ownTitle.value = null
+  }
+  headMeta('name', 'description', p.description)
+  headMeta('property', 'og:title', p.title)
+  headMeta('property', 'og:description', p.description)
+  headMeta('property', 'og:image', p.image)
+  headMeta('name', 'twitter:card', p.image ? 'summary_large_image' : null)
+  headMeta('name', 'robots', p.noindex ? 'noindex' : null)
+}
+if (!cfg.local && cfg.site) {
+  fetch(`${cfg.apiBase}/api/sites/${cfg.site}/seo`).then((r) => (r.ok ? r.json() : null))
+    .then((r) => { seoPages = r?.pages ?? null; applySeo() }).catch(() => {})
+}
+
+// A client router sets its own title after it navigates; apply again after
+// it has, so the owner's title wins on a page that has one.
+function navigated() {
+  pageView()
+  applySeo()
+  setTimeout(applySeo, 300)
+}
 const pushState = history.pushState
 history.pushState = function (...args) {
   const r = pushState.apply(this, args)
-  pageView()
+  navigated()
   return r
 }
-addEventListener('popstate', pageView)
+addEventListener('popstate', navigated)
 if (document.readyState === 'loading') addEventListener('DOMContentLoaded', pageView, { once: true })
 else pageView()
