@@ -496,6 +496,9 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 .eotm-resize:hover::after, .eotm-resize:active::after { opacity: 1; }
 .eotm-sheet.is-sized { transition: none; }
 .eotm-sheet.is-wide.is-sized:not(.is-loose) { border-bottom: 1px solid var(--eotm-line); border-radius: 0 0 0 12px; }
+/* The top edge lies over the grip, which is its handle; it draws no second bar. */
+.eotm-resize.is-top::after { display: none; }
+.eotm-sheet.is-wide.is-sized:not(.is-loose)[style*="top"] { border-top: 1px solid var(--eotm-line); border-radius: 12px 0 0 12px; }
 .eotm-head { cursor: grab; touch-action: none; } /* a finger drags it rather than scrolling the page */
 .eotm-head:active { cursor: grabbing; }
 .eotm-head :is(button, a, input, select, label) { cursor: pointer; }

@@ -301,6 +301,10 @@ describe('console in a page', () => {
     expect(localStorage.getItem('eotm:panel-h')).toBe('140')
     await act(async () => { fire(edge, 'pointerdown', 0, 400); fire(edge, 'pointermove', 0, 700); fire(edge, 'pointerup', 0, 700) })
     expect(sheet.style.height).toBe('300px')
+    // Its top edge shrinks it from the top: the bottom stays where it was.
+    const top = host.querySelector('.eotm-resize.is-top')
+    await act(async () => { fire(top, 'pointerdown', 0, 0); fire(top, 'pointermove', 0, 0); fire(top, 'pointerup', 0, 0) })
+    expect(top).toBeTruthy()
     await act(async () => edge.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })))
     expect(sheet.style.height).toBe('')
     expect(localStorage.getItem('eotm:panel-h')).toBeNull()
