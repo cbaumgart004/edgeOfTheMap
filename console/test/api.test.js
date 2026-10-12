@@ -160,7 +160,7 @@ describe('console API', () => {
     expect(r.headers['access-control-allow-origin']).toBe('*')
     expect(r.json.pages[`/events/${created.slug}`]).toEqual({ title: 'New moon circle in Lafayette', description: 'A monthly gathering.' })
     // Without the owner's values: the page's own title with the site's name, and its first words.
-    expect(r.json.pages[`/events/${quiet.slug}`]).toEqual({ title: 'Quiet | Spirit Seeds', description: 'Quiet Join us here Book' })
+    expect(r.json.pages[`/events/${quiet.slug}`]).toEqual({ title: 'Quiet | Spirit Seeds', description: 'Join us here' })
   })
 
   it('pre-renders a published page into the site’s own index.html, and leaves the rest as it is', async () => {

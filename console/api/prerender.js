@@ -9,7 +9,12 @@
 import { publishedPages } from '../schema/schema.js'
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const text = (html) => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+// Rich text's plain words: tags out, entities read back to their characters
+// (the head escapes them again once).
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const text = (html) => String(html).replace(/<[^>]*>/g, ' ')
+  .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] === '#' ? String.fromCodePoint(parseInt(e[1] === 'x' || e[1] === 'X' ? e.slice(2) : e.slice(1), e[1] === 'x' || e[1] === 'X' ? 16 : 10)) : ENTITIES[e.toLowerCase()] ?? m))
+  .replace(/\s+/g, ' ').trim()
 const absolute = (src, base) => { try { return new URL(src, `${base}/`).href } catch { return null } }
 
 // A document's words and pictures, walked through its schema: headings and text
@@ -22,14 +27,16 @@ export function snapshot(schema, type, data) {
   const walk = (fields, value, depth) => {
     for (const f of fields ?? []) {
       const v = value?.[f.name]
-      if (v == null || v === '' || f.name === 'seo') continue
+      // A menu label or a button's words name something else; a link carries them.
+      if (v == null || v === '' || f.name === 'seo' || /^nav|Label$/.test(f.name)) continue
       if (f.kind === 'text' || f.kind === 'textarea') {
         const tag = depth === 0 && f.name === (schema.types[type]?.titleField ?? 'title') ? 'h1' : /title|heading|name/i.test(f.name) ? 'h2' : 'p'
         out.push(`<${tag}>${esc(v)}</${tag}>`)
       } else if (f.kind === 'richtext') out.push(String(v))
       else if (f.kind === 'image' && v.src) { images.push(v); out.push(`<img src="${esc(v.src)}" alt="${esc(v.alt ?? '')}">`) }
-      else if (f.kind === 'photos' && Array.isArray(v)) for (const p of v) if (p?.src) { images.push(p); out.push(`<img src="${esc(p.src)}" alt="${esc(p.alt ?? '')}">`) }
-      else if (f.kind === 'group') walk(f.fields, v, depth + 1)
+      else if (f.kind === 'photos' && Array.isArray(v)) {
+        for (const p of v) if (p?.src) { images.push(p); out.push(`<img src="${esc(p.src)}" alt="${esc(p.alt ?? '')}">`) }
+      } else if (f.kind === 'group') walk(f.fields, v, depth + 1)
       else if (f.kind === 'list' && Array.isArray(v)) {
         // A label beside an address is a link.
         const url = f.fields?.find((x) => x.kind === 'url')
@@ -54,7 +61,7 @@ export function pageMeta(schema, siteName, path, doc, base) {
   const { html, images } = snapshot(schema, doc.type, doc.data)
   const own = doc.data?.[schema.types[doc.type]?.titleField ?? 'title']
   const title = seo.title?.trim() || (path === '/' ? null : own ? `${own} | ${siteName}` : null)
-  const words = text(html)
+  const words = text(html.replace(/^<h1>[\s\S]*?<\/h1>/, '')) // the words under the heading
   const description = seo.description?.trim() || (words ? (words.length > 160 ? `${words.slice(0, 157).replace(/\s+\S*$/, '')}…` : words) : null)
   const src = seo.image?.src || images[0]?.src
   return { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, html }
