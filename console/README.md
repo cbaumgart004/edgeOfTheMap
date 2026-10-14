@@ -307,7 +307,7 @@ no login.
   photo (`/seo` gives the loader the same). A path with no page, or a database failure, gets the
   template as it is, answering 404 for a path with no page unless the schema's `sitemap` names it
   (`paths`, `exclude`, an alias) or it is `/preview`, so search engines drop unknown addresses while
-  visitors still get the app. **Unverified:** that Amplify's rewrite passes the 404 through. Cached at the edge for five minutes (`s-maxage=300`), served stale for a day on
+  visitors still get the app. Amplify's rewrite passes the 404 through (verified 2026-10-14 on both sites). Cached at the edge for five minutes (`s-maxage=300`), served stale for a day on
   error. Spirit Seeds and StoryShaped (2026-10-12) rewrite `/` and `/<*>` here on their Amplify apps,
   after pass-through rules for their files (`/index.html`, `/assets/<*>`, their public folders and
   icons) and `/_static/<*>` to `/<*>`; a file without a rule reaches the API, which sends it to
