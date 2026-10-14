@@ -64,7 +64,7 @@ export function pageMeta(schema, siteName, path, doc, base) {
   const words = text(html.replace(/^<h1>[\s\S]*?<\/h1>/, '')) // the words under the heading
   const description = seo.description?.trim() || (words ? (words.length > 160 ? `${words.slice(0, 157).replace(/\s+\S*$/, '')}…` : words) : null)
   const src = seo.image?.src || images[0]?.src
-  return { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, html }
+  return { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, siteName, html }
 }
 
 // The site's index.html with that page's head and words. Tags put here carry
@@ -85,6 +85,7 @@ export function renderPage(template, meta, { preview = false } = {}) {
   set('property', 'og:description', meta.description)
   set('property', 'og:url', meta.url)
   set('property', 'og:image', meta.image)
+  set('property', 'og:site_name', meta.siteName)
   set('name', 'twitter:card', meta.image ? 'summary_large_image' : null)
   set('name', 'robots', meta.noindex || preview ? 'noindex' : null)
   drop(/<link\s+[^>]*rel="canonical"[^>]*>\s*/gi)
@@ -123,7 +124,7 @@ export function createPrerender({ fetch = globalThis.fetch } = {}) {
       return { html: renderPage(shell, pageMeta(schema, siteName, path, doc, base), { preview }), found: true }
     } catch (err) {
       console.warn('[console-api] prerender fell back to the bare page', path, err?.message)
-      return { html: shell, found: false }
+      return { html: shell, found: false, failed: true }
     }
   }
 }

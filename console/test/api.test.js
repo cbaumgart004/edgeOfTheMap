@@ -47,13 +47,15 @@ function fakeSiteDb() {
   }
 }
 
-function setup({ member = true, site = SITE, media, monitors, fetch } = {}) {
+function setup({ member = true, operator = false, site = SITE, media, monitors, fetch } = {}) {
   const db = fakeSiteDb()
   const handle = createHandler({
     control: {
       async query(sql) {
         if (sql.includes('FROM sites')) return { rows: [site] }
         if (sql.includes('FROM site_members')) return { rows: member ? [{ role: 'owner' }] : [] }
+        if (sql.includes('FROM operators')) return { rows: operator ? [{}] : [] }
+        if (sql.includes('FROM traffic_hits')) return { rows: [] }
         throw new Error(sql)
       },
     },
@@ -189,8 +191,11 @@ describe('console API', () => {
     expect(html).toMatch(/<noscript data-eotm-prerendered><main><h1>New moon circle<\/h1>/)
     expect(html).toContain('<script src="/assets/app.js"></script>') // the app still runs
     expect(html).not.toContain('onclick') // rich text as it was sanitised on save
-    // A path with no page is the template untouched; the second fetch revalidates by ETag.
-    expect((await get('/somewhere-else')).body).toBe(template)
+    // A path with no page is the template untouched, answering 404 so search
+    // engines drop it; the second fetch revalidates by ETag.
+    const missing = await get('/somewhere-else')
+    expect(missing.statusCode).toBe(404)
+    expect(missing.body).toBe(template)
     expect(fetched.at(-1)).toEqual(['https://spiritseedswellness.com/index.html', 'v1'])
     // An uptime monitor's HEAD gets the page's answer, not a sign-in error.
     const head = await call('HEAD', `${base}/page/events/${d.slug}`, { token: null, origin: null, headers: { 'x-forwarded-host': 'spiritseedswellness.com' } })
@@ -199,6 +204,23 @@ describe('console API', () => {
     const file = await get('/favicon.png')
     expect(file.statusCode).toBe(302)
     expect(file.headers.location).toBe('/_static/favicon.png')
+  })
+
+  it('a page the app serves without a document of its own answers 200, not 404', async () => {
+    const template = '<html><head><title>Site</title></head><body><div id="root"></div></body></html>'
+    const site = { ...SITE, schema: { ...schema, sitemap: { aliases: { '/home': '/' }, paths: ['/about'], exclude: ['/admin/inventory'] } } }
+    const { call } = setup({ site, fetch: async () => new Response(template, { status: 200 }) })
+    const get = (path) => call('GET', `${base}/page${path}`, { token: null, origin: null, headers: { 'x-forwarded-host': 'spiritseedswellness.com' } })
+    for (const path of ['/about', '/admin/inventory', '/home', '/preview']) expect((await get(path)).statusCode).toBe(200)
+    expect((await get('/nope')).statusCode).toBe(404)
+  })
+
+  it('visitors: a member or an operator, no one else', async () => {
+    const days = { query: { days: '7' } }
+    expect((await setup().call('GET', `${base}/traffic`, days)).json.days).toBe(7)
+    const operator = await setup({ member: false, operator: true }).call('GET', `${base}/traffic`, days)
+    expect(operator.statusCode).toBe(200)
+    expect((await setup({ member: false }).call('GET', `${base}/traffic`, days)).statusCode).toBe(403)
   })
 
   it('serves a sitemap of published pages and a robots.txt per host, closing previews', async () => {

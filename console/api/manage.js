@@ -145,6 +145,13 @@ export function createManage(deps, { onSiteChange }) {
       if (repo && !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(repo)) throw new ServiceError(400, 'Repo must be a https://github.com/<owner>/<repo> address.')
       set('repo', repo || null)
     }
+    // What search results and shared links call the site: each pre-rendered
+    // page's title ends with it (prerender.js, pageMeta).
+    if ('name' in body) {
+      const name = String(body.name ?? '').trim()
+      if (!name || name.length > 80) throw new ServiceError(400, 'A site needs a name of 80 characters or fewer.')
+      set('name', name)
+    }
     // The addresses the site is served from: the console API answers them (CORS)
     // and sign-in hands back only to one of them. The first is the default.
     if ('origins' in body) {

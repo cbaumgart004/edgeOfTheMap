@@ -272,7 +272,8 @@ no login.
   (`POST /api/sites/<site>/hit`, its own addresses only), skipping a browser holding an editor token, so
   every site on the loader is counted with no change to the site. No cookies: a visitor is a hash of the
   day's salt, the site, the address and the browser, and each salt is deleted after a day. Members see
-  it under "Visitors" on the admin page (`GET /api/sites/<site>/traffic?days=`); hits older than 400
+  it under "Visitors" on the admin page (`GET /api/sites/<site>/traffic?days=`), and operators see
+  every site's under "Visitors" on its Manage page card; hits older than 400
   days are deleted. **Unverified:** that the Amplify rewrite passes the visitor's address in
   `X-Forwarded-For`; if it does not, every visitor on a day counts as one, and the fallback is the
   rewrite's own address.
@@ -298,10 +299,13 @@ no login.
   rules were taken off again.
 - **Pre-rendered pages** (`api/prerender.js`): `GET /api/sites/<site>/page/<path>` (public) returns the
   site's own `index.html`, fetched from the asking address and revalidated by ETag, with the page's
-  title, description, canonical, Open Graph tags and its words in a `<noscript>`: the owner's Search
+  title, description, canonical, Open Graph tags (`og:site_name` is the site's name, set on its
+  Manage page card) and its words in a `<noscript>`: the owner's Search
   and sharing, else the page's title with the site's name, the words under its heading and its first
   photo (`/seo` gives the loader the same). A path with no page, or a database failure, gets the
-  template as it is. Cached at the edge for five minutes (`s-maxage=300`), served stale for a day on
+  template as it is, answering 404 for a path with no page unless the schema's `sitemap` names it
+  (`paths`, `exclude`, an alias) or it is `/preview`, so search engines drop unknown addresses while
+  visitors still get the app. **Unverified:** that Amplify's rewrite passes the 404 through. Cached at the edge for five minutes (`s-maxage=300`), served stale for a day on
   error. Spirit Seeds and StoryShaped (2026-10-12) rewrite `/` and `/<*>` here on their Amplify apps,
   after pass-through rules for their files (`/index.html`, `/assets/<*>`, their public folders and
   icons) and `/_static/<*>` to `/<*>`; a file without a rule reaches the API, which sends it to

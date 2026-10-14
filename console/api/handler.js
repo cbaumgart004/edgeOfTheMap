@@ -383,11 +383,20 @@ export function createHandler(deps) {
         // The site's project is opened inside prerender's fallback, so a
         // database that cannot be reached still serves the bare page.
         let svc = null
-        const { html } = await prerender({
-          schema: await withSitemap(site), siteName: site.name, base, path, preview,
+        const schema = await withSitemap(site)
+        const { html, found, failed } = await prerender({
+          schema, siteName: site.name, base, path, preview,
           listPublished: async (t) => (svc ??= await serviceFor(site)).listPublished(t),
         })
-        return { statusCode: 200, headers: { 'content-type': 'text/html; charset=utf-8', vary: 'X-Forwarded-Host',
+        // An address with no page answers 404, so search engines drop it rather
+        // than index the app's own "not found" as a page. The body is still the
+        // app, which renders as before. Addresses the app serves without a page
+        // of their own (the schema's sitemap paths, exclusions and aliases, the
+        // editor's /preview) answer 200, as does any page when the database failed.
+        const sm = schema.sitemap ?? {}
+        const known = found || failed || path === '/preview' || path.startsWith('/_edit/')
+          || [...(sm.paths ?? []), ...(sm.exclude ?? []), ...Object.keys(sm.aliases ?? {})].includes(path)
+        return { statusCode: known ? 200 : 404, headers: { 'content-type': 'text/html; charset=utf-8', vary: 'X-Forwarded-Host',
           'cache-control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400' }, body: html }
       }
 
@@ -405,6 +414,14 @@ export function createHandler(deps) {
         const member = await authorize(event, site)
         const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
         return json(200, { token, email: member.email ?? null, role: member.role }, headers)
+      }
+      // Visitors over the last 30 days (or ?days=): the site's members on the
+      // admin page's Visitors fold, and operators for any site on the Manage page.
+      if (method === 'GET' && rest === '/traffic') {
+        const user = await verified(event)
+        const operator = !user.site && (await deps.control.query('SELECT 1 FROM operators WHERE user_id = $1', [user.id])).rows.length > 0
+        if (!operator) await authorize(event, site)
+        return json(200, await traffic.report(site, query.days ?? 30), headers)
       }
       const user = await authorize(event, site)
       // Who this sign-in is, for a site's own backend guarding its admin routes
@@ -459,8 +476,6 @@ export function createHandler(deps) {
         })
         return json(200, { origins, connections }, headers)
       }
-      // Visitors over the last 30 days (or ?days=), for the admin page's Visitors fold.
-      if (method === 'GET' && rest === '/traffic') return json(200, await traffic.report(site, query.days ?? 30), headers)
       // "Request a change" from the editor on the site itself.
       if (method === 'POST' && rest === '/requests') return json(201, await requests.submit(site, user, parseBody(event)), headers)
       const svc = await serviceFor(site)

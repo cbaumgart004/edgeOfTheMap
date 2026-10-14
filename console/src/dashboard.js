@@ -318,7 +318,9 @@ async function loadManage({ quiet = false, parts: given = null } = {}) {
           <div><button type="submit">Save details</button></div>
         </form>
       </details>` : ''}
+      <details class="status traffic" data-traffic="${esc(s.slug)}"><summary>Visitors</summary><div class="status-body"><p class="meta">Loading…</p></div></details>
       <form class="grid" data-form="site">
+        <div><label>Name (ends each page's title in search results)</label><input name="name" required maxlength="80" value="${esc(s.name)}" /></div>
         <div><label>Repository</label><input name="repo" value="${esc(s.repo ?? '')}" placeholder="https://github.com/owner/repo" /></div>
         <div><label>Editor version</label><select name="consoleVersion">${versions.map((v) => `<option${v === s.console_version ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
         <div style="grid-column: 1 / -1"><label>Site addresses (one per line; sign-in returns to the first unless it came from another)</label>
@@ -694,7 +696,12 @@ async function loadTraffic(box, days = Number(box.dataset.days) || 30) {
     body.innerHTML = `<p class="meta">Could not load this: ${esc(err.message)}</p>`
   }
 }
-$('#sites').addEventListener('click', (e) => {
+// Visitors on the Manage page's site cards too, for operators (any site).
+$('#m-sites').addEventListener('toggle', (e) => {
+  const box = e.target
+  if (box.matches?.('details.traffic') && box.open && !box.dataset.loaded) { box.dataset.loaded = '1'; loadTraffic(box) }
+}, true)
+for (const list of ['#sites', '#m-sites']) $(list).addEventListener('click', (e) => {
   const b = e.target.closest?.('details.traffic [data-days]')
   if (b) loadTraffic(b.closest('details.traffic'), Number(b.dataset.days))
 })
