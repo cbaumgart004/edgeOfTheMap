@@ -133,13 +133,16 @@ export function createHandler(deps) {
     return { ...user, role: rows[0].role }
   }
 
-  // The site's sitemap settings (schema.js, checkSchema): the saved schema's,
-  // else the one shipped with this deploy, so a new or changed `sitemap` works
-  // before the site is saved on the Manage page.
+  // The site's sitemap and structured data settings (schema.js, checkSchema):
+  // the saved schema's, else the ones shipped with this deploy, so a new or
+  // changed `sitemap` or `structuredData` works before the site is saved on
+  // the Manage page.
   async function withSitemap(site) {
-    if (site.schema.sitemap || !deps.siteSchema) return site.schema
+    const missing = ['sitemap', 'structuredData'].filter((k) => !site.schema[k])
+    if (!missing.length || !deps.siteSchema) return site.schema
     const shipped = await deps.siteSchema(site.slug).catch(() => null)
-    return shipped?.sitemap ? { ...site.schema, sitemap: shipped.sitemap } : site.schema
+    const add = Object.fromEntries(missing.filter((k) => shipped?.[k]).map((k) => [k, shipped[k]]))
+    return Object.keys(add).length ? { ...site.schema, ...add } : site.schema
   }
 
   // The address a public request came in on (Amplify's X-Forwarded-Host) when

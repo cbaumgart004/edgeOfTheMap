@@ -300,7 +300,9 @@ no login.
 - **Pre-rendered pages** (`api/prerender.js`): `GET /api/sites/<site>/page/<path>` (public) returns the
   site's own `index.html`, fetched from the asking address and revalidated by ETag, with the page's
   title, description, canonical, Open Graph tags (`og:site_name` is the site's name, set on its
-  Manage page card) and its words in a `<noscript>`: the owner's Search
+  Manage page card), schema.org JSON-LD for a type the schema's `structuredData` names (StoryShaped's
+  Library entries: an `Article` by Whitney Granger citing its sources, and a breadcrumb through
+  `/library`; validate with Google's Rich Results Test after a deploy) and its words in a `<noscript>`: the owner's Search
   and sharing, else the page's title with the site's name, the words under its heading and its first
   photo (`/seo` gives the loader the same). A path with no page, or a database failure, gets the
   template as it is, answering 404 for a path with no page unless the schema's `sitemap` names it

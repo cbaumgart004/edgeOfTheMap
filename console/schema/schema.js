@@ -91,6 +91,13 @@ export function checkSchema(schema) {
     if (sm.aliases && !Object.entries(sm.aliases).every(([a, b]) => isPath(a) && isPath(b))) errors.push('sitemap.aliases: each maps a path to a path, both starting with /')
     for (const k of ['paths', 'exclude']) if (sm[k] && !(Array.isArray(sm[k]) && sm[k].every(isPath))) errors.push(`sitemap.${k}: a list of paths starting with /`)
   }
+  // Structured data on pre-rendered pages (api/prerender.js, structuredData):
+  // per type with a page of its own, the schema.org type, an author, the list
+  // field holding its sources and the page it sits under.
+  for (const [type, sd] of Object.entries(schema.structuredData ?? {})) {
+    if (!types[type]) errors.push(`structuredData.${type}: unknown type`)
+    if (sd?.parent && !(sd.parent.name && String(sd.parent.path ?? '').startsWith('/'))) errors.push(`structuredData.${type}.parent: a name and a path starting with /`)
+  }
   // Section templates the site ships ("Banner"), offered beside the owner's.
   for (const t of schema.templates ?? []) {
     if (!t?.name || !blocks[t.block?._type]) errors.push(`templates.${t?.name}: names no section type`)

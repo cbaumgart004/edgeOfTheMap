@@ -54,6 +54,35 @@ export function snapshot(schema, type, data) {
   return { html: out.join('\n'), images }
 }
 
+// Structured data (schema.org JSON-LD) for a type the schema's `structuredData`
+// names, e.g. { libraryArticle: { type: 'Article', author: 'Whitney Granger',
+// citations: 'sources', parent: { name: 'Library', path: '/library' } } }: the
+// page as an article with its author, publisher and sources, and the trail from
+// the home page through its parent to it. Other types get none.
+export function structuredData(schema, siteName, doc, meta, base) {
+  const sd = schema.structuredData?.[doc.type]
+  if (!sd) return null
+  const own = String(doc.data?.[schema.types[doc.type]?.titleField ?? 'title'] ?? '').trim()
+  const headline = own.length > 110 ? `${own.slice(0, 109).replace(/\s+\S*$/, '')}…` : own
+  const citations = (doc.data?.[sd.citations] ?? []).map((s) => s?.url).filter((u) => /^https?:\/\//.test(u ?? ''))
+  const article = Object.fromEntries(Object.entries({
+    '@context': 'https://schema.org',
+    '@type': sd.type ?? 'Article',
+    headline,
+    description: meta.description,
+    image: meta.image ? [meta.image] : null,
+    dateModified: doc.publishedAt ?? null,
+    author: sd.author ? { '@type': 'Person', name: sd.author } : null,
+    publisher: { '@type': 'Organization', name: siteName, url: `${base}/` },
+    mainEntityOfPage: meta.url,
+    citation: citations.length ? citations : null,
+  }).filter(([, v]) => v))
+  const trail = [{ name: siteName, url: `${base}/` }, ...(sd.parent ? [{ name: sd.parent.name, url: base + sd.parent.path }] : []), { name: own, url: meta.url }]
+  const crumbs = { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: trail.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) }
+  return [article, crumbs]
+}
+
 // What a page's head says: the owner's Search and sharing first, then what the
 // page itself has (its title, its first words, its first photo).
 export function pageMeta(schema, siteName, path, doc, base) {
@@ -64,7 +93,8 @@ export function pageMeta(schema, siteName, path, doc, base) {
   const words = text(html.replace(/^<h1>[\s\S]*?<\/h1>/, '')) // the words under the heading
   const description = seo.description?.trim() || (words ? (words.length > 160 ? `${words.slice(0, 157).replace(/\s+\S*$/, '')}…` : words) : null)
   const src = seo.image?.src || images[0]?.src
-  return { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, siteName, html }
+  const meta = { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, siteName, html }
+  return { ...meta, jsonLd: structuredData(schema, siteName, doc, meta, base) }
 }
 
 // The site's index.html with that page's head and words. Tags put here carry
@@ -90,6 +120,8 @@ export function renderPage(template, meta, { preview = false } = {}) {
   set('name', 'robots', meta.noindex || preview ? 'noindex' : null)
   drop(/<link\s+[^>]*rel="canonical"[^>]*>\s*/gi)
   tags.push(`<link rel="canonical" href="${esc(meta.url)}" data-eotm-seo="added">`)
+  // JSON in a script: a "</script>" in an entry's words must not close it.
+  for (const item of meta.jsonLd ?? []) tags.push(`<script type="application/ld+json" data-eotm-seo="added">${JSON.stringify(item).replace(/</g, '\\u003c')}</script>`)
   page = page.replace(/<\/head>/i, `${tags.join('\n')}\n</head>`)
   if (meta.html) page = page.replace(/(<div id="root"[^>]*>)/i, `<noscript data-eotm-prerendered><main>${meta.html}</main></noscript>\n$1`)
   return page

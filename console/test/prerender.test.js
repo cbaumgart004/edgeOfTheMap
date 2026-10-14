@@ -41,4 +41,24 @@ describe('prerender', () => {
     expect(page).toContain('<meta name="robots" content="noindex" data-eotm-seo="added">')
     expect(page).not.toContain('<noscript')
   })
+
+  it('gives a type the schema names structured data: an article and its trail, safe inside the script', () => {
+    const lib = { ...schema, structuredData: { entry: { type: 'Article', author: 'Whitney Granger', citations: 'sources', parent: { name: 'Library', path: '/library' } } },
+      types: { ...schema.types, entry: { titleField: 'title', fields: [{ name: 'title', kind: 'text' }, { name: 'body', kind: 'richtext' },
+        { name: 'sources', kind: 'list', fields: [{ name: 'title', kind: 'text' }, { name: 'url', kind: 'url' }] }] } } }
+    const doc = { type: 'entry', publishedAt: '2026-10-01T00:00:00.000Z', data: { title: 'Is uranium glass safe?', body: '<p>Yes, mostly.</p>',
+      sources: [{ title: 'NRC', url: 'https://www.nrc.gov/x' }, { url: 'javascript:bad()' }] } }
+    const m = pageMeta(lib, 'StoryShaped Studios', '/library/safe', doc, 'https://s.example')
+    const [article, crumbs] = m.jsonLd
+    expect(article).toMatchObject({ '@type': 'Article', headline: 'Is uranium glass safe?', dateModified: '2026-10-01T00:00:00.000Z',
+      author: { '@type': 'Person', name: 'Whitney Granger' }, publisher: { name: 'StoryShaped Studios', url: 'https://s.example/' },
+      mainEntityOfPage: 'https://s.example/library/safe', citation: ['https://www.nrc.gov/x'] })
+    expect(crumbs.itemListElement.map((c) => c.item)).toEqual(['https://s.example/', 'https://s.example/library', 'https://s.example/library/safe'])
+    const page = renderPage('<html><head><title>S</title></head><body><div id="root"></div></body></html>',
+      pageMeta(lib, 'StoryShaped Studios', '/library/safe', { ...doc, data: { ...doc.data, title: 'Safe? </script><b>' } }, 'https://s.example'))
+    expect(page.split('application/ld+json')).toHaveLength(3)
+    expect(page).toContain('Safe? \\u003c/script>\\u003cb>')
+    expect(page).not.toContain('Safe? </script>')
+    expect(pageMeta(schema, 'Spirit Seeds', '/services', { type: 'page', data }, 'https://ss.example').jsonLd).toBe(null)
+  })
 })

@@ -1,6 +1,7 @@
 {
   "site": "storyshaped",
   "sitemap": { "aliases": { "/home": "/" } },
+  "structuredData": { "libraryArticle": { "type": "Article", "author": "Whitney Granger", "citations": "sources", "parent": { "name": "Library", "path": "/library" } } },
   "connections": [
     {"label": "Social links", "type": "siteSettings", "field": "socials", "detail": "Shown in the site footer."}
   ],
