@@ -10,7 +10,7 @@ const LISTING = {
   section: 'Uranium Glass Rings',
   etsyCategory: 'Jewelry < Rings < Statement Rings',
   tags: [{ _id: 't1', tag: 'uranium glass ring' }, { _id: 't2', tag: "vaseline glass" }],
-  whoMade: 'i_did', whenMade: 'made_to_order', isSupply: false,
+  whoMade: 'i_did', whenMade: 'made_to_order', isSupply: false, condition: 'NEW',
   variationName: 'Ring size',
   variations: [{ _id: 'v1', option: '7 US', sku: 'RING-BLU-7', price: { amount: 14900, currency: 'USD' } }],
 }
@@ -39,6 +39,21 @@ describe('StoryShaped Listing', () => {
   it('requires a category, a section and a priced SKU on every Variation', () => {
     const errors = checkDocument(schema, 'listing', { ...LISTING, etsyCategory: '', section: '', variations: [{ _id: 'v', option: '7 US', sku: 'bad sku!', price: { amount: null, currency: 'USD' } }] })
     expect(errors).toEqual(expect.arrayContaining(['etsyCategory: required', 'section: required', 'variations[0].sku: letters, numbers, . _ - only', 'variations[0].price: required']))
+  })
+
+  it("holds marketplace-only details: Etsy's materials and styles alphabet, two styles, eBay's 80-character title", () => {
+    expect(checkDocument(schema, 'listing', { ...LISTING, materials: [{ _id: 'm', material: 'sterling-silver' }] })).toEqual([expect.stringContaining('materials[0].material')])
+    const styles = [{ _id: 'a', style: 'Art Deco' }, { _id: 'b', style: 'Victorian' }, { _id: 'c', style: 'Retro' }]
+    expect(checkDocument(schema, 'listing', { ...LISTING, etsy: { styles } })).toContain('etsy.styles: at most 2')
+    expect(checkDocument(schema, 'listing', { ...LISTING, ebay: { title: 'x'.repeat(81) } })).toEqual(['ebay.title: longer than 80'])
+    const full = {
+      ...LISTING, condition: 'USED_EXCELLENT', conditionNote: 'Light wear to the band.', ebayCategoryId: '164343',
+      channels: { site: true, etsy: true, ebay: true },
+      package: { weight: 2, weightUnit: 'oz', length: 4, width: 4, height: 2, dimensionUnit: 'in' },
+      etsy: { shippingProfileId: '123', styles: [styles[0]], autoRenew: true },
+      ebay: { itemSpecifics: [{ _id: 's', name: 'Metal', value: 'Sterling Silver' }], bestOffer: false },
+    }
+    expect(checkDocument(schema, 'listing', full)).toEqual([])
   })
 
   it('refuses the new options where they do not belong', () => {

@@ -1004,6 +1004,32 @@
           "missingIndexHelp": "The blacklight toggle will tint the photos it has instead of switching to a real shot."
         },
         {
+          "name": "channels",
+          "kind": "group",
+          "label": "Sell on",
+          "help": "Where this Listing is offered. The site is the source of truth for all three: a change here is pushed to each one ticked.",
+          "fields": [
+            {
+              "name": "site",
+              "kind": "boolean",
+              "label": "This website",
+              "default": true
+            },
+            {
+              "name": "etsy",
+              "kind": "boolean",
+              "label": "Etsy",
+              "default": true
+            },
+            {
+              "name": "ebay",
+              "kind": "boolean",
+              "label": "eBay",
+              "default": true
+            }
+          ]
+        },
+        {
           "name": "section",
           "kind": "select",
           "label": "Shop section",
@@ -1102,7 +1128,41 @@
           "label": "eBay category id",
           "maxLength": 20,
           "pattern": "[0-9]+",
-          "patternHelp": "digits only"
+          "patternHelp": "digits only",
+          "help": "eBay's leaf category number, e.g. 164343 for Rings. Required to sell on eBay."
+        },
+        {
+          "name": "condition",
+          "kind": "select",
+          "label": "Condition",
+          "required": true,
+          "default": "NEW",
+          "help": "eBay requires it. Pre-owned is for vintage and antique pieces.",
+          "options": [
+            {
+              "value": "NEW",
+              "label": "New"
+            },
+            {
+              "value": "NEW_OTHER",
+              "label": "New, other (no tags or box)"
+            },
+            {
+              "value": "USED_EXCELLENT",
+              "label": "Pre-owned"
+            },
+            {
+              "value": "FOR_PARTS_OR_NOT_WORKING",
+              "label": "For parts or repair"
+            }
+          ]
+        },
+        {
+          "name": "conditionNote",
+          "kind": "textarea",
+          "label": "Condition notes",
+          "maxLength": 1000,
+          "help": "Wear, repairs, missing stones. eBay shows it beside a pre-owned condition."
         },
         {
           "name": "tags",
@@ -1136,7 +1196,9 @@
               "kind": "text",
               "label": "Material",
               "required": true,
-              "maxLength": 45
+              "maxLength": 45,
+              "pattern": "[\\p{L}\\p{N} ]+",
+              "patternHelp": "letters, numbers and spaces only (Etsy's rule)"
             }
           ]
         },
@@ -1254,6 +1316,74 @@
           "default": false
         },
         {
+          "name": "package",
+          "kind": "group",
+          "label": "Package",
+          "help": "Weight and size as shipped. Etsy and eBay use them for calculated shipping.",
+          "fields": [
+            {
+              "name": "weight",
+              "kind": "number",
+              "label": "Weight"
+            },
+            {
+              "name": "weightUnit",
+              "kind": "select",
+              "label": "Weight unit",
+              "default": "oz",
+              "options": [
+                {
+                  "value": "oz",
+                  "label": "oz"
+                },
+                {
+                  "value": "lb",
+                  "label": "lb"
+                },
+                {
+                  "value": "g",
+                  "label": "g"
+                },
+                {
+                  "value": "kg",
+                  "label": "kg"
+                }
+              ]
+            },
+            {
+              "name": "length",
+              "kind": "number",
+              "label": "Length"
+            },
+            {
+              "name": "width",
+              "kind": "number",
+              "label": "Width"
+            },
+            {
+              "name": "height",
+              "kind": "number",
+              "label": "Height"
+            },
+            {
+              "name": "dimensionUnit",
+              "kind": "select",
+              "label": "Size unit",
+              "default": "in",
+              "options": [
+                {
+                  "value": "in",
+                  "label": "in"
+                },
+                {
+                  "value": "cm",
+                  "label": "cm"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "variationName",
           "kind": "text",
           "label": "What buyers choose",
@@ -1315,13 +1445,147 @@
           ]
         },
         {
+          "name": "etsy",
+          "kind": "group",
+          "label": "Etsy only",
+          "help": "What Etsy needs beyond the shared fields. A blank id uses the shop's default (set on the backend).",
+          "fields": [
+            {
+              "name": "shippingProfileId",
+              "kind": "text",
+              "label": "Shipping profile id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only",
+              "help": "Etsy requires one on a physical listing."
+            },
+            {
+              "name": "processingProfileId",
+              "kind": "text",
+              "label": "Processing profile id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only",
+              "help": "Etsy's processing (readiness) profile: how long before it ships."
+            },
+            {
+              "name": "returnPolicyId",
+              "kind": "text",
+              "label": "Return policy id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only"
+            },
+            {
+              "name": "styles",
+              "kind": "list",
+              "label": "Styles",
+              "maxItems": 2,
+              "itemLabel": "style",
+              "help": "Up to two, e.g. Art Deco, Victorian. Letters, numbers and spaces.",
+              "fields": [
+                {
+                  "name": "style",
+                  "kind": "text",
+                  "label": "Style",
+                  "required": true,
+                  "maxLength": 45,
+                  "pattern": "[\\p{L}\\p{N} ]+",
+                  "patternHelp": "letters, numbers and spaces only"
+                }
+              ]
+            },
+            {
+              "name": "customizable",
+              "kind": "boolean",
+              "label": "Buyers may ask for a custom order",
+              "default": false
+            },
+            {
+              "name": "autoRenew",
+              "kind": "boolean",
+              "label": "Renew automatically every four months",
+              "default": true
+            }
+          ]
+        },
+        {
+          "name": "ebay",
+          "kind": "group",
+          "label": "eBay only",
+          "help": "What eBay needs beyond the shared fields. Blank policy ids use the shop's defaults (set on the backend).",
+          "fields": [
+            {
+              "name": "title",
+              "kind": "text",
+              "label": "eBay title",
+              "maxLength": 80,
+              "help": "eBay allows 80 characters. Blank: the title above, cut at 80."
+            },
+            {
+              "name": "itemSpecifics",
+              "kind": "list",
+              "label": "Item specifics",
+              "itemLabel": "specific",
+              "help": "eBay's required details for the category, e.g. Brand: Handmade, Metal: Sterling Silver, Main Stone: Glass. The push names any the category requires that are missing.",
+              "fields": [
+                {
+                  "name": "name",
+                  "kind": "text",
+                  "label": "Name",
+                  "required": true,
+                  "maxLength": 65
+                },
+                {
+                  "name": "value",
+                  "kind": "text",
+                  "label": "Value",
+                  "required": true,
+                  "maxLength": 65,
+                  "help": "Several values: separate with a comma."
+                }
+              ]
+            },
+            {
+              "name": "bestOffer",
+              "kind": "boolean",
+              "label": "Accept offers",
+              "default": false
+            },
+            {
+              "name": "fulfillmentPolicyId",
+              "kind": "text",
+              "label": "Shipping policy id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only"
+            },
+            {
+              "name": "paymentPolicyId",
+              "kind": "text",
+              "label": "Payment policy id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only"
+            },
+            {
+              "name": "returnPolicyId",
+              "kind": "text",
+              "label": "Return policy id",
+              "maxLength": 20,
+              "pattern": "[0-9]+",
+              "patternHelp": "digits only"
+            }
+          ]
+        },
+        {
           "name": "etsyListingId",
           "kind": "text",
           "label": "Etsy listing id",
           "maxLength": 20,
           "pattern": "[0-9]+",
           "patternHelp": "digits only",
-          "help": "Filled by the import; links this Listing to its Etsy Marketplace Listing."
+          "help": "Filled by the import or the first push; links this Listing to its Etsy listing."
         },
         {
           "name": "ebayItemId",
@@ -1329,7 +1593,8 @@
           "label": "eBay item id",
           "maxLength": 20,
           "pattern": "[0-9]+",
-          "patternHelp": "digits only"
+          "patternHelp": "digits only",
+          "help": "Filled by the import or the first push; links this Listing to its eBay listing."
         }
       ]
     },
