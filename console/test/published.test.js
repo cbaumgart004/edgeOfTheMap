@@ -40,8 +40,9 @@ function siteDb() {
   return db
 }
 
-function setup() {
+function setup({ down = false } = {}) {
   const db = siteDb()
+  if (down) db.query = async () => { throw new Error('Your account or project has exceeded the quota.') }
   const control = {
     queries: 0,
     async query(sql) {
@@ -109,6 +110,27 @@ describe('published snapshot', () => {
     })
     expect(await p.list('x', 'page')).toEqual([{ id: 1 }])
     expect(await p.list('x', 'page')).toEqual([{ id: 1 }])
+    expect(builds).toBe(1)
+  })
+
+  it('still answers /boot from the control project while the site project is down', async () => {
+    const { call } = setup({ down: true })
+    const boot = await call('GET', '/boot')
+    expect(boot.statusCode).toBe(200)
+    expect(boot.json.site).toBe('spiritseeds')
+  })
+})
+
+describe('published snapshot, database down', () => {
+  it('falls back to the old reads when a snapshot cannot be built, and asks again only after a minute', async () => {
+    let builds = 0
+    const p = createPublished({
+      read: async () => null,
+      write: async () => {},
+      build: async () => { builds++; throw new Error('quota') },
+    })
+    await expect(p.site('x')).rejects.toThrow('quota')
+    await expect(p.site('x')).rejects.toThrow('quota')
     expect(builds).toBe(1)
   })
 })

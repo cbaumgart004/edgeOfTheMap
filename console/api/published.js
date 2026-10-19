@@ -27,7 +27,10 @@ export function createPublished({ read, write, build, ttl = 60_000, now = Date.n
 
   async function get(slug) {
     const hit = memo.get(slug)
-    if (hit && now() - hit.at < ttl) return hit.snap
+    if (hit && now() - hit.at < ttl) {
+      if (hit.failed) throw hit.failed
+      return hit.snap
+    }
     let snap = null
     try {
       snap = await read(slug)
@@ -41,7 +44,13 @@ export function createPublished({ read, write, build, ttl = 60_000, now = Date.n
     // None yet (a new site, or the first request after this shipped): built
     // once from the databases, then served from the snapshot.
     console.warn('[published] no snapshot for', slug, '; building it from the database')
-    return refresh(slug)
+    try {
+      return await refresh(slug)
+    } catch (err) {
+      // A database that is down is asked again after `ttl`, not on every request.
+      memo.set(slug, { failed: err, at: now() })
+      throw err
+    }
   }
 
   return {

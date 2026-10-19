@@ -126,8 +126,19 @@ export function createHandler(deps) {
       return { site: Object.fromEntries(PUBLIC_SITE_FIELDS.map((k) => [k, site[k]])), docs, builtAt: new Date().toISOString() }
     },
   })
-  // What a public route reads a site's published documents with.
-  const publishedOf = (site) => (published ? (t) => published.list(site.slug, t) : async (t) => (await serviceFor(site)).listPublished(t))
+  // What a public route reads a site's published documents with. Without a
+  // snapshot (none configured, or it cannot be built while a database is
+  // down) the site's project is asked, as before snapshots.
+  const fromDb = (site) => async (t) => (await serviceFor(site)).listPublished(t)
+  const publishedOf = (site) => (published
+    ? (t) => published.list(site.slug, t).catch((err) => { console.warn('[console-api] snapshot unavailable, reading Neon', site.slug, err?.message); return fromDb(site)(t) })
+    : fromDb(site))
+  async function publicSite(slug) {
+    try { return await published.site(slug) } catch (err) {
+      console.warn('[console-api] snapshot unavailable, reading the control project', slug, err?.message)
+      return null
+    }
+  }
 
   async function verified(event) {
     const header = event.headers?.authorization ?? event.headers?.Authorization ?? ''
@@ -313,7 +324,7 @@ export function createHandler(deps) {
       // A public read takes the site from its published snapshot; everything
       // else (editing, the page-view beacon) from the control project.
       const publicRead = published && method === 'GET' && (['/boot', '/seo', '/sitemap.xml', '/robots.txt'].includes(rest) || rest.startsWith('/public/') || /^\/page(\/|$)/.test(rest))
-      const site = publicRead ? await published.site(m[1]) : await loadSite(m[1])
+      const site = (publicRead && await publicSite(m[1])) || await loadSite(m[1])
       if (!site) return json(404, { error: 'No such site.' })
       // The two public reads are open to any origin. CloudFront caches them
       // keyed on the path alone, ignoring Vary: Origin, so a per-origin
