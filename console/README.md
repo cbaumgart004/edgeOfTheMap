@@ -386,6 +386,14 @@ no login.
   `CONTROL_DATABASE_PARAM` (SSM name of the control project's connection string), `NEON_AUTH_URL`,
   `MEDIA_BUCKET`, `MEDIA_BASE_URL`, `MEDIA_REGION`. Its role needs `ssm:GetParameter` on `/eotm/*`, `kms:Decrypt` for those
   parameters, and `s3:PutObject` on the shared photo bucket (and on any site's own).
+- **Published snapshots:** `PUBLISHED_BUCKET` (private, `eotm-console-published`) holds
+  `published/<slug>.json`, each site's public record and published documents (`api/published.js`).
+  Every public read (pages, `/public/<type>`, `/seo`, `/sitemap.xml`, `/boot`) is served from it, so
+  visitors, crawlers and uptime monitors never wake a Neon compute; it is rebuilt after a publish,
+  unpublish, discard, delete, release, custom-type or Manage change. Requests every minute or so kept
+  the site and control projects awake and exhausted Neon's free compute on 2026-10-19. The role needs
+  `s3:GetObject`, `s3:PutObject` on `published/*` and `s3:ListBucket` (so a missing snapshot reads as
+  missing, not denied). Unset, public reads query Neon as before.
 - **Photos:** one shared bucket, `MEDIA_BUCKET`, served through one CloudFront distribution at
   `MEDIA_BASE_URL`; each site uploads under `sites/<slug>/` (`api/handler.js`, `/uploads`). A site
   whose `media_bucket` is set uses that instead, with no prefix. The bucket's CORS rule allows `PUT`

@@ -13,6 +13,7 @@ import { checkSchema, withSeo, publishedPages } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
+import { createPublished, PUBLIC_SITE_FIELDS } from './published.js'
 import { createPrerender, pageMeta } from './prerender.js'
 import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
@@ -67,6 +68,9 @@ function parseBody(event) {
 //   sanitize(schema): (type, data) => data
 //   sendEmail({ to, subject, text }), sendPush(sub, payload, vapid), generateVapid()   see requests.js
 //   monitors: { list, connect, disconnect }, see monitors.js
+//   published: { read(slug), write(slug, snapshot) }   optional: where published.js keeps
+//                                                     each site's snapshot (lambda.js: S3).
+//                                                     Without it, public reads query Neon.
 // }
 export function createHandler(deps) {
   const siteCache = new Map()
@@ -75,7 +79,10 @@ export function createHandler(deps) {
   const requests = createRequests(deps)
   const traffic = createTraffic({ control: deps.control })
   const prerender = createPrerender({ fetch: deps.fetch })
-  const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => siteCache.delete(slug) })
+  const manage = createManage({ ...deps, requests }, { onSiteChange: (slug) => { siteCache.delete(slug); changed.add(slug) } })
+  // Sites whose published snapshot is rebuilt once the request that changed
+  // them has answered (handle, below).
+  const changed = new Set()
 
   function allow(tries, ip, now = Date.now()) {
     const recent = (tries.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
@@ -100,6 +107,27 @@ export function createHandler(deps) {
     siteCache.set(slug, { site, at: Date.now() })
     return site
   }
+
+  // The published snapshot (published.js): built from both databases, read by
+  // every public route so that visitors and monitors never wake Neon.
+  const published = deps.published && createPublished({
+    read: deps.published.read,
+    write: deps.published.write,
+    async build(slug) {
+      siteCache.delete(slug)
+      const site = await loadSite(slug)
+      if (!site) return null
+      const svc = await serviceFor(site)
+      const docs = {}
+      for (const type of Object.keys(site.schema.types ?? {})) {
+        const list = await svc.listPublished(type)
+        if (list.length) docs[type] = list
+      }
+      return { site: Object.fromEntries(PUBLIC_SITE_FIELDS.map((k) => [k, site[k]])), docs, builtAt: new Date().toISOString() }
+    },
+  })
+  // What a public route reads a site's published documents with.
+  const publishedOf = (site) => (published ? (t) => published.list(site.slug, t) : async (t) => (await serviceFor(site)).listPublished(t))
 
   async function verified(event) {
     const header = event.headers?.authorization ?? event.headers?.Authorization ?? ''
@@ -160,7 +188,7 @@ export function createHandler(deps) {
     return createService({ schema: site.schema, repo: createPgRepo(db), sanitize: deps.sanitize(site.schema) })
   }
 
-  return async function handle(event) {
+  async function route(event) {
     // HEAD is answered as GET (the function URL drops the body): uptime
     // monitors check pages with HEAD, and the pre-rendered pages are pages.
     const asked = event.requestContext?.http?.method ?? event.httpMethod
@@ -281,9 +309,12 @@ export function createHandler(deps) {
 
       const m = path.match(/^\/api\/sites\/([a-z0-9-]+)(\/.*)?$/)
       if (!m) return json(404, { error: 'Not found.' })
-      const site = await loadSite(m[1])
-      if (!site) return json(404, { error: 'No such site.' })
       const rest = m[2] ?? ''
+      // A public read takes the site from its published snapshot; everything
+      // else (editing, the page-view beacon) from the control project.
+      const publicRead = published && method === 'GET' && (['/boot', '/seo', '/sitemap.xml', '/robots.txt'].includes(rest) || rest.startsWith('/public/') || /^\/page(\/|$)/.test(rest))
+      const site = publicRead ? await published.site(m[1]) : await loadSite(m[1])
+      if (!site) return json(404, { error: 'No such site.' })
       // The two public reads are open to any origin. CloudFront caches them
       // keyed on the path alone, ignoring Vary: Origin, so a per-origin
       // allow header was served to whoever asked next: a copy cached from the
@@ -306,7 +337,7 @@ export function createHandler(deps) {
       }
       const pub = rest.match(/^\/public\/([a-zA-Z0-9_]+)$/)
       if (method === 'GET' && pub) {
-        const docs = await (await serviceFor(site)).listPublished(pub[1])
+        const docs = await publishedOf(site)(pub[1])
         return json(200, docs, { ...headers, 'cache-control': 'public, max-age=30, stale-while-revalidate=300' })
       }
 
@@ -332,11 +363,10 @@ export function createHandler(deps) {
       if (method === 'GET' && rest === '/seo') {
         // As the pre-rendered page has them (prerender.js, pageMeta): the owner's
         // values, else the page's own title, first words and first photo.
-        const svc = await serviceFor(site)
         const schema = await withSitemap(site)
         const { base } = askingHost({ headers: { 'x-forwarded-host': String(origin ?? '').replace(/^https:\/\//, '') } }, site)
         const pages = {}
-        for (const [path, doc] of await publishedPages(schema, (t) => svc.listPublished(t))) {
+        for (const [path, doc] of await publishedPages(schema, publishedOf(site))) {
           const m = pageMeta(schema, site.name, path, doc, base)
           const entry = Object.fromEntries(Object.entries({ title: m.title, description: m.description, image: m.image, noindex: m.noindex || undefined }).filter(([, v]) => v))
           if (Object.keys(entry).length) pages[path] = entry
@@ -356,11 +386,10 @@ export function createHandler(deps) {
           const body = preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /_edit/\nDisallow: /preview\n\nSitemap: ${base}/sitemap.xml\n`
           return { statusCode: 200, headers: { ...headers, ...cache, 'content-type': 'text/plain; charset=utf-8' }, body }
         }
-        const svc = await serviceFor(site)
         const sm = (await withSitemap(site)).sitemap ?? {}
         const exclude = new Set(sm.exclude ?? [])
         const urls = new Map((sm.paths ?? []).map((p) => [p, null]))
-        for (const [path, doc] of await publishedPages(await withSitemap(site), (t) => svc.listPublished(t))) {
+        for (const [path, doc] of await publishedPages(await withSitemap(site), publishedOf(site))) {
           if (doc.data?.seo?.noindex !== true && !urls.get(path)) urls.set(path, doc.publishedAt ?? null)
         }
         const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -383,13 +412,13 @@ export function createHandler(deps) {
           return { statusCode: 302, headers: { location: `/_static${path}`, 'cache-control': 'public, max-age=300' }, body: '' }
         }
         const { base, preview } = askingHost(event, site)
-        // The site's project is opened inside prerender's fallback, so a
-        // database that cannot be reached still serves the bare page.
-        let svc = null
+        // Documents come from the published snapshot (the site's project
+        // without one), read inside prerender's fallback, so a read that fails
+        // still serves the bare page.
         const schema = await withSitemap(site)
         const { html, found, failed } = await prerender({
           schema, siteName: site.name, base, path, preview,
-          listPublished: async (t) => (svc ??= await serviceFor(site)).listPublished(t),
+          listPublished: publishedOf(site),
         })
         // An address with no page answers 404, so search engines drop it rather
         // than index the app's own "not found" as a page. The body is still the
@@ -541,5 +570,22 @@ ${pushed}`, page: body.page })
       const detail = path.startsWith('/api/manage') ? ` (${err.message})` : ''
       return json(500, { error: `Something went wrong on our side.${detail}` }, headers)
     }
+  }
+
+  // A change to what visitors see rebuilds that site's snapshot before the
+  // owner's request answers, so the next visitor gets it. A failed rebuild is
+  // logged; the old snapshot keeps serving until the next change.
+  const PUBLISHES = /^\/(custom-schema|release(\/discard)?|documents\/[^/]+\/(publish|unpublish|discard))$/
+  return async function handle(event) {
+    const res = await route(event)
+    if (!published) return res
+    const method = event.requestContext?.http?.method ?? event.httpMethod
+    const m = (event.rawPath ?? event.path ?? '').replace(/\/+$/, '').match(/^\/api\/sites\/([a-z0-9-]+)(\/.*)?$/)
+    if (m && res.statusCode < 300 && method !== 'GET' && (PUBLISHES.test(m[2] ?? '') || (method === 'DELETE' && /^\/documents\/[^/]+$/.test(m[2] ?? '')))) changed.add(m[1])
+    for (const slug of [...changed]) {
+      changed.delete(slug)
+      try { await published.refresh(slug) } catch (err) { console.warn('[console-api] published snapshot not rebuilt', slug, err?.message) }
+    }
+    return res
   }
 }

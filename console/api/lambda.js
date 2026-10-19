@@ -10,6 +10,8 @@
 //                           notifications@theedgeofthemap.com; unset = no email (push still goes)
 //   UPTIMEROBOT_KEY_PARAM   optional: SSM name of UptimeRobot's read-only key; normally the key is
 //                           pasted on the Manage page instead (monitors.js)
+//   PUBLISHED_BUCKET        optional: bucket holding each site's published snapshot at
+//                           published/<slug>.json (published.js). Unset, public reads query Neon.
 //
 // Each site's connection string is the SSM parameter named in sites.connection_param
 // (ADR-0007), so adding a customer needs no redeploy. A connection_param of
@@ -18,7 +20,7 @@
 
 import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs'
 import webpush from 'web-push'
@@ -125,6 +127,20 @@ async function editorSecret() {
 const http = createHandler({
   control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
   siteDb: (site) => poolFor(site.connection_param),
+  published: process.env.PUBLISHED_BUCKET ? {
+    async read(slug) {
+      try {
+        const res = await s3.send(new GetObjectCommand({ Bucket: process.env.PUBLISHED_BUCKET, Key: `published/${slug}.json` }))
+        return JSON.parse(await res.Body.transformToString())
+      } catch (err) {
+        if (err.name === 'NoSuchKey') return null
+        throw err
+      }
+    },
+    write: (slug, snapshot) => s3.send(new PutObjectCommand({
+      Bucket: process.env.PUBLISHED_BUCKET, Key: `published/${slug}.json`, ContentType: 'application/json', Body: JSON.stringify(snapshot),
+    })),
+  } : undefined,
   media: { bucket: process.env.MEDIA_BUCKET, baseUrl: process.env.MEDIA_BASE_URL },
   async verifyToken(token) {
     if (decodeProtectedHeader(token).alg === 'HS256') {
