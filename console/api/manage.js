@@ -8,6 +8,7 @@
 //   requests: api/requests.js (tickets and this operator's push subscriptions)
 //   monitors: api/monitors.js, the UptimeRobot monitors and their key
 //   logs({ hours, errorsOnly }): api/logs.js, this API's own CloudWatch log (absent outside Lambda)
+//   usage: api/usage.js, traffic and cost with the alert thresholds (absent outside Lambda)
 
 import { ServiceError } from '../core/service.js'
 import { checkSchema } from '../schema/schema.js'
@@ -225,6 +226,12 @@ export function createManage(deps, { onSiteChange }) {
     if (method === 'GET' && rest === '/logs') {
       if (!deps.logs) throw new ServiceError(503, 'The API log is only readable when running in Lambda.')
       return deps.logs({ hours: 24 })
+    }
+    if (rest === '/usage' || rest === '/usage/settings') {
+      if (!deps.usage) throw new ServiceError(503, 'Usage is only readable when running in Lambda.')
+      if (method === 'GET' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email })
+      if (method === 'POST' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email, refreshCost: true })
+      if (method === 'PUT' && rest === '/usage/settings') return deps.usage.saveSettings(body)
     }
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }
     if (method === 'DELETE' && rest === '/push') { await deps.requests.unsubscribe(user, body.endpoint); return { ok: true } }

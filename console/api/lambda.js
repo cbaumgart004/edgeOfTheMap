@@ -12,6 +12,8 @@
 //                           pasted on the Manage page instead (monitors.js)
 //   PUBLISHED_BUCKET        optional: bucket holding each site's published snapshot at
 //                           published/<slug>.json (published.js). Unset, public reads query Neon.
+//                           Also holds the usage monitor's settings and state under monitor/.
+//   NEON_API_KEY_PARAM      optional: SSM name of a Neon API key (usage.js); default /eotm/neon-api-key
 //
 // Each site's connection string is the SSM parameter named in sites.connection_param
 // (ADR-0007), so adding a customer needs no redeploy. A connection_param of
@@ -23,6 +25,9 @@ import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs'
+import { CloudWatchClient, GetMetricDataCommand } from '@aws-sdk/client-cloudwatch'
+import { CostExplorerClient, GetCostAndUsageCommand } from '@aws-sdk/client-cost-explorer'
+import { AmplifyClient, ListAppsCommand } from '@aws-sdk/client-amplify'
 import webpush from 'web-push'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createRemoteJWKSet, jwtVerify, SignJWT, decodeProtectedHeader } from 'jose'
@@ -35,6 +40,7 @@ import { migrate as runMigrations } from './migrate.js'
 import { register } from './register.js'
 import { createMonitors } from './monitors.js'
 import { createLogs } from './logs.js'
+import { createUsage } from './usage.js'
 import { createAuthProxy } from './auth-proxy.js'
 import { sanitizeDocumentData } from '../src/richtext.js'
 
@@ -43,6 +49,9 @@ const s3 = new S3Client({ region: process.env.MEDIA_REGION ?? 'us-east-1' })
 const purify = createDOMPurify(new JSDOM('').window)
 const ses = new SESv2Client({})
 const cwLogs = new CloudWatchLogsClient({})
+const cloudwatch = new CloudWatchClient({})
+const costExplorer = new CostExplorerClient({ region: 'us-east-1' }) // Cost Explorer's only endpoint
+const amplify = new AmplifyClient({})
 const notifyFrom = process.env.NOTIFY_FROM
 
 const secrets = new Map()
@@ -124,6 +133,71 @@ async function editorSecret() {
   return editorKey
 }
 
+// Usage and cost (usage.js): CloudWatch, Amplify, Neon's account API and S3,
+// never a Neon database, so the hourly check cannot keep a compute awake.
+const sendEmail = notifyFrom
+  ? ({ to, subject, text }) => ses.send(new SendEmailCommand({
+    FromEmailAddress: notifyFrom,
+    Destination: { ToAddresses: [to] },
+    Content: { Simple: { Subject: { Data: subject }, Body: { Text: { Data: text } } } },
+  }))
+  : undefined
+
+const usage = process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.PUBLISHED_BUCKET
+  ? createUsage({
+    functionName: process.env.AWS_LAMBDA_FUNCTION_NAME,
+    store: {
+      async read(key) {
+        try {
+          const res = await s3.send(new GetObjectCommand({ Bucket: process.env.PUBLISHED_BUCKET, Key: key }))
+          return JSON.parse(await res.Body.transformToString())
+        } catch (err) {
+          if (err.name === 'NoSuchKey') return null
+          throw err
+        }
+      },
+      write: (key, value) => s3.send(new PutObjectCommand({
+        Bucket: process.env.PUBLISHED_BUCKET, Key: key, ContentType: 'application/json', Body: JSON.stringify(value),
+      })),
+    },
+    // Hourly sums over the last `hours` complete hours, oldest first, zero-filled.
+    async metricSums({ namespace, metric, dimensions, hours }) {
+      const end = Math.floor(Date.now() / 3_600_000) * 3_600_000
+      const start = end - hours * 3_600_000
+      const out = await cloudwatch.send(new GetMetricDataCommand({
+        StartTime: new Date(start), EndTime: new Date(end),
+        MetricDataQueries: [{
+          Id: 'm', ReturnData: true,
+          MetricStat: { Stat: 'Sum', Period: 3600, Metric: { Namespace: namespace, MetricName: metric, Dimensions: Object.entries(dimensions).map(([Name, Value]) => ({ Name, Value })) } },
+        }],
+      }))
+      const r = out.MetricDataResults?.[0] ?? { Timestamps: [], Values: [] }
+      const byHour = new Map(r.Timestamps.map((t, i) => [new Date(t).getTime(), r.Values[i]]))
+      return Array.from({ length: hours }, (_, i) => ({ at: start + i * 3_600_000, value: byHour.get(start + i * 3_600_000) ?? 0 }))
+    },
+    async amplifyApps() {
+      const { apps = [] } = await amplify.send(new ListAppsCommand({ maxResults: 50 }))
+      return apps.map((a) => ({ appId: a.appId, name: a.name }))
+    },
+    async neon(path) {
+      const key = await secret(process.env.NEON_API_KEY_PARAM ?? '/eotm/neon-api-key')
+      const res = await fetch(`https://console.neon.tech/api/v2${path}`, { headers: { authorization: `Bearer ${key}`, accept: 'application/json' } })
+      if (!res.ok) throw new Error(`Neon API ${res.status} on ${path.split('?')[0]}`)
+      return res.json()
+    },
+    async monthCost({ start, end }) {
+      const out = await costExplorer.send(new GetCostAndUsageCommand({
+        TimePeriod: { Start: start, End: end }, Granularity: 'MONTHLY', Metrics: ['UnblendedCost'],
+        GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
+      }))
+      const byService = (out.ResultsByTime ?? []).flatMap((p) => p.Groups ?? [])
+        .map((g) => ({ service: g.Keys[0], amount: Number(g.Metrics.UnblendedCost.Amount) }))
+      return { total: byService.reduce((s, g) => s + g.amount, 0), byService }
+    },
+    sendEmail,
+  })
+  : undefined
+
 const http = createHandler({
   control: { query: async (sql, params) => (await poolFor(process.env.CONTROL_DATABASE_PARAM)).query(sql, params) },
   siteDb: (site) => poolFor(site.connection_param),
@@ -179,13 +253,7 @@ const http = createHandler({
   sanitize: (schema) => (type, data) => sanitizeDocumentData(schema, type, data, purify),
   // Change requests (requests.js). SES in the sandbox can still send to the
   // operators' own verified addresses, which is everyone this goes to.
-  sendEmail: notifyFrom
-    ? ({ to, subject, text }) => ses.send(new SendEmailCommand({
-      FromEmailAddress: notifyFrom,
-      Destination: { ToAddresses: [to] },
-      Content: { Simple: { Subject: { Data: subject }, Body: { Text: { Data: text } } } },
-    }))
-    : undefined,
+  sendEmail,
   sendPush: (subscription, payload, vapid) => webpush.sendNotification(subscription, payload, {
     vapidDetails: { subject: 'mailto:keeper@theedgeofthemap.com', publicKey: vapid.publicKey, privateKey: vapid.privateKey },
     TTL: 24 * 60 * 60,
@@ -205,6 +273,7 @@ const http = createHandler({
       filterLogEvents: (input) => cwLogs.send(new FilterLogEventsCommand(input)),
     })
     : undefined,
+  usage,
   // Neon Auth checks Origin against its trusted domains, so send the admin host's.
   async requestPasswordReset(email) {
     const res = await fetch(`${authUrl.replace(/\/$/, '')}/request-password-reset`, {
@@ -230,6 +299,11 @@ export async function handler(event, context) {
     return register(await poolFor(process.env.CONTROL_DATABASE_PARAM), event.eotmRegister)
   }
   if (event?.eotmCreateSite && !event.requestContext) return createSite(event.eotmCreateSite)
+  // EventBridge Scheduler, hourly: {"eotmUsageCheck": true} (usage.js).
+  if (event?.eotmUsageCheck === true && !event.requestContext) {
+    if (!usage) throw new Error('usage check needs PUBLISHED_BUCKET')
+    return usage.check()
+  }
   return http(event, context)
 }
 

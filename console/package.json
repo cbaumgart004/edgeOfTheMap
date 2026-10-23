@@ -14,7 +14,10 @@
     "package:api": "node scripts/package-api.js"
   },
   "dependencies": {
+    "@aws-sdk/client-amplify": "^3.1156.0",
+    "@aws-sdk/client-cloudwatch": "^3.1156.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1143.0",
+    "@aws-sdk/client-cost-explorer": "^3.1156.0",
     "@aws-sdk/client-s3": "^3.1141.0",
     "@aws-sdk/client-sesv2": "^3.1142.0",
     "@aws-sdk/client-ssm": "^3.1141.0",

@@ -540,6 +540,76 @@ $('#m-monitors').addEventListener('pointerleave', () => {
   for (const el of document.querySelectorAll('svg.spark .cross, svg.spark .hit')) el.style.display = 'none'
 })
 
+// Usage & cost (api/usage.js), read when opened: it asks CloudWatch, Amplify
+// and Neon's API, which is too slow to hold up the rest of the Manage page.
+const money = (n) => (n == null ? '—' : `$${n.toFixed(2)}`)
+const count = (n) => Math.round(n).toLocaleString()
+function usageBars(hours, limit) {
+  if (!hours.length) return ''
+  const W = 480; const H = 90; const gap = 2
+  const max = Math.max(limit ?? 0, ...hours.map((h) => h.value), 1) * 1.1
+  const w = (W - gap * (hours.length - 1)) / hours.length
+  const y = (v) => H - (v / max) * H
+  return `<svg class="usage-bars" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="API requests per hour, last 24 hours">
+    ${hours.map((h, i) => `<rect x="${(i * (w + gap)).toFixed(1)}" y="${y(h.value).toFixed(1)}" width="${w.toFixed(1)}" height="${(H - y(h.value)).toFixed(1)}"
+      class="${limit && h.value > limit ? 'is-over' : ''}"><title>${esc(clock(h.at))}: ${esc(count(h.value))} requests</title></rect>`).join('')}
+    ${limit ? `<line class="limit" x1="0" x2="${W}" y1="${y(limit).toFixed(1)}" y2="${y(limit).toFixed(1)}" />` : ''}</svg>`
+}
+function renderUsage(r) {
+  const s = r.settings
+  const t = r.traffic.value; const n = r.neon.value; const a = r.aws.value
+  const gap = (part) => `<p class="meta">Could not read: ${esc(part.error)}</p>`
+  const over = { requests: t && t.api.lastHour > s.requestsPerHour, neon: n && s.neonMonthly && n.projected > s.neonMonthly, aws: a && s.awsMonthly && a.projected > s.awsMonthly }
+  $('#u-sum').textContent = [t && `${count(t.api.lastHour)} API req last hour`, n && `Neon ${money(n.cost)}`, a && `AWS ${money(a.total)}`].filter(Boolean).join(' · ') +
+    (Object.values(over).some(Boolean) ? ' · over a threshold' : '')
+  const alerts = Object.entries(r.alerts ?? {})
+  $('#u-body').innerHTML = `
+    <div class="figures">
+      <div class="${over.requests ? 'is-over' : ''}"><span class="meta">API requests, last hour</span><strong>${t ? esc(count(t.api.lastHour)) : '—'}</strong><span class="meta">alert above ${esc(count(s.requestsPerHour))}</span></div>
+      <div><span class="meta">API requests, 24 hours</span><strong>${t ? esc(count(t.api.total)) : '—'}</strong><span class="meta">this Lambda's invocations</span></div>
+      <div class="${over.neon ? 'is-over' : ''}"><span class="meta">Neon this period</span><strong>${n ? esc(money(n.cost)) : '—'}</strong><span class="meta">${n ? `projected ${esc(money(n.projected))}` : ''}${s.neonMonthly ? ` · alert above ${esc(money(s.neonMonthly))}` : ''}</span></div>
+      <div class="${over.aws ? 'is-over' : ''}"><span class="meta">AWS this month</span><strong>${a ? esc(money(a.total)) : '—'}</strong><span class="meta">${a ? `projected ${esc(money(a.projected))}` : ''}${s.awsMonthly ? ` · alert above ${esc(money(s.awsMonthly))}` : ''}</span></div>
+    </div>
+    <div><h3>API requests per hour, last 24 hours</h3>${t ? usageBars(t.api.hours, s.requestsPerHour) : gap(r.traffic)}</div>
+    <div><h3>Site requests, 24 hours <span class="meta">(every file Amplify served: a page view is several)</span></h3>
+      ${t ? `<ul>${t.sites.map((x) => `<li><span>${esc(x.name)}</span><span>${esc(count(x.total))}</span></li>`).join('')}</ul>` : gap(r.traffic)}</div>
+    <div><h3>Neon by project <span class="meta">(estimated at $${esc(r.rates.cuHour)}/CU-hour, $${esc(r.rates.gbMonth)}/GB-month${n ? `; period ends ${esc(new Date(n.end).toLocaleDateString())}` : ''})</span></h3>
+      ${n ? `<ul>${n.projects.map((p) => `<li><span>${esc(p.name)}</span><span>${esc(p.cuHours)} CU-h · ${esc(p.storageGb)} GB · ${esc(money(p.cost))}</span></li>`).join('')}</ul>` : gap(r.neon)}</div>
+    <div><h3>AWS by service, month to date <span class="meta">${a ? `(Cost Explorer, as of ${esc(when(a.at))})` : ''}</span></h3>
+      ${a ? `<ul>${a.byService.map((x) => `<li><span>${esc(x.service)}</span><span>${esc(money(x.amount))}</span></li>`).join('') || '<li class="empty">Nothing billed yet.</li>'}</ul>` : gap(r.aws)}
+      <div class="row"><button type="button" id="u-cost-refresh" class="link">Refresh AWS cost ($0.01)</button></div></div>
+    <form id="u-form" class="usage-form card">
+      <h3 class="wide">Alert thresholds <span class="meta">(checked hourly; one email per breach every six hours)</span></h3>
+      <div><label for="u-req">API requests per hour</label><input id="u-req" type="number" min="10" step="1" required value="${esc(s.requestsPerHour)}" /></div>
+      <div><label for="u-neon">Neon projected $/month</label><input id="u-neon" type="number" min="0" step="0.01" placeholder="no alert" value="${esc(s.neonMonthly ?? '')}" /></div>
+      <div><label for="u-aws">AWS projected $/month</label><input id="u-aws" type="number" min="0" step="0.01" placeholder="no alert" value="${esc(s.awsMonthly ?? '')}" /></div>
+      <div class="wide"><label for="u-to">Email alerts to</label><input id="u-to" type="text" required value="${esc(s.recipients.join(', '))}" /></div>
+      <div class="wide"><button type="submit">Save thresholds</button>
+        <span class="meta">${r.lastCheck ? `Last hourly check ${esc(when(r.lastCheck))}` : 'No hourly check has run yet'}${alerts.length ? ` · alerted: ${esc(alerts.map(([k, at]) => `${k} ${when(at)}`).join(', '))}` : ''}</span></div>
+    </form>`
+}
+async function loadUsage({ refreshCost = false } = {}) {
+  if (!$('#u-body').innerHTML) $('#u-body').innerHTML = '<p class="empty">Loading…</p>'
+  try {
+    renderUsage(await api(refreshCost ? 'POST' : 'GET', '/api/manage/usage'))
+  } catch (err) {
+    $('#u-body').innerHTML = `<p class="empty">Usage could not load: ${esc(err.message)}</p>`
+  }
+}
+$('#usage').addEventListener('toggle', () => { if ($('#usage').open) loadUsage() })
+$('#u-body').addEventListener('click', (e) => { if (e.target.id === 'u-cost-refresh') run(() => loadUsage({ refreshCost: true }))(e) })
+$('#u-body').addEventListener('submit', (e) => {
+  if (e.target.id !== 'u-form') return
+  e.preventDefault()
+  run(async () => {
+    await api('PUT', '/api/manage/usage/settings', {
+      requestsPerHour: Number($('#u-req').value), neonMonthly: $('#u-neon').value, awsMonthly: $('#u-aws').value, recipients: $('#u-to').value,
+    })
+    say('Thresholds saved.')
+    await loadUsage()
+  })(e)
+})
+
 // This API's own log (api/logs.js), read when opened: last 24 hours, newest first.
 let apiLog = []
 function renderLog() {

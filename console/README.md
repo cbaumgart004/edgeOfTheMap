@@ -344,6 +344,18 @@ no login.
   one grant on the execution role (`eotm-console-api-role-3asduby6`): `logs:FilterLogEvents` on
   `arn:aws:logs:us-east-1:<account id>:log-group:/aws/lambda/eotm-console-api:*`. Without it the panel
   names the missing permission.
+- **Usage & cost on the Manage page** (`api/usage.js`): API requests per hour (this Lambda's
+  `Invocations`), each Amplify app's `Requests`, Neon compute and storage for the billing period
+  (Neon's project API, priced at the Launch rates in `usage.js`, an estimate) and AWS month to date by
+  service (Cost Explorer, kept 12 hours because each call costs $0.01). An hourly EventBridge Scheduler
+  schedule, `eotm-usage-check` (`America/Denver`), invokes the function with `{"eotmUsageCheck": true}`
+  and emails the saved recipients through `NOTIFY_FROM` when a threshold is passed, at most once per
+  breach per six hours. Settings and alert state live in `PUBLISHED_BUCKET` under `monitor/`, never in
+  Neon, so the check cannot wake a compute. The Neon key is the SSM SecureString `/eotm/neon-api-key`
+  (`NEON_API_KEY_PARAM` overrides the name). Grants on the execution role: `cloudwatch:GetMetricData`,
+  `amplify:ListApps`, `ce:GetCostAndUsage`, and `s3:GetObject`/`s3:PutObject` on `monitor/*`. The
+  schedule runs as role `eotm-console-scheduler`, allowed `lambda:InvokeFunction` on this function.
+  A missing grant shows as "Could not read" beside that figure; the rest still shows.
   **Unverified:** UptimeRobot API v2 against a real key; tested against a fake of its documented shape.
 - **The campfire on phones:** below 900 px the left scene fills the screen behind the admin card,
   fire centred (`dashboard.html`, `.sigils.is-left`).

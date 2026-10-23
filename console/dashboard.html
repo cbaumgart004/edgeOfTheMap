@@ -251,6 +251,23 @@
     details.fold > summary h2, details.fold > summary h3 { display: inline; margin: 0; }
     details.fold > summary .meta { font-weight: 400; }
     #monitors { margin: 24px 0 8px; }
+    #usage { margin: 8px 0; }
+    #usage[open] > summary { margin-bottom: 12px; }
+    /* Usage & cost (api/usage.js): figures, the API's hourly requests against
+       the alert line, then the breakdowns and the thresholds. */
+    .usage { display: grid; gap: 14px; }
+    .usage h3 { margin: 0 0 4px; font-size: 14px; }
+    .usage .figures { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .usage .figures div.is-over { border-color: var(--critical); }
+    .usage ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+    .usage li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+    .usage-bars { width: 100%; height: 90px; display: block; }
+    .usage-bars rect { fill: var(--accent); }
+    .usage-bars rect.is-over { fill: var(--critical); }
+    .usage-bars .limit { stroke: var(--critical); stroke-width: 1; stroke-dasharray: 4 3; }
+    .usage-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+    .usage-form label { margin: 0 0 4px; }
+    .usage-form .wide { grid-column: 1 / -1; }
     #monitors[open] > summary { margin-bottom: 12px; }
     .card > details.fold[open] > summary { margin-bottom: 8px; }
     .request { white-space: pre-wrap; margin: 0; font-size: 15px; }
@@ -462,6 +479,10 @@
       <details id="monitors" class="fold">
         <summary><h2>Monitors <span id="m-mon-count" class="meta"></span></h2></summary>
         <ul id="m-monitors" class="monitors"></ul>
+      </details>
+      <details id="usage" class="fold">
+        <summary><h2>Usage &amp; cost <span id="u-sum" class="meta"></span></h2></summary>
+        <div id="u-body" class="usage"></div>
       </details>
       <details id="api-log" class="card log-card">
         <summary>API log, last 24 hours <span id="log-count" class="meta"></span></summary>
