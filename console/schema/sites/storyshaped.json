@@ -11,8 +11,286 @@
       "label": "Inventory",
       "path": "/admin/inventory",
       "help": "Stock items, counts, bills of materials; hidden from visitors"
+    },
+    {
+      "label": "Forms",
+      "path": "/admin/forms",
+      "help": "Start a form from its template; each form's entries are filed in its own folder, marked sent and paid; hidden from visitors"
     }
   ],
+  "forms": {
+    "salesOrder": {
+      "label": "Sales Order",
+      "tool": "/admin/forms",
+      "help": "Custom and wholesale orders: SKUs, retail and discount, payment, customer signature. Entries file under sales_orders, a folder named from this title.",
+      "document": {
+        "title": "INVOICE",
+        "draftLabel": "(Draft)",
+        "company": {
+          "name": "StoryShaped Studios",
+          "kind": "Uranium Glass Jewelry",
+          "logo": "/assets/StoryShapedStudiosNeonGlow_Rect.png",
+          "lines": [
+            "info@storyshapedstudios.com",
+            "storyshapedstudios.com"
+          ]
+        },
+        "footer": {
+          "tagline": "The World's Largest Resource for Uranium Glass Jewelry",
+          "lines": [
+            "storyshapedstudios.com",
+            "info@storyshapedstudios.com",
+            "Thank you for supporting handmade glass"
+          ]
+        }
+      },
+      "numbering": {
+        "first": 4122,
+        "owner": "backend/server/utils/forms.js FIRST_NUMBERS"
+      },
+      "fileName": "<yyyymmdd>_<customer>_<order number>",
+      "dueDays": 30,
+      "statuses": [
+        "draft",
+        "generated",
+        "sent",
+        "paid"
+      ],
+      "sections": [
+        {
+          "name": "customer",
+          "label": "Customer",
+          "fields": [
+            {
+              "name": "name",
+              "label": "Name",
+              "type": "text"
+            },
+            {
+              "name": "company",
+              "label": "Company",
+              "type": "text"
+            },
+            {
+              "name": "email",
+              "label": "Email",
+              "type": "email"
+            },
+            {
+              "name": "phone",
+              "label": "Phone",
+              "type": "tel"
+            },
+            {
+              "name": "bill",
+              "label": "Billing address",
+              "type": "textarea"
+            },
+            {
+              "name": "ship",
+              "label": "Ship to",
+              "type": "textarea"
+            }
+          ]
+        },
+        {
+          "name": "details",
+          "label": "Invoice details",
+          "fields": [
+            {
+              "name": "no",
+              "label": "Order #",
+              "type": "text",
+              "help": "Numbered on Generate when blank or taken"
+            },
+            {
+              "name": "date",
+              "label": "Date",
+              "type": "date",
+              "default": "today"
+            },
+            {
+              "name": "due",
+              "label": "Due",
+              "type": "calculated",
+              "rule": "date + dueDays"
+            },
+            {
+              "name": "po",
+              "label": "Customer PO",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "name": "lines",
+          "label": "Line items",
+          "repeat": true,
+          "minimum": 1,
+          "addLabel": "+ Add line",
+          "fields": [
+            {
+              "name": "sku",
+              "label": "SKU",
+              "type": "select",
+              "source": "Stock Items, plus TBD for a custom item",
+              "fills": {
+                "desc": "Listing title, else Stock Item name",
+                "retail": "Listing variation price"
+              }
+            },
+            {
+              "name": "desc",
+              "label": "Description",
+              "type": "textarea"
+            },
+            {
+              "name": "qty",
+              "label": "Qty",
+              "type": "number"
+            },
+            {
+              "name": "retail",
+              "label": "Retail",
+              "type": "money",
+              "help": "Asked for on Generate when missing; skipped means retail = price"
+            },
+            {
+              "name": "price",
+              "label": "Price",
+              "type": "money",
+              "rule": "typed drives discount"
+            },
+            {
+              "name": "disc",
+              "label": "Discount %",
+              "type": "percent",
+              "rule": "typed drives price"
+            },
+            {
+              "name": "total",
+              "label": "Line total",
+              "type": "calculated",
+              "rule": "qty x price"
+            }
+          ]
+        },
+        {
+          "name": "payment",
+          "label": "Payment",
+          "fields": [
+            {
+              "name": "method",
+              "label": "Method",
+              "type": "select",
+              "options": "paymentMethods"
+            },
+            {
+              "name": "payTo",
+              "label": "Pay to",
+              "type": "calculated",
+              "rule": "link of the chosen method"
+            }
+          ]
+        },
+        {
+          "name": "notes",
+          "label": "Notes & terms",
+          "fields": [
+            {
+              "name": "notes",
+              "label": "Notes & terms",
+              "type": "textarea",
+              "default": "terms"
+            }
+          ]
+        },
+        {
+          "name": "totals",
+          "label": "Totals",
+          "fields": [
+            {
+              "name": "retailValue",
+              "label": "Retail value",
+              "type": "calculated"
+            },
+            {
+              "name": "savings",
+              "label": "Your savings",
+              "type": "calculated"
+            },
+            {
+              "name": "subtotal",
+              "label": "Subtotal",
+              "type": "calculated"
+            },
+            {
+              "name": "ship",
+              "label": "Shipping",
+              "type": "money"
+            },
+            {
+              "name": "taxPct",
+              "label": "Tax rate %",
+              "type": "percent"
+            },
+            {
+              "name": "tax",
+              "label": "Tax",
+              "type": "calculated"
+            },
+            {
+              "name": "total",
+              "label": "Total",
+              "type": "calculated"
+            },
+            {
+              "name": "deposit",
+              "label": "Deposit paid",
+              "type": "money"
+            },
+            {
+              "name": "due",
+              "label": "Balance due",
+              "type": "calculated"
+            }
+          ]
+        },
+        {
+          "name": "acceptance",
+          "label": "Customer acceptance",
+          "print": "blank lines, signed in ink",
+          "text": "By signing, the customer accepts this order, its pricing and the terms above.",
+          "fields": [
+            {
+              "name": "signature",
+              "label": "Signature",
+              "type": "signature"
+            },
+            {
+              "name": "date",
+              "label": "Date",
+              "type": "signature"
+            },
+            {
+              "name": "printedName",
+              "label": "Printed name",
+              "type": "signature"
+            }
+          ]
+        }
+      ],
+      "paymentMethods": [
+        {
+          "name": "PayPal",
+          "label": "StoryShapedStudios, LLC",
+          "handle": "@WVaught823",
+          "url": "https://www.paypal.me/WVaught823"
+        }
+      ],
+      "terms": "Custom order. Pricing reflects quantity discount from retail. 50% deposit due to begin production; balance due before shipment. Uranium glass is handmade; minor variation in color and fluorescence is expected."
+    }
+  },
   "images": {
     "type": "imagePair",
     "label": "Image dictionary",

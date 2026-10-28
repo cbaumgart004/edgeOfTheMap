@@ -75,6 +75,13 @@ export function checkSchema(schema) {
   for (const t of schema.tools ?? []) {
     if (!t?.label || typeof t.path !== 'string' || !t.path.startsWith('/')) errors.push('tools: each needs a label and a path starting with /')
   }
+  // Forms the site's tools fill in (StoryShaped's Sales Order): each names the
+  // tool that shows it and lists its sections, so a new form can reuse the parts.
+  for (const [name, f] of Object.entries(schema.forms ?? {})) {
+    if (!NAME.test(name) || !f?.label) errors.push(`forms.${name}: a plain name and a label`)
+    if (typeof f?.tool !== 'string' || !f.tool.startsWith('/')) errors.push(`forms.${name}: tool must be a path starting with /`)
+    if (!Array.isArray(f?.sections) || !f.sections.every((s) => s?.name && Array.isArray(s.fields))) errors.push(`forms.${name}: sections, each with a name and fields`)
+  }
   // What the site is wired to, on the owner's status page: a label, and the
   // settings field (on `type`, default settings) whose value means connected.
   for (const c of schema.connections ?? []) {
