@@ -245,11 +245,6 @@
               "type": "calculated"
             },
             {
-              "name": "deposit",
-              "label": "Deposit paid",
-              "type": "money"
-            },
-            {
               "name": "due",
               "label": "Balance due",
               "type": "calculated"
@@ -288,7 +283,7 @@
           "url": "https://www.paypal.me/WVaught823"
         }
       ],
-      "terms": "Custom order. Pricing reflects quantity discount from retail. 50% deposit due to begin production; balance due before shipment. Uranium glass is handmade; minor variation in color and fluorescence is expected."
+      "terms": "Custom order. Pricing reflects quantity discount from retail. Balance due before shipment. Full invoice is due within 30 days of signing unless otherwise arranged with the seller. Uranium glass is handmade; minor variation in color and fluorescence is expected."
     }
   },
   "images": {
