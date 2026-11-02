@@ -92,6 +92,10 @@ export function checkSchema(schema) {
   // Search engines (handler.js, /sitemap.xml and /seo): `aliases` maps a
   // document's preview path to the address the site serves it at ("/home" to
   // "/"); `paths` adds routes no document makes; `exclude` drops some.
+  // robots.txt (handler.js): `blockTraining` turns TRAINING_CRAWLERS away.
+  if (schema.robots != null && (typeof schema.robots !== 'object' || (schema.robots.blockTraining != null && typeof schema.robots.blockTraining !== 'boolean'))) {
+    errors.push('robots: an object whose blockTraining is true or false')
+  }
   const sm = schema.sitemap
   if (sm != null) {
     const isPath = (p) => typeof p === 'string' && p.startsWith('/')
@@ -561,6 +565,17 @@ export function previewPathFor(type, doc) {
 // previewPath naming the document, "/{slug}" or "{path}") gets this group,
 // so each site has it without a schema change. The loader puts the published
 // values in the page's head (src/loader.js, GET /api/sites/<site>/seo).
+// Crawlers that gather AI training data, by the user agent each honours in
+// robots.txt. Search and AI-search crawlers (Googlebot, Bingbot, Applebot,
+// OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot)
+// are deliberately absent: blocking them takes a site out of answers.
+// Google-Extended and Applebot-Extended govern training only, not search.
+export const TRAINING_CRAWLERS = [
+  'GPTBot', 'ClaudeBot', 'anthropic-ai', 'Google-Extended', 'Applebot-Extended', 'CCBot',
+  'Meta-ExternalAgent', 'FacebookBot', 'Bytespider', 'cohere-ai', 'cohere-training-data-crawler',
+  'Amazonbot', 'Diffbot', 'omgili', 'Timpibot', 'ImagesiftBot',
+]
+
 export const SEO_FIELD = {
   name: 'seo', kind: 'group', label: 'Search and sharing',
   help: 'How this page appears in search results and when its link is shared. Blank uses the site’s own.',

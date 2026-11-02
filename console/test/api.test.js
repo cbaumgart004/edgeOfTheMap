@@ -249,6 +249,22 @@ describe('console API', () => {
     expect((await get('/robots.txt', 'preview.spiritseedswellness.com')).body).toBe('User-agent: *\nDisallow: /\n')
     // A host that is not the site's own gets the first address.
     expect((await get('/robots.txt', 'evil.example')).body).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`)
+    // No robots.blockTraining: no crawler is named.
+    expect(robots.body).not.toContain('GPTBot')
+  })
+
+  it('turns AI training crawlers away from a site whose schema blocks training, and keeps search ones', async () => {
+    const site = { ...SITE, allowed_origins: [ORIGIN, 'https://preview.spiritseedswellness.com'],
+      schema: { ...schema, robots: { blockTraining: true } } }
+    const { call } = setup({ site })
+    const get = (host) => call('GET', `${base}/robots.txt`, { token: null, origin: null, headers: { 'x-forwarded-host': host } })
+    const body = (await get('spiritseedswellness.com')).body
+    expect(body).toMatch(/User-agent: GPTBot\n[\s\S]*User-agent: ClaudeBot\n[\s\S]*Disallow: \/\n\nUser-agent: \*\nAllow: \//)
+    expect(body).toContain('User-agent: Google-Extended')
+    for (const searcher of ['OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot']) expect(body).not.toContain(searcher)
+    expect(body).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`)
+    // A preview stays closed to everyone.
+    expect((await get('preview.spiritseedswellness.com')).body).toBe('User-agent: *\nDisallow: /\n')
   })
 
   it('signs an upload into the site bucket and refuses other file types', async () => {

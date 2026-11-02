@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
-import { checkSchema, withSeo, publishedPages } from '../schema/schema.js'
+import { checkSchema, withSeo, publishedPages, TRAINING_CRAWLERS } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
@@ -177,7 +177,7 @@ export function createHandler(deps) {
   // changed `sitemap` or `structuredData` works before the site is saved on
   // the Manage page.
   async function withSitemap(site) {
-    const missing = ['sitemap', 'structuredData'].filter((k) => !site.schema[k])
+    const missing = ['sitemap', 'structuredData', 'robots'].filter((k) => !site.schema[k])
     if (!missing.length || !deps.siteSchema) return site.schema
     const shipped = await deps.siteSchema(site.slug).catch(() => null)
     const add = Object.fromEntries(missing.filter((k) => shipped?.[k]).map((k) => [k, shipped[k]]))
@@ -394,7 +394,12 @@ export function createHandler(deps) {
         const { base, preview } = askingHost(event, site)
         const cache = { 'cache-control': 'public, max-age=300, stale-while-revalidate=3600', vary: 'X-Forwarded-Host' }
         if (rest === '/robots.txt') {
-          const body = preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /_edit/\nDisallow: /preview\n\nSitemap: ${base}/sitemap.xml\n`
+          // A site whose schema sets robots.blockTraining turns away the crawlers
+          // that gather AI training data; search and AI-search crawlers still
+          // reach it through the `*` group (schema.js, TRAINING_CRAWLERS).
+          const training = (await withSitemap(site)).robots?.blockTraining === true
+            ? `${TRAINING_CRAWLERS.map((a) => `User-agent: ${a}`).join('\n')}\nDisallow: /\n\n` : ''
+          const body = preview ? 'User-agent: *\nDisallow: /\n' : `${training}User-agent: *\nAllow: /\nDisallow: /_edit/\nDisallow: /preview\n\nSitemap: ${base}/sitemap.xml\n`
           return { statusCode: 200, headers: { ...headers, ...cache, 'content-type': 'text/plain; charset=utf-8' }, body }
         }
         const sm = (await withSitemap(site)).sitemap ?? {}

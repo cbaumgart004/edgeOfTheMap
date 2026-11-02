@@ -289,7 +289,10 @@ no login.
   hidden, with its publish date, plus the schema's `sitemap.paths`, through `sitemap.aliases`
   ("/home" to "/") and less `sitemap.exclude`; a site saved before its schema had `sitemap` uses the
   shipped one. Addresses use the asking host (`X-Forwarded-Host`) when it is one of the site's own;
-  a preview host (`preview.*`, `*.amplifyapp.com`) gets a robots.txt that disallows everything. Each
+  a preview host (`preview.*`, `*.amplifyapp.com`) gets a robots.txt that disallows everything. A
+  schema with `robots: { "blockTraining": true }` (StoryShaped and Spirit Seeds) also names each
+  AI training crawler in `TRAINING_CRAWLERS` (`schema/schema.js`) with `Disallow: /`; search and
+  AI-search crawlers stay under `*`. Each
   site serves them through Amplify rewrites (200) from its own `/sitemap.xml` and `/robots.txt`, set
   in the Amplify console before the SPA catch-all, targeting the Lambda's function URL as
   `/_edit/auth` does. Amplify sends `X-Forwarded-Host` on these rewrites (verified 2026-10-12:
