@@ -6,7 +6,7 @@ import { createMemoryRepo } from '../core/repo-memory.js'
 
 const load = (name) => JSON.parse(readFileSync(new URL(`../schema/sites/${name}.json`, import.meta.url), 'utf8'))
 const storyshaped = load('storyshaped')
-// Events and banners: SpiritSeeds' first sketch, kept to test dates, money,
+// Events and banners: Spirit Seeds' first sketch, kept to test dates, money,
 // rich text and singletons (the live schema mirrors its TinaCMS model).
 const spiritseeds = JSON.parse(readFileSync(new URL('./fixtures/events.json', import.meta.url), 'utf8'))
 // StoryShaped's inventory moved to its own Stock Item tables (StoryShaped

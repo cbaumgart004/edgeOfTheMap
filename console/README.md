@@ -132,8 +132,8 @@ Use cases the two schemas cover today:
 
 | Site | Task | Where |
 |---|---|---|
-| SpiritSeeds | New event | Events, New event: date and time, location, rich description, photo, price, booking link |
-| SpiritSeeds | Banner | Banners: rich message, button, look, show-from and hide-after times |
+| Spirit Seeds | New event | Events, New event: date and time, location, rich description, photo, price, booking link |
+| Spirit Seeds | Banner | Banners: rich message, button, look, show-from and hide-after times |
 | StoryShaped | Library entry | Library: title, rich entry, position |
 | StoryShaped | A page | Pages: Home (slug home), Meet the Artist, Library, or any other, made of components: Card (the general one), Hero, Values grid, Daylight / blacklight photo, Product card |
 | StoryShaped | Inventory | Inventory in the menu (`tools`): the site's own hidden admin page |
@@ -443,7 +443,7 @@ no login.
   site's own Stock Item tables (StoryShaped ADR-0002, `backend/server/utils/stock.js`), and its
   `component` and `stockItem` types left the schema on 2026-09-29. They survive as
   `test/fixtures/inventory.json` for the tests of money, labelled photos and relations.
-- **Migration of existing content**: SpiritSeeds' `content/*.json` and StoryShaped's `library.md`
+- **Migration of existing content**: Spirit Seeds' `content/*.json` and StoryShaped's `library.md`
   into documents (platform plan phase 0).
 - **Inline editing** on the page itself (platform plan layer 1). Editing is in the sheet; the page
   shows the result live.
