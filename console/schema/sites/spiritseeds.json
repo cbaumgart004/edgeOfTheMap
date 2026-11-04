@@ -125,7 +125,13 @@
             { "name": "label", "kind": "text", "label": "Name (Instagram, Facebook…)" },
             { "name": "url", "kind": "url", "label": "Link" } ] },
         { "name": "newsletterFormId", "kind": "text", "label": "Newsletter form ID (Kit)", "default": "7800435",
-          "help": "The signup in the Connect window. Blank hides it there." }
+          "help": "The signup in the Connect window. Blank hides it there." },
+        { "name": "valuesFooter", "kind": "boolean", "label": "Values footer on every page", "default": true,
+          "help": "The heading and values in one line at the foot of every page. Off: only a page with a Values section shows them, where that section sits." },
+        { "name": "footerTitle", "kind": "text", "label": "Values footer heading", "default": "Our Core Values" },
+        { "name": "footerValues", "kind": "list", "label": "Values in the footer", "itemLabel": "text",
+          "help": "Blank: the values of the home page's Values section.", "fields": [
+          { "name": "text", "kind": "text", "label": "Value", "required": true } ] }
       ]
     },
     "event": {
@@ -247,7 +253,10 @@
           { "name": "image", "kind": "image", "label": "Thumbnail (optional)" }, { "name": "title", "kind": "text", "label": "Card title" },
           { "name": "description", "kind": "textarea", "label": "Card text" }, { "name": "buttonLabel", "kind": "text", "label": "Button text" },
           { "name": "buttonUrl", "kind": "url", "label": "Button link" } ] },
-        { "name": "words", "kind": "list", "label": "Values", "itemLabel": "text", "help": "Footer layout: the values in one line, separated by blossoms.", "fields": [
+        { "name": "phoneColumns", "kind": "select", "label": "Cards per row on a phone", "default": "2",
+          "help": "Card grid layout. Two per row puts six cards in a 2 by 3 grid. A computer fits as many as are wide enough.", "options": [
+          { "value": "2", "label": "Two per row" }, { "value": "1", "label": "One per row" } ] },
+        { "name": "words", "kind": "list", "label": "Values", "itemLabel": "text", "help": "Values layout: the values in one line, separated by blossoms. While Site settings' Values footer is on, this section is not drawn in the page and its values fill that footer until it has its own.", "fields": [
           { "name": "text", "kind": "text", "label": "Value", "required": true } ] },
         { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
           { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] },
