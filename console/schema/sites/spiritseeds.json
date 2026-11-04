@@ -113,6 +113,9 @@
         { "name": "actionButtonsPerRow", "kind": "select", "label": "Buttons per row on a phone", "default": "2",
           "help": "How the buttons under the menu bar sit on a narrow screen. Two per row puts four buttons in a 2 by 2 square.",
           "options": [ { "value": "2", "label": "Two per row" }, { "value": "1", "label": "One per row" }, { "value": "all", "label": "All in one row" } ] },
+        { "name": "servicesStrip", "kind": "list", "label": "Services under the buttons", "itemLabel": "text",
+          "help": "The words in the strip pinned under the buttons, on every page, for search engines and visitors. Blank: Massage, Sound Healing, Yoga, Music.", "fields": [
+          { "name": "text", "kind": "text", "label": "Service", "required": true } ] },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect" },
         { "name": "connectIntro", "kind": "text", "label": "Connect window message", "default": "Find me on social media, or get first word of new classes and events." },
         { "name": "showFacebook", "kind": "boolean", "label": "Show Facebook in the Connect window", "default": false },
