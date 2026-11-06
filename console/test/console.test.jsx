@@ -336,6 +336,9 @@ describe('console in a page', () => {
 
   it('lets the owner design a section type and then place it on a page', async () => {
     localStorage.clear()
+    // A wide screen: on a phone more than six kinds become a dropdown.
+    const phone = window.matchMedia
+    window.matchMedia = (q) => ({ matches: q.includes('min-width'), media: q, addEventListener() {}, removeEventListener() {} })
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
     await store.create({ type: 'page', data: { title: 'Home', blocks: [] } })
@@ -374,5 +377,6 @@ describe('console in a page', () => {
     expect(byText(host, '.eotm-palette button', 'Treatment')).toBeTruthy()
     expect(byText(host, '.eotm-palette button', 'Treatment').querySelector('.eotm-sketch-p')).toBeTruthy()
     await act(async () => root.unmount())
+    window.matchMedia = phone
   })
 })

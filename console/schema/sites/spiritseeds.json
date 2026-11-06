@@ -140,6 +140,9 @@
         { "name": "newsletterLabel", "kind": "text", "label": "Footer newsletter button text", "default": "Newsletter", "help": "Opens the Connect page." },
         { "name": "reviewUrl", "kind": "url", "label": "Google review link", "help": "The Add a Review button in the footer opens this. In your Google Business Profile choose Ask for reviews (or Get more reviews) and paste the link it gives. The button shows once this is filled in." },
         { "name": "reviewLabel", "kind": "text", "label": "Review button text", "default": "Add a Review" },
+        { "name": "reelsTitle", "kind": "text", "label": "Reels heading", "default": "Watch on Reels", "help": "Above the reels, which sit above the Connect With Us card. Blank: no heading." },
+        { "name": "instagramReels", "kind": "photos", "label": "Instagram reels", "wide": true, "video": true, "help": "Your reels as video files (MP4). Each plays silently while it is on screen; tapping it opens your Instagram reels page. The row shows once a reel is added here or below." },
+        { "name": "facebookReels", "kind": "photos", "label": "Facebook reels", "wide": true, "video": true, "help": "The same for Facebook: tapping one opens your Facebook reels page." },
         { "name": "connectTitle", "kind": "text", "label": "Connect page heading", "default": "Subscribe to our newsletter" },
         { "name": "connectIntro", "kind": "text", "label": "Connect page message", "default": "Welcome to a journey of healing and transformation! Subscribe to our newsletter for insights on trauma-informed yoga, neuroscience-based massage practices, and holistic wellness tips. Join our community today!" },
         { "name": "connectPortrait", "kind": "image", "label": "Connect page portrait", "help": "The round photo above the heading. Blank: the photo from your Kit page." },
@@ -192,7 +195,7 @@
         { "name": "navLabel", "kind": "text", "label": "Menu label" },
         { "name": "order", "kind": "number", "label": "Menu order", "integer": true, "default": 99, "help": "Lower comes first in the menu." },
         { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
-        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp", "slideshow"] }
+        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp", "slideshow", "testimonials"] }
       ]
     },
     "pageLayout": {
@@ -226,6 +229,25 @@
         { "name": "scroll", "kind": "select", "label": "When the page scrolls", "default": "over", "options": [
           { "value": "over", "label": "The page slides over it, and it fades behind" },
           { "value": "normal", "label": "It scrolls away with the page" } ] },
+        { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width." },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
+      ]
+    },
+    "testimonials": {
+      "label": "Reviews and testimonials",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Heading", "default": "Kind Words", "help": "Blank: no heading." },
+        { "name": "items", "kind": "list", "label": "Reviews", "itemLabel": "name",
+          "help": "Each is a small card. A long one scrolls slowly through its words, fading at the edges, and stops while someone points at it.",
+          "fields": [
+            { "name": "quote", "kind": "textarea", "label": "Their words" },
+            { "name": "name", "kind": "text", "label": "Name", "help": "As they agreed to be named, e.g. Sarah K." },
+            { "name": "source", "kind": "text", "label": "From", "help": "Where it came from, e.g. Sound Bath at CURA, or Google review." },
+            { "name": "stars", "kind": "select", "label": "Stars", "default": "", "options": [
+              { "value": "", "label": "None" }, { "value": "5", "label": "5 stars" }, { "value": "4", "label": "4 stars" } ] } ] },
+        { "name": "showReviewButton", "kind": "boolean", "label": "Show the Add a Review button", "default": true,
+          "help": "Opens your Google review link (Site settings). Hidden while that is blank." },
         { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width." },
         { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
           { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
