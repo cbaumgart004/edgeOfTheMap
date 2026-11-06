@@ -5,7 +5,10 @@
 // Visitors get only this file and the window.EOTM bridge; the console itself is
 // fetched when an owner opens the editor with ?edit in the URL, Ctrl/Cmd+Shift+E,
 // or the Edit site button this file shows while the browser holds her editor
-// token (data-edit-button="off" leaves that to the site). It loads the version the site is pinned to and refuses it if
+// token (data-edit-button="off" leaves that to the site). With
+// data-entry="sign-in" the button is the only way: ?edit and the shortcut do
+// nothing until the browser holds the token, so nobody reaches the editor's own
+// sign-in from the site. It loads the version the site is pinned to and refuses it if
 // the bytes do not match the pinned integrity hash.
 //
 // Local mode (demo, development): data-local and data-schema point at a schema
@@ -22,6 +25,7 @@ const cfg = {
   schemaUrl: script?.dataset.schema,
   consoleUrl: script?.dataset.console,
   editButton: script?.dataset.editButton !== 'off',
+  signInOnly: script?.dataset.entry === 'sign-in',
 }
 
 const bridge = window.EOTM ?? createBridge()
@@ -145,6 +149,7 @@ function takeHandoff() {
 const handedOff = takeHandoff()
 
 const wantsEdit = () => {
+  if (cfg.signInOnly && !signedIn()) return false
   try { return new URLSearchParams(location.search).has('edit') || sessionStorage.getItem('eotm:edit') === '1' } catch { return false }
 }
 if (handedOff || wantsEdit()) open()
@@ -153,6 +158,7 @@ else addEventListener('DOMContentLoaded', recheck, { once: true })
 
 addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+    if (cfg.signInOnly && !signedIn()) return
     e.preventDefault()
     open()
   }
