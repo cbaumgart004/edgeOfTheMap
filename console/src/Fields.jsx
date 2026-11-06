@@ -357,6 +357,16 @@ function ImageField({ id, field, value, onChange, ctx }) {
   )
 }
 
+// A clip goes up as recorded (photos are shrunk first, images.js): a browser
+// cannot re-encode video cheaply. Stored as { src, kind: 'video', alt }.
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
+async function uploadVideo(file, ctx) {
+  if (!VIDEO_TYPES.includes(file.type)) throw new Error('Videos must be MP4, WebM or MOV.')
+  const src = await ctx.upload(file)
+  return { src, kind: 'video', alt: '' }
+}
+
+// A photos field with `video: true` (a slideshow) takes short clips as well.
 function Photos({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(0)
   const indexes = field.indexes ?? null
@@ -366,7 +376,9 @@ function Photos({ id, field, value, onChange, ctx }) {
     let next = value
     for (const file of list) {
       try {
-        const photo = await uploadPhoto(file, ctx, field.wide ? 'wide' : 'standard')
+        const photo = field.video && file.type.startsWith('video/')
+          ? await uploadVideo(file, ctx)
+          : await uploadPhoto(file, ctx, field.wide ? 'wide' : 'standard')
         // Suggest the index a pair still lacks: Light first, then Dark.
         if (indexes) photo.index = indexes.find((ix) => !next.some((p) => p.index === ix)) ?? indexes[0]
         next = [...next, photo]
@@ -389,7 +401,7 @@ function Photos({ id, field, value, onChange, ctx }) {
       <ul>
         {value.map((p, i) => (
           <li key={`${p.src}-${i}`} className="eotm-photo">
-            <img src={p.src} alt="" />
+            {p.kind === 'video' ? <video src={p.src} muted playsInline preload="metadata" /> : <img src={p.src} alt="" />}
             <div className="eotm-photo-meta">
               {indexes && (
                 <div className="eotm-seg" role="radiogroup" aria-label="Lighting">
@@ -398,7 +410,7 @@ function Photos({ id, field, value, onChange, ctx }) {
                   ))}
                 </div>
               )}
-              <input className="eotm-input" placeholder="Describe the photo" value={p.alt ?? ''} onChange={(e) => set(i, { alt: e.target.value })} />
+              <input className="eotm-input" placeholder={p.kind === 'video' ? 'Describe the video' : 'Describe the photo'} value={p.alt ?? ''} onChange={(e) => set(i, { alt: e.target.value })} />
               <div className="eotm-row">
                 <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move earlier">↑</button>
                 <button type="button" className="eotm-icon" disabled={i === value.length - 1} onClick={() => move(i, 1)} aria-label="Move later">↓</button>
@@ -409,8 +421,8 @@ function Photos({ id, field, value, onChange, ctx }) {
         ))}
       </ul>
       <label className="eotm-btn">
-        {busy ? `Uploading ${busy}…` : 'Add photos'}
-        <input id={id} type="file" accept="image/*" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = '' }} />
+        {busy ? `Uploading ${busy}…` : field.video ? 'Add photos or videos' : 'Add photos'}
+        <input id={id} type="file" accept={field.video ? 'image/*,video/mp4,video/webm,video/quicktime' : 'image/*'} multiple hidden onChange={(e) => { add(e.target.files); e.target.value = '' }} />
       </label>
     </div>
   )

@@ -227,7 +227,7 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-image .eotm-input { margin-top: 8px; }
 .eotm-photos ul { display: grid; gap: 10px; margin-bottom: 10px; }
 .eotm-photo { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; }
-.eotm-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: var(--eotm-radius); }
+.eotm-photo img, .eotm-photo video { width: 96px; height: 96px; object-fit: cover; border-radius: var(--eotm-radius); }
 .eotm-photo-meta { display: grid; gap: 6px; }
 .eotm-seg { display: inline-flex; border: 1px solid var(--eotm-line); border-radius: 999px; overflow: hidden; width: max-content; }
 .eotm-seg button { padding: 7px 16px; cursor: pointer; font-size: 14px; }

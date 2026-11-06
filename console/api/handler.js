@@ -19,6 +19,10 @@ import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/avif': 'avif' }
+// Short clips for a photos field that allows video (a slideshow). They go up as
+// recorded, so their limit is larger; a browser cannot shrink a video cheaply.
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+const VIDEO_TYPES = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' }
 
 function json(status, body, headers = {}) {
   return { statusCode: status, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }
@@ -556,9 +560,12 @@ ${pushed}`, page: body.page })
         const bucket = own ? site.media_bucket : deps.media?.bucket
         const baseUrl = own ? site.media_base_url : deps.media?.baseUrl
         if (!bucket || !baseUrl) return json(503, { error: 'Photo storage is not set up for this site yet.' }, headers)
-        const ext = IMAGE_TYPES[body.contentType]
-        if (!ext) return json(415, { error: 'Photos must be WebP, JPEG, PNG or AVIF.' }, headers)
-        if (!(body.bytes > 0 && body.bytes <= MAX_UPLOAD_BYTES)) return json(413, { error: 'Photo is too large.' }, headers)
+        const video = VIDEO_TYPES[body.contentType]
+        const ext = IMAGE_TYPES[body.contentType] ?? video
+        if (!ext) return json(415, { error: 'Photos must be WebP, JPEG, PNG or AVIF; videos MP4, WebM or MOV.' }, headers)
+        if (!(body.bytes > 0 && body.bytes <= (video ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES))) {
+          return json(413, { error: video ? 'Video is too large (200 MB at most).' : 'Photo is too large.' }, headers)
+        }
         const key = `${own ? '' : `sites/${site.slug}/`}uploads/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
         const uploadUrl = await deps.presign({ bucket, key, contentType: body.contentType, bytes: body.bytes })
         return json(200, { uploadUrl, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)

@@ -118,6 +118,16 @@
         { "name": "servicesStrip", "kind": "list", "label": "Services under the buttons", "itemLabel": "text",
           "help": "The words in the strip pinned under the buttons, on every page, for search engines and visitors. Blank: Massage, Sound Healing, Yoga, Music.", "fields": [
           { "name": "text", "kind": "text", "label": "Service", "required": true } ] },
+        { "name": "promoOn", "kind": "boolean", "label": "Show the announcement banner", "default": true,
+          "help": "A strip under the services on every page, in the season's deepest color with a slow shimmer, linking to your offer." },
+        { "name": "promoEyebrow", "kind": "text", "label": "Banner tag", "default": "New" },
+        { "name": "promoTitle", "kind": "text", "label": "Banner heading", "default": "Monthly Bodywork Memberships" },
+        { "name": "promoText", "kind": "textarea", "label": "Banner message",
+          "default": "Your body thrives with consistent care. Rooted, Flourish and Thrive memberships make regular bodywork part of your self-care, with priority booking and member rates." },
+        { "name": "promoLabel", "kind": "text", "label": "Banner button text", "default": "Explore Memberships" },
+        { "name": "promoUrl", "kind": "url", "label": "Banner button link",
+          "default": "https://spiritseedswellnessmelissacarey.offeringtree.com/offering_packages" },
+        { "name": "promoUntil", "kind": "date", "label": "Show the banner until", "help": "It hides itself after this day. Blank: until you turn it off." },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect",
           "help": "Every Connect button opens the Connect page (/connect). A section button with the link /connect goes there too." },
         { "name": "footerConnect", "kind": "boolean", "label": "Connect button in the footer", "default": true },
@@ -173,7 +183,7 @@
         { "name": "navLabel", "kind": "text", "label": "Menu label" },
         { "name": "order", "kind": "number", "label": "Menu order", "integer": true, "default": 99, "help": "Lower comes first in the menu." },
         { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
-        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp"] }
+        { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp", "slideshow"] }
       ]
     },
     "pageLayout": {
@@ -190,6 +200,24 @@
     }
   },
   "blocks": {
+    "slideshow": {
+      "label": "Slideshow (photos and videos)",
+      "fields": [
+        { "name": "title", "kind": "text", "label": "Heading", "help": "Shown above the slideshow. Blank: no heading." },
+        { "name": "media", "kind": "photos", "label": "Photos and videos", "wide": true, "video": true,
+          "help": "In the order they play. A video plays silently through once, then the next slide comes. MP4 plays everywhere; an iPhone video exported as Most Compatible is MP4." },
+        { "name": "seconds", "kind": "number", "label": "Seconds per photo", "integer": true, "default": 6, "min": 3, "max": 20 },
+        { "name": "shape", "kind": "select", "label": "Shape", "default": "wide", "options": [
+          { "value": "wide", "label": "Wide (16:9)" }, { "value": "photo", "label": "Photo (4:3)" },
+          { "value": "square", "label": "Square" }, { "value": "tall", "label": "Tall (4:5, for phone videos)" } ] },
+        { "name": "scroll", "kind": "select", "label": "When the page scrolls", "default": "over", "options": [
+          { "value": "over", "label": "The page slides over it, and it fades behind" },
+          { "value": "normal", "label": "It scrolls away with the page" } ] },
+        { "name": "width", "kind": "number", "label": "Section width (%)", "integer": true, "min": 30, "max": 100, "help": "Blank is the page's own width." },
+        { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [
+          { "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" } ] }
+      ]
+    },
     "nextUp": {
       "label": "Next class and event banner",
       "fields": [

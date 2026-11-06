@@ -164,6 +164,7 @@ export function checkSchema(schema) {
       if ('wide' in f && (!['image', 'photos'].includes(f.kind) || typeof f.wide !== 'boolean')) {
         errors.push(`${at}: wide is true or false, on an image or photos field`)
       }
+      if ('video' in f && (f.kind !== 'photos' || typeof f.video !== 'boolean')) errors.push(`${at}: video is true or false, on a photos field`)
       if (f.kind === 'photos' && f.indexes && !Array.isArray(f.indexes)) errors.push(`${at}: indexes must be a list`)
       if ('warnMissingIndex' in f && (f.kind !== 'photos' || !Array.isArray(f.indexes) || typeof f.warnMissingIndex !== 'boolean')) {
         errors.push(`${at}: warnMissingIndex is true or false, on a photos field with indexes`)
@@ -282,6 +283,7 @@ function isBlank(v) {
 function checkImage(v, at, errors) {
   if (!v || typeof v !== 'object' || typeof v.src !== 'string' || !v.src) errors.push(`${at}: image needs a src`)
   else if (!URL_OK.test(v.src)) errors.push(`${at}: image src must be a URL or a site path`)
+  if (v?.kind != null && v.kind !== 'video') errors.push(`${at}: kind must be video or absent`)
   if (v?.rotate != null && ![0, 90, 180, 270].includes(v.rotate)) errors.push(`${at}: rotate must be 0, 90, 180 or 270`)
   if (v?.flip != null && typeof v.flip !== 'boolean') errors.push(`${at}: flip must be true or false`)
   if (v?.opacity != null && !(Number.isInteger(v.opacity) && v.opacity >= 10 && v.opacity <= 100)) errors.push(`${at}: opacity must be 10 to 100`)

@@ -274,6 +274,14 @@ describe('console API', () => {
     expect((await call('POST', `${base}/uploads`, { body: { contentType: 'text/html', bytes: 10 } })).statusCode).toBe(415)
   })
 
+  it('signs a video upload with its larger limit, and still caps it', async () => {
+    const { call } = setup()
+    const ok = await call('POST', `${base}/uploads`, { body: { contentType: 'video/mp4', bytes: 80 * 1024 * 1024 } })
+    expect(ok.json.src).toMatch(/\.mp4$/)
+    expect((await call('POST', `${base}/uploads`, { body: { contentType: 'video/quicktime', bytes: 201 * 1024 * 1024 } })).statusCode).toBe(413)
+    expect((await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 80 * 1024 * 1024 } })).statusCode).toBe(413)
+  })
+
   it('puts a site without a bucket of its own in the shared bucket, under its own folder', async () => {
     const shared = { ...SITE, media_bucket: '', media_base_url: '' }
     const { call } = setup({ site: shared, media: { bucket: 'eotm-photos', baseUrl: 'https://photos.example/' } })
