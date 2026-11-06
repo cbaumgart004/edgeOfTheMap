@@ -62,7 +62,8 @@ describe('StoryShaped in the console', () => {
     expect(host.textContent).toContain('Only pairs missing a photo (2)')
 
     // A Dark photo removed from the first pair moves it behind the second.
-    await act(async () => byText(host, '.eotm-pair-doc', 'Blue ring').querySelector('button[aria-label="Remove this pair"]').click())
+    await act(async () => byText(host, '.eotm-pair-doc', 'Blue ring').querySelector('button[aria-label="Remove both photos"]').click())
+    await act(async () => byText(host, '.eotm-pair-doc', 'Blue ring').querySelector('.eotm-armed').click())
     await tick(10)
     expect((await store.get(listing.id)).data.photos.map((p) => p.src)).toEqual(['/l2.webp'])
   })

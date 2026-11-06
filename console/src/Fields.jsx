@@ -74,6 +74,21 @@ function AddField({ at, ctx }) {
   )
 }
 
+// Anything removed takes two taps: the first turns the button into "Tap again
+// to remove" (red), which goes back after 4 seconds untouched. text: a word
+// button (Remove) instead of the ✕ icon.
+export function RemoveButton({ label = 'Remove', text = null, onConfirm, className = '' }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => { if (armed) { const t = setTimeout(() => setArmed(false), 4000); return () => clearTimeout(t) } }, [armed])
+  if (armed) return (
+    <button type="button" className={`eotm-btn is-danger eotm-armed ${className}`} aria-label={`Tap again: ${label}`}
+      onClick={() => { setArmed(false); onConfirm() }}>Tap again to remove</button>
+  )
+  return text
+    ? <button type="button" className={`eotm-btn is-quiet ${className}`} aria-label={label} onClick={() => setArmed(true)}>{text}</button>
+    : <button type="button" className={`eotm-icon ${className}`} aria-label={label} title={label} onClick={() => setArmed(true)}>✕</button>
+}
+
 // An added field comes off again with two taps. What was typed into it stays
 // in the documents, so adding it back under the same name brings it back.
 function RemoveAdded({ onConfirm }) {
@@ -327,7 +342,7 @@ function ImageField({ id, field, value, onChange, ctx }) {
           <input id={id} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files[0]); e.target.value = '' }} />
         </label>
         <button type="button" className="eotm-btn is-quiet" aria-expanded={!!library} onClick={openLibrary}>Site photos</button>
-        {value?.src && <button type="button" className="eotm-btn is-quiet" onClick={() => onChange(null)}>Remove</button>}
+        {value?.src && <RemoveButton label="Remove image" text="Remove" onConfirm={() => onChange(null)} />}
         {last && last.src === value?.src && last.limit !== 'full' && (
           <button type="button" className="eotm-btn is-quiet" disabled={busy} onClick={() => pick(last.file, 'full')}
             title="Uploads this photo again at up to 3200 px. Use it when the preview looks soft.">Sharper (larger file)</button>
@@ -427,7 +442,7 @@ function Photos({ id, field, value, onChange, ctx }) {
               <div className="eotm-row">
                 <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move earlier">↑</button>
                 <button type="button" className="eotm-icon" disabled={i === value.length - 1} onClick={() => move(i, 1)} aria-label="Move later">↓</button>
-                <button type="button" className="eotm-icon" onClick={() => onChange(value.filter((_, j) => j !== i))} aria-label="Remove photo">✕</button>
+                <RemoveButton label="Remove photo" onConfirm={() => onChange(value.filter((_, j) => j !== i))} />
               </div>
             </div>
           </li>
@@ -546,7 +561,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
                   <button type="button" className="eotm-icon" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
                   <button type="button" className="eotm-icon" onClick={() => duplicate(i)} aria-label="Duplicate">⧉</button>
                   {saveTemplate && <button type="button" className="eotm-icon" onClick={() => setNaming(naming === key ? null : key)} aria-label="Save as template" title="Save as template">☆</button>}
-                  <button type="button" className="eotm-icon" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
+                  <RemoveButton label={`Remove ${itemTitle(item, i)}`} onConfirm={() => onChange(items.filter((_, j) => j !== i))} />
                 </div>
               </div>
               {naming === key && (

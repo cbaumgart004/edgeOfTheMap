@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { CUSTOM_KINDS, customName, fieldName } from '../schema/custom.js'
+import { RemoveButton } from './Fields.jsx'
 
 // "Types and names": the owner designs a section (placed on any page) or a
 // collection (its own list), names its fields and picks what each holds, and
@@ -148,7 +149,7 @@ function FieldRows({ rows, onChange, kinds, depth = 0 }) {
             <span className="eotm-spacer" />
             <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move field up">↑</button>
             <button type="button" className="eotm-icon" disabled={i === rows.length - 1} onClick={() => move(i, 1)} aria-label="Move field down">↓</button>
-            <button type="button" className="eotm-icon" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove field">✕</button>
+            <RemoveButton label="Remove field" onConfirm={() => onChange(rows.filter((_, j) => j !== i))} />
           </div>
           <input className="eotm-input" placeholder="Hint shown under it (optional)" value={r.help} onChange={(e) => set(i, { help: e.target.value })} />
           {r.kind === 'select' && (
@@ -258,8 +259,7 @@ export default function CustomTypes({ schema, store, notify, onSaved }) {
               <button type="button" className="eotm-item-title" aria-expanded={open === it._key} onClick={() => setOpen(open === it._key ? null : it._key)}>
                 {it.label || 'New type'} <span className="eotm-help">· {it.as === 'section' ? 'section' : 'collection'}</span>
               </button>
-              <button type="button" className="eotm-icon" aria-label={`Delete ${it.label || 'type'}`}
-                onClick={() => setItems((all) => all.filter((x) => x._key !== it._key))}>✕</button>
+              <RemoveButton label={`Delete ${it.label || 'type'}`} onConfirm={() => setItems((all) => all.filter((x) => x._key !== it._key))} />
             </div>
             {open === it._key && (
               <div className="eotm-item-body">

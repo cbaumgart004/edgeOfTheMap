@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { checkDocument, warnDocument, titleOf, setItemField, sectionName, newBlock } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
-import { FieldList, Elements } from './Fields.jsx'
+import { FieldList, Elements, RemoveButton } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
@@ -658,11 +658,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       if (!doc) return notify('That part of the page is not in the editor yet.')
       // A section the page shows but the document lacks (data-eotm-add): added
       // where the page shows it, filled from the page's seed, and opened.
-      // Added once: the page keeps showing its placeholder until it redraws
-      // from the draft, and a second tap there opens the section already added
-      // rather than adding another (Spirit Seeds' Home got two slideshows).
+      // Never a second one: a placeholder stands in for a section the page
+      // does not have, so when the document has one of that type anywhere (added
+      // by an earlier tap, before the page redrew) a tap opens it instead of
+      // adding another (Spirit Seeds' Home kept gaining slideshows).
       const list = schema.types[doc.type]?.fields?.find((f) => f.kind === 'blocks')?.name
-      const there = add && list ? doc.data?.[list]?.[add.at] : null
+      const there = add && list ? (doc.data?.[list] ?? []).find((b) => b._type === add.type) : null
       const addKey = add && `${doc.id}:${add.type}:${add.at}`
       if (add && (added.current.has(addKey) || there?._type === add.type)) {
         item = added.current.get(addKey) ?? there._id
@@ -746,10 +747,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   )
   else if (leaving) body = (
     <div className="eotm-warn" role="alertdialog" aria-label="Changes not yet live">
-      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} saved but not live yet. Leave keeps {unpublished === 1 ? 'it' : 'them'} for next time; Discard changes puts the site back to what is live.</p>
+      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} not live yet. Save changes keeps {unpublished === 1 ? 'it' : 'them'} for next time (Publish makes {unpublished === 1 ? 'it' : 'them'} live); Discard changes puts the site back to what is live.</p>
       <div className="eotm-row">
         <button type="button" className="eotm-btn" onClick={() => setLeaving(false)}>Cancel</button>
-        <button type="button" className="eotm-btn is-primary" onClick={onClose}>Leave</button>
+        <button type="button" className="eotm-btn is-primary" onClick={onClose}>Save changes</button>
         <button type="button" className="eotm-btn is-danger" onClick={async () => {
           try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); onClose() } catch (e) { notify(e.message); setLeaving(false) }
         }}>Discard changes</button>
@@ -1065,7 +1066,7 @@ function Templates({ schema, store, notify, onSaved }) {
               <button className="eotm-btn is-primary">Rename</button>
             </form>
           ) : <button type="button" className="eotm-icon" aria-label={`Rename ${t.name}`} onClick={() => setRenaming(i)}>✎</button>}
-          <button type="button" className="eotm-icon" aria-label={`Remove ${t.name}`} onClick={() => save(list.filter((_, j) => j !== i), 'Removed. Sections already on pages are kept.')}>✕</button>
+          <RemoveButton label={`Remove ${t.name}`} onConfirm={() => save(list.filter((_, j) => j !== i), 'Removed. Sections already on pages are kept.')} />
         </li>
       ))}
     </ul>

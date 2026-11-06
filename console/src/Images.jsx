@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { titleOf } from '../schema/schema.js'
-import { uploadPhoto } from './Fields.jsx'
+import { uploadPhoto, RemoveButton } from './Fields.jsx'
 import { pairedFields, holdsPairs, getAt, updateAt, pairsOf, setSlot, removeSlot, removePair, patchPhoto, tagPhoto, incomplete } from './pairs.js'
 
 // Images (schema `images`): every daylight / blacklight pair on the site in one
@@ -114,8 +114,7 @@ export default function Images({ schema, store, bridge, notify, open }) {
                           onAlt={(alt) => write(doc, loc.path, (p) => patchPhoto(p, row.slots[ix].at, { alt }))}
                           onRemove={() => write(doc, loc.path, (p) => removeSlot(p, loc.field.indexes, k, ix))} />
                       ))}
-                      <button type="button" className="eotm-icon" aria-label="Remove this pair" title="Remove both photos"
-                        onClick={() => write(doc, loc.path, (p) => removePair(p, loc.field.indexes, k))}>✕</button>
+                      <RemoveButton label="Remove both photos" onConfirm={() => write(doc, loc.path, (p) => removePair(p, loc.field.indexes, k))} />
                     </li>
                   )))}
                 {/* Room for another pair, once every pair here is whole: a photo
@@ -161,7 +160,7 @@ function Slot({ ix, slot, busy, label, onFile, onAlt, onRemove }) {
         onBlur={(e) => { if (e.target.value !== (photo.alt ?? '')) onAlt(e.target.value) }} />
       <div className="eotm-row">
         {picker('Replace')}
-        <button type="button" className="eotm-btn is-quiet" onClick={onRemove}>Remove</button>
+        <RemoveButton label="Remove photo" text="Remove" onConfirm={onRemove} />
       </div>
     </div>
   )
@@ -175,7 +174,7 @@ function Untagged({ photo, indexes, onTag, onRemove }) {
         <p className="eotm-help">Not marked {indexes.join(' or ')} yet. Which is it?</p>
         <div className="eotm-row">
           {indexes.map((ix) => <button key={ix} type="button" className="eotm-btn" onClick={() => onTag(ix)}>{ix}</button>)}
-          <button type="button" className="eotm-btn is-quiet" onClick={onRemove}>Remove</button>
+          <RemoveButton label="Remove photo" text="Remove" onConfirm={onRemove} />
         </div>
       </div>
     </li>
