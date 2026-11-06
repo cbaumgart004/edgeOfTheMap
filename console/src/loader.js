@@ -47,6 +47,10 @@ async function open() {
   if (bridge.editing) return
   if (opening) return opening
   opening = (async () => {
+    // A token the console no longer accepts is dropped first. A site that is
+    // entered only by signing in then stays as a visitor sees it; any other
+    // site opens the editor on its own sign-in.
+    if ((await rejected()) && cfg.signInOnly) return editButton(false)
     let schema
     let consoleSrc
     let integrity = null
@@ -98,6 +102,34 @@ function signedIn() {
   }
 }
 
+// Whether the console has refused this browser's token. Its expiry alone does
+// not say: a token from an earlier sign-in can be unexpired yet refused (the
+// membership changed, the key rotated), and the editor it opened read nothing,
+// answered 401 to everything and left the page in Arrange, where a tap picks a
+// section instead of pressing a button. A refused token is forgotten. Asked
+// once per token; a network failure counts as accepted, so the editor can say so.
+let checked = null
+async function rejected() {
+  if (cfg.local || !signedIn()) return false
+  const token = localStorage.getItem(`eotm:token:${cfg.site}`)
+  if (token === checked) return false
+  try {
+    const res = await fetch(`${cfg.apiBase}/api/sites/${cfg.site}/me`, { headers: { authorization: `Bearer ${token}` } })
+    if (res.status !== 401 && res.status !== 403) {
+      checked = token
+      return false
+    }
+  } catch {
+    return false
+  }
+  try {
+    localStorage.removeItem(`eotm:token:${cfg.site}`)
+    sessionStorage.removeItem(`eotm:token:${cfg.site}`)
+    sessionStorage.removeItem('eotm:edit')
+  } catch { /* private mode */ }
+  return true
+}
+
 // The owner's way back into the editor from any page while she is signed in.
 // Its own shadow root, so the site's styles cannot reach it nor it theirs.
 let button = null
@@ -123,7 +155,7 @@ function editButton(show) {
   document.body.append(button)
 }
 // The token runs out while the page is open, or another tab signs in or out.
-const recheck = () => editButton(signedIn())
+const recheck = async () => editButton(!(await rejected()) && signedIn())
 addEventListener('storage', (e) => { if (e.key === `eotm:token:${cfg.site}`) recheck() })
 addEventListener('visibilitychange', () => { if (!document.hidden) recheck() })
 setInterval(recheck, 60_000)
