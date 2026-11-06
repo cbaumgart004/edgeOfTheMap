@@ -643,6 +643,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     if (item && doc) seek(doc.data)
     return { doc: docName, section: block ? (block._type ? sectionName(schema, block) : titleOf(schema, { type, data: block }) || null) : docName }
   }
+  // Sections added from a page's placeholder this visit, by doc, type and place.
+  const added = useRef(new Map())
   const openTarget = async ({ type, key, item, field = null, keepPane = false, add = null }) => {
     if (!schema.types[type]) return
     try {
@@ -656,8 +658,18 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       if (!doc) return notify('That part of the page is not in the editor yet.')
       // A section the page shows but the document lacks (data-eotm-add): added
       // where the page shows it, filled from the page's seed, and opened.
-      if (add && schema.blocks?.[add.type]) {
+      // Added once: the page keeps showing its placeholder until it redraws
+      // from the draft, and a second tap there opens the section already added
+      // rather than adding another (Spirit Seeds' Home got two slideshows).
+      const list = schema.types[doc.type]?.fields?.find((f) => f.kind === 'blocks')?.name
+      const there = add && list ? doc.data?.[list]?.[add.at] : null
+      const addKey = add && `${doc.id}:${add.type}:${add.at}`
+      if (add && (added.current.has(addKey) || there?._type === add.type)) {
+        item = added.current.get(addKey) ?? there._id
+        field = field ?? add.field
+      } else if (add && schema.blocks?.[add.type]) {
         const block = { ...newBlock(schema, add.type), ...add.seed }
+        added.current.set(addKey, block._id)
         item = block._id
         field = field ?? add.field
         const api = editorApi.current
