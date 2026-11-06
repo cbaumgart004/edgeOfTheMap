@@ -532,3 +532,14 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 /* The one Publish, beside the click modes; its dialog lists what goes live. */
 .eotm-publish { margin-inline-start: auto; }
 .eotm-publish-dialog .eotm-dev-list { max-height: 40vh; overflow: auto; }
+
+/* A photo with no description yet (Fields.jsx, AltText). */
+.eotm-input.is-needed {
+  border-color: #c77700;
+  background: #fff8ec;
+}
+.eotm-need {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #8a5300;
+}

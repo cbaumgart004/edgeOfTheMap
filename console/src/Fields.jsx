@@ -350,10 +350,23 @@ function ImageField({ id, field, value, onChange, ctx }) {
             }} />
         </div>
       )}
-      {value?.src && <input className="eotm-input" placeholder="Describe the photo for screen readers" value={value.alt ?? ''}
-        onChange={(e) => onChange({ ...value, alt: e.target.value })} />}
+      {value?.src && <AltText value={value.alt} onChange={(alt) => onChange({ ...value, alt })} />}
       {value?.src && <PhotoLook value={value} onChange={onChange} />}
     </div>
+  )
+}
+
+// The description of a photo or video (its alt text), flagged while blank:
+// screen readers read it aloud and search engines index the photo by it.
+function AltText({ value, video, onChange }) {
+  const blank = !value?.trim()
+  return (
+    <>
+      <input className={`eotm-input${blank ? ' is-needed' : ''}`} aria-invalid={blank || undefined}
+        placeholder={video ? 'Describe the video' : 'Describe the photo'} value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)} />
+      {blank && <p className="eotm-need">Add a short description. Screen readers read it aloud, and search engines find the {video ? 'video' : 'photo'} by it.</p>}
+    </>
   )
 }
 
@@ -410,7 +423,7 @@ function Photos({ id, field, value, onChange, ctx }) {
                   ))}
                 </div>
               )}
-              <input className="eotm-input" placeholder={p.kind === 'video' ? 'Describe the video' : 'Describe the photo'} value={p.alt ?? ''} onChange={(e) => set(i, { alt: e.target.value })} />
+              <AltText value={p.alt} video={p.kind === 'video'} onChange={(alt) => set(i, { alt })} />
               <div className="eotm-row">
                 <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move earlier">↑</button>
                 <button type="button" className="eotm-icon" disabled={i === value.length - 1} onClick={() => move(i, 1)} aria-label="Move later">↓</button>
