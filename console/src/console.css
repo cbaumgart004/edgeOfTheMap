@@ -614,3 +614,41 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
   .eotm-head > .eotm-modehint { order: 14; }
   .eotm-head > .eotm-pagewidth { order: 15; }
 }
+
+/* ---- The editor's tree: sections and elements as cards, each level folded. */
+.eotm-root .eotm-info { width: 16px; height: 16px; border-width: 1.25px; font-size: 10.5px; }
+.eotm-arrange-bar .eotm-info { width: 20px; height: 20px; }
+.eotm-label-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.eotm-label-row > .eotm-label { margin-bottom: 0; }
+.eotm-repeater.is-sections > ol > .eotm-item { background: var(--eotm-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); margin-bottom: 10px; }
+.eotm-item-title { display: flex; align-items: center; gap: 8px; text-align: left; }
+.eotm-caret { flex: none; width: 14px; color: var(--eotm-muted); font-size: 12px; }
+.eotm-item-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.eotm-item-kind { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--eotm-muted); }
+.eotm-item-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-chip.is-class { flex: none; padding: 1px 7px; border: 1px solid var(--eotm-line); border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--eotm-muted); background: var(--eotm-bg); }
+.eotm-root details.is-fold.eotm-repeater > summary { font-size: 14px; }
+.eotm-fold-label { flex: none; }
+.eotm-root details.eotm-doc-settings { margin: 0 0 14px; }
+/* An add button's picture: a section of that kind as it is drawn on this page. */
+.eotm-sample { position: relative; display: block; width: 150px; overflow: hidden; border: 1px solid var(--eotm-line); border-radius: 4px; background: #fff; }
+.eotm-sample-page { position: absolute; top: 0; left: 0; display: block; transform-origin: top left; pointer-events: none; }
+/* The trail: Home first as a pill, each step its kind over its words. */
+.eotm-trail { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.eotm-crumb { display: inline-flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 100%; padding: 3px 8px; border-radius: 8px; line-height: 1.2; text-align: left; color: var(--eotm-ink); }
+button.eotm-crumb { cursor: pointer; border: 1px solid var(--eotm-line); background: var(--eotm-bg); }
+button.eotm-crumb:hover { border-color: var(--eotm-accent); }
+.eotm-crumb small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--eotm-muted); }
+.eotm-crumb > span, .eotm-crumb > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.eotm-crumb.is-root { background: color-mix(in srgb, var(--eotm-accent) 14%, var(--eotm-bg)); border-color: var(--eotm-accent); font-weight: 600; }
+.eotm-crumb.is-here { padding-inline: 2px; }
+.eotm-crumb-sep { color: var(--eotm-muted); }
+/* Arrange: what to save a change for, on a line of its own. */
+.eotm-arrange-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex-basis: 100%; }
+.eotm-arrange-scope-label { font-size: 12px; font-weight: 600; color: var(--eotm-muted); }
+/* A phone: the three modes take a row of their own, whole; ⓘ and Publish go under them. */
+@media (max-width: 1023px) {
+  .eotm-head .eotm-modes { flex: 1 1 100%; }
+  .eotm-head .eotm-modes button { white-space: nowrap; padding: 6px 2px; }
+  .eotm-head > .eotm-views, .eotm-head > .eotm-publish { margin-inline-start: auto; }
+}

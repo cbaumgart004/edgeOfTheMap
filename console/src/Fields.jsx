@@ -1,10 +1,11 @@
 import React, { useEffect, useId, useMemo, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName, sectionParts } from '../schema/schema.js'
 import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement, fsToPoints, pointsToFs } from '../schema/elements.js'
 import { googleHas, closestFonts, loadFont, kindOf } from './fonts.js'
 import RichText from './RichText.jsx'
 import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
+import Info from './Info.jsx'
 import { prepareImage } from './images.js'
 
 // One editor per field kind (schema/SCHEMA.md). `ctx` carries the schema, the
@@ -109,9 +110,11 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     ? <RemoveAdded onConfirm={() => ctx.removeField(at, field.name).catch((e) => ctx.notify(e.message))} /> : null
   const wrap = (control, { block = false } = {}) => (
     <div className={`eotm-field${error ? ' has-error' : ''}${block ? ' is-block' : ''}`} data-eotm-field={field.name}>
-      <label htmlFor={id} className="eotm-label">{label}{field.required && <span aria-hidden="true"> *</span>}</label>
+      <div className="eotm-label-row">
+        <label htmlFor={id} className="eotm-label">{label}{field.required && <span aria-hidden="true"> *</span>}</label>
+        {field.help && <Info label={`About ${label}`}>{field.help}</Info>}
+      </div>
       {control}
-      {field.help && <p className="eotm-help">{field.help}</p>}
       {error && <p className="eotm-error" role="alert">{error}</p>}
       {remove}
     </div>
@@ -169,7 +172,7 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
         <div className="eotm-field eotm-check" data-eotm-field={field.name}>
           <input id={id} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
           <label htmlFor={id}>{label}</label>
-          {field.help && <p className="eotm-help">{field.help}</p>}
+          {field.help && <Info label={`About ${label}`}>{field.help}</Info>}
           {remove}
         </div>)
     case 'date':
@@ -207,17 +210,16 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     case 'relation':
       return wrap(<Relation id={id} field={field} value={value} onChange={onChange} ctx={ctx} />)
     case 'group':
-      // `collapsible: true`: folds to its heading, closed unless `open: true`.
-      if (field.collapsible) return (
+      // `collapsible: true`, or any group inside a section or row: folds to its
+      // heading, closed unless `open: true`, so each level opens one at a time.
+      if (field.collapsible || path.includes('[')) return (
         <details className="eotm-group is-fold" open={field.open} data-eotm-field={field.name}>
-          <summary>{label}</summary>
-          {field.help && <p className="eotm-help">{field.help}</p>}
+          <summary>{label}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</summary>
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </details>)
       return (
         <fieldset className="eotm-group" data-eotm-field={field.name}>
-          <legend>{label}</legend>
-          {field.help && <p className="eotm-help">{field.help}</p>}
+          <legend>{label}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</legend>
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </fieldset>)
     case 'list':
@@ -229,7 +231,7 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     case 'blocks':
       return (
         <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path} sections
-          itemTitle={(b) => sectionName(ctx.schema, b)}
+          itemTitle={(b) => sectionName(ctx.schema, b)} itemParts={(b) => sectionParts(ctx.schema, b)}
           fieldsFor={(b) => ctx.schema.blocks[b._type]?.fields ?? []} atFor={(b) => (ctx.schema.blocks[b._type] ? `blocks.${b._type}` : null)}
           add={[
             ...field.of.map((name) => ({ key: name, label: ctx.schema.blocks[name].label, def: ctx.schema.blocks[name], make: () => newBlock(ctx.schema, name) })),
@@ -479,7 +481,7 @@ function Relation({ id, field, value, onChange, ctx }) {
 const holds = (item, id) => Boolean(id) && JSON.stringify(item).includes(`"_id":"${id}"`)
 
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
-function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs }) {
+function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemParts = null, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs }) {
   // Save as template: a section's by default (ctx.saveTemplate); an element's when given.
   const saveTemplate = saveAs ?? (sections ? ctx.saveTemplate : null)
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
@@ -496,10 +498,11 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
     if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
   }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // Opening a row selects it: the trail above follows, and a section on the
-  // page is brought into view and outlined, so the pane and page agree.
+  // page is brought into view and outlined, so the pane and page agree. The
+  // rows beside it fold, so what is open is the one thing being worked on.
   const toggle = (key) => {
     const opening = !open.has(key)
-    setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n })
+    setOpen((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([key])))
     if (!opening) return
     ctx.onPick?.(key)
     const el = [...document.querySelectorAll(`[data-eotm-item="${key}"]`)].find((n) => !n.closest('.eotm-root'))
@@ -539,21 +542,41 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
     }
   }
 
-  return (
-    <fieldset className={`eotm-group eotm-repeater${sections ? ' is-sections' : ''}`} data-eotm-field={path.split('.').pop().replace(/\[.*$/, '')}>
-      <legend>{label}</legend>
-      {help && <p className="eotm-help">{help}</p>}
+  // Inside a section or row (its Elements, a list of its own): folded under
+  // its heading until opened, unless what was picked on the page is in it.
+  const nested = path.includes('[')
+  const [shown, setShown] = useState(() => !nested || !!focused())
+  useEffect(() => { if (nested && focused()) setShown(true) }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  const heading = (
+    <>
+      <span className="eotm-fold-label">{label}</span>
+      <span className="eotm-class-count">{items.length}</span>
+      {help && <Info label={`About ${label}`}>{help}</Info>}
+    </>
+  )
+  const body = (
+    <>
       <ol>
         {items.map((item, i) => {
           const key = item._id ?? i
           const isOpen = open.has(key)
           const hasError = ctx.errors?.some((e) => e.startsWith(`${path}[${i}]`))
           const state = ctx.stateOf?.(item)
+          const parts = itemParts?.(item, i)
           return (
             <li key={key} data-eotm-item={key} className={`eotm-item${isOpen ? ' is-open' : ''}${hasError ? ' has-error' : ''}`}>
               <div className="eotm-item-head">
                 <button type="button" className="eotm-item-title" aria-expanded={isOpen} onClick={() => toggle(key)} title={itemTitle(item, i)}>
-                  {itemTitle(item, i)}
+                  <span className="eotm-caret" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+                  {/* Its kind (a section's template, an element's kind) small
+                      above its own words, and its class beside them. */}
+                  {parts ? (
+                    <span className="eotm-item-text">
+                      <small className="eotm-item-kind">{parts.kind}</small>
+                      <span className="eotm-item-name">{parts.name || <em>No title yet</em>}</span>
+                    </span>
+                  ) : <span className="eotm-item-name">{itemTitle(item, i)}</span>}
+                  {parts?.cls && <span className="eotm-chip is-class" title="Its class: the shared look it takes">{parts.cls}</span>}
                   {state && <span className={`eotm-badge is-${state}`}>{state === 'new' ? 'New, not live' : 'Not live'}</span>}
                 </button>
                 <div className="eotm-row">
@@ -608,7 +631,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
             const a = add.find((x) => x.key === picked)
             return (
               <button type="button" className="eotm-add" onClick={() => { insert(a.make); setPicked('') }}>
-                {a.def && <Sketch def={a.def} />}
+                {a.def && <Sample id={sections ? items.find((x) => x._type === a.key)?._id : null} def={a.def} />}
                 <span>+ Add {a.label}</span>
               </button>
             )
@@ -618,7 +641,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
         <div className="eotm-palette is-sketches">
           {add.map((a) => (
             <button key={a.key} type="button" className="eotm-add" onClick={() => insert(a.make)}>
-              {a.def && <Sketch def={a.def} />}
+              {a.def && <Sample id={items.find((x) => x._type === a.key)?._id} def={a.def} />}
               <span>+ {a.label}</span>
             </button>
           ))}
@@ -628,7 +651,44 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, fieldsFo
           {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}
         </div>
       )}
+    </>
+  )
+  const fieldName = path.split('.').pop().replace(/\[.*$/, '')
+  if (nested) return (
+    <details className={`eotm-group is-fold eotm-repeater${sections ? ' is-sections' : ''}`} open={shown}
+      onToggle={(e) => setShown(e.currentTarget.open)} data-eotm-field={fieldName}>
+      <summary>{heading}</summary>
+      {shown && body}
+    </details>
+  )
+  return (
+    <fieldset className={`eotm-group eotm-repeater${sections ? ' is-sections' : ''}`} data-eotm-field={fieldName}>
+      <legend>{heading}</legend>
+      {body}
     </fieldset>
+  )
+}
+
+// An add button's picture: one of this kind already on the open page, drawn
+// small with the site's own styles, so it shows the layout as it really is;
+// else the sketch drawn from its fields.
+function Sample({ id, def }) {
+  const copy = useMemo(() => {
+    if (!id || def?.preview) return null
+    const el = [...document.querySelectorAll(`[data-eotm-item="${id}"]`)].find((n) => !n.closest('.eotm-root'))
+    const r = el?.getBoundingClientRect()
+    if (!el || !r?.width) return null
+    const c = el.cloneNode(true)
+    c.querySelectorAll('script, iframe, object, embed, video').forEach((n) => n.remove())
+    c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'))
+    return { html: c.outerHTML, width: r.width, height: r.height }
+  }, [id, def])
+  if (!copy) return <Sketch def={def} />
+  const k = 150 / copy.width
+  return (
+    <span className="eotm-sample" aria-hidden="true" title="As it is on this page" style={{ height: Math.min(96, copy.height * k) }}>
+      <span className="eotm-sample-page" style={{ width: copy.width, transform: `scale(${k})` }} dangerouslySetInnerHTML={{ __html: copy.html }} />
+    </span>
   )
 }
 
@@ -658,14 +718,13 @@ export function Elements({ value, onChange, ctx, path, design = null, onDesign =
   }
   const sizeField = { name: '_pt', kind: 'number', label: 'Text size (points)', min: 2, max: 400, step: 0.5, help: 'As in Canva. Dragging a corner in Arrange changes it too.' }
   const templates = ctx.schema.custom?.elementTemplates ?? []
-  const label = (el) => {
-    const own = el.text || el.label || el.image?.alt || (el.html ?? '').replace(/<[^>]*>/g, ' ').trim().slice(0, 40)
-    return own ? `${ELEMENT_LABELS[el.kind] ?? el.kind}: ${own}` : ELEMENT_LABELS[el.kind] ?? el.kind
-  }
+  const own = (el) => el.text || el.label || el.image?.alt || (el.html ?? '').replace(/<[^>]*>/g, ' ').trim().slice(0, 40)
+  const label = (el) => (own(el) ? `${ELEMENT_LABELS[el.kind] ?? el.kind}: ${own(el)}` : ELEMENT_LABELS[el.kind] ?? el.kind)
+  const partsOf = (el) => ({ kind: ELEMENT_LABELS[el.kind] ?? el.kind, name: own(el), cls: classes.find((c) => c.value === el.class)?.label ?? null })
   return (
     <Repeater label="Elements" help="Anything more you want in this section. In Arrange, a Free section places them anywhere."
       items={items} onChange={onChange} ctx={ctx} path={path}
-      itemTitle={(el) => label(el)} fieldsFor={(el) => (design && SIZED.includes(el.kind) ? [sizeField, ...elementFields(el.kind, classes)] : elementFields(el.kind, classes))}
+      itemTitle={(el) => label(el)} itemParts={partsOf} fieldsFor={(el) => (design && SIZED.includes(el.kind) ? [sizeField, ...elementFields(el.kind, classes)] : elementFields(el.kind, classes))}
       saveTemplate={ctx.saveElementTemplate}
       add={[
         ...ELEMENT_KINDS.filter((k) => k !== 'design').map((k) => ({ key: k, label: ELEMENT_LABELS[k], make: () => newElement(k, newId()) })),

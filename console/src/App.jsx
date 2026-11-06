@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, warnDocument, titleOf, setItemField, sectionName, newBlock } from '../schema/schema.js'
+import { checkDocument, warnDocument, titleOf, setItemField, sectionName, sectionParts, newBlock } from '../schema/schema.js'
+import { ELEMENT_LABELS } from '../schema/elements.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements, RemoveButton } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
@@ -8,7 +9,7 @@ import Images from './Images.jsx'
 import ImportDesign from './ImportDesign.jsx'
 import ClassTree from './ClassTree.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
-import { CLASS_TYPE } from '../schema/classes.js'
+import { CLASS_TYPE, classesOf } from '../schema/classes.js'
 import { createPortal } from 'react-dom'
 import Info from './Info.jsx'
 
@@ -521,7 +522,16 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
         ))}
       </div>
-      <Info label="What View, Edit and Arrange do">{[...MODES.map(([, label, help]) => [label, help]), ['Publish', 'Your changes show on this page as you make them; Publish puts them on the live site.']]}</Info>
+      <Info label="What the editor's top bar does">{[
+        ['←', 'Back one step: from a section to its page, from a page to the list, from the list to the start.'],
+        ['Title', 'Where you are. Tap it to fold the editor down to this bar and see the page; tap again to open it. Drag the bar to move the editor.'],
+        ...(!wide ? [['▴ ▾', 'Make the editor taller or shorter.']] : []),
+        ...(dashboard ? [['⚙', 'Your account, pages and requests.']] : []),
+        ['✕', 'Close the editor. Nothing is lost: it saves as you go.'],
+        ...(page.narrow ? [['Page', 'The width the page is laid out at while you edit, so a phone can show the desktop layout.']] : []),
+        ...MODES.map(([, label, help]) => [label, help]),
+        ['Publish', 'Your changes show on this page as you make them; Publish puts them on the live site.'],
+      ]}</Info>
       {!wide && clickMode !== 'view' && size !== 'bar' && <p className={`eotm-modehint is-${clickMode}`}>{MODES.find(([m]) => m === clickMode)[2]}</p>}
       {/* Edits show on the page as they are made; Publish makes them live.
           Minimised to the bar, Publish stays beside the title. */}
@@ -829,7 +839,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
           onSelect={(t) => openTarget({ ...t, keepPane: clickMode === 'arrange' })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
-          tools={clickMode === 'arrange'}
+          tools={clickMode === 'arrange'} classes={classesOf(schema)} addClass={addClass}
           onImport={(target) => { setView({ name: 'import', target, back: view }); setPeek(false); if (size === 'bar') setSize('half') }} />, overlay)}
     </div>
     </>
@@ -1407,16 +1417,27 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
       </div>
-      {/* Page › Section › Object: where the pane is, each step a way back up. */}
+      {/* Page › Section › Object: where the pane is, each step a way back up.
+          Each shows its kind (small) over its own words, so "Content section"
+          is not read as part of the title. */}
       {trail.length > 0 && (
         <nav className="eotm-trail" aria-label="Where you are">
-          <button type="button" className="eotm-link" onClick={() => onFocus(null)}>{titleOf(schema, doc)}</button>
+          <button type="button" className="eotm-crumb is-root" onClick={() => onFocus(null)} title={`Back up to the whole ${type.label.toLowerCase()}`}>
+            <small>↑ {type.label}</small><span>{titleOf(schema, doc)}</span>
+          </button>
           {trail.map((t, i) => (
             <React.Fragment key={t.id}>
-              <span aria-hidden="true"> › </span>
-              {i === trail.length - 1 ? <strong>{t.label}</strong> : <button type="button" className="eotm-link" onClick={() => onFocus(t.id)}>{t.label}</button>}
+              <span className="eotm-crumb-sep" aria-hidden="true">›</span>
+              {i === trail.length - 1
+                ? <span className="eotm-crumb is-here" aria-current="location"><small>{t.kind}</small><strong>{t.name || 'No title yet'}</strong></span>
+                : <button type="button" className="eotm-crumb" onClick={() => onFocus(t.id)} title={`Back up to this ${t.kind.toLowerCase()}`}><small>{t.kind}</small><span>{t.name || 'No title yet'}</span></button>}
             </React.Fragment>
           ))}
+          <Info label="What this trail is">{[
+            ['Steps', 'Where you are, from the page down. Tap any step to go back up to it; what is below it folds away.'],
+            ['Small word', 'What kind of thing it is: the template a section was made from (Content section), or an element (Button).'],
+            ['Large words', 'Its own title or first words.'],
+          ]}</Info>
         </nav>
       )}
       {only ? (
@@ -1429,6 +1450,15 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
               <FieldList fields={type.fields.filter((f) => shared.includes(f.name))} value={doc.data} onChange={change} ctx={ctx} />
             </details>
           )}
+        </>
+      ) : type.fields.some((f) => f.kind === 'blocks') ? (
+        <>
+          {/* A page: its own settings folded above, so its sections come first. */}
+          <details className="eotm-group is-fold eotm-doc-settings" open={!focus && !type.fields.some((f) => f.kind === 'blocks' && doc.data?.[f.name]?.length)}>
+            <summary>{type.label} settings<Info label={`What ${type.label.toLowerCase()} settings are`}>{`This ${type.label.toLowerCase()}'s title, and how it shows in the site's menu.`}</Info></summary>
+            <FieldList fields={type.fields.filter((f) => f.kind !== 'blocks')} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />
+          </details>
+          <FieldList fields={type.fields.filter((f) => f.kind === 'blocks')} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />
         </>
       ) : <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />}
       {/* The document's own elements (a library entry's), added in Arrange. */}
@@ -1469,6 +1499,14 @@ export function labelOf(schema, obj) {
   return own || kind || 'Item'
 }
 
+// What an item is and its own words, apart: a section's template and title,
+// an element's kind and text.
+function partsOfItem(schema, v) {
+  if (schema.blocks?.[v._type]) return sectionParts(schema, v)
+  if (ELEMENT_LABELS[v.kind]) return { kind: ELEMENT_LABELS[v.kind], name: v.text || v.label || v.image?.alt || '' }
+  return { kind: 'Item', name: v.title || v.heading || v.label || v.name || v.text || '' }
+}
+
 // The sections of a document (its `blocks` fields), each with whether it is
 // live: 'new', 'changed' or null.
 function sectionsOf(schema, doc) {
@@ -1493,7 +1531,7 @@ function trailTo(schema, data, id) {
   const walk = (v) => {
     if (!v || typeof v !== 'object') return false
     if (Array.isArray(v)) return v.some(walk)
-    const mine = v._id ? { id: v._id, label: labelOf(schema, v) } : null
+    const mine = v._id ? { id: v._id, label: labelOf(schema, v), ...partsOfItem(schema, v) } : null
     if (mine) path.push(mine)
     if (v._id === id) return true
     if (Object.values(v).some(walk)) return true

@@ -191,10 +191,10 @@
       "slugFrom": "title",
       "previewPath": "/{slug}",
       "fields": [
-        { "name": "title", "kind": "text", "label": "Page title", "required": true },
-        { "name": "navLabel", "kind": "text", "label": "Menu label" },
+        { "name": "title", "kind": "text", "label": "Page title", "required": true, "help": "The name of the page, shown in the browser tab and at the top of the page." },
+        { "name": "navLabel", "kind": "text", "label": "Menu label", "help": "A shorter name for the site’s top menu. Blank: the page title." },
         { "name": "order", "kind": "number", "label": "Menu order", "integer": true, "default": 99, "help": "Lower comes first in the menu." },
-        { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true },
+        { "name": "showInNav", "kind": "boolean", "label": "Show in menu", "default": true, "help": "On: the page is listed in the site’s top menu. Off: it is left out of the menu, but its address still works, so links to it still open it." },
         { "name": "blocks", "kind": "blocks", "label": "Sections", "of": ["contentSection", "service", "embed", "nextUp", "slideshow", "testimonials"] }
       ]
     },

@@ -15,7 +15,7 @@ const SECTION_HELP = [
   ['+ Text, Photo, Button, Box', 'Add a new part to this section.'],
   ['+ Canva PDF', 'Bring in a design made in Canva, from its PDF.'],
   ['+ From template', 'Add a part you saved earlier with Save as template.'],
-  ['Snap / Free-hand', 'Snap lines parts up on 12 columns; Free-hand places them exactly where you let go.'],
+  ['Free form / Snap to grid', 'Free form places parts exactly where you let go; Snap to grid lines them up on 12 columns.'],
   ['Handles', 'Drag the bar under a section to change its height, the one at its side to change its width.'],
 ]
 const PHONE_SECTION_HELP = [
@@ -26,13 +26,13 @@ const PHONE_SECTION_HELP = [
 ]
 const PART_HELP = [
   ['Drag', 'Move the part. Drag a corner or side to resize; pinch with two fingers on a phone.'],
-  ['Fade', 'How see-through the part is.'],
-  ['Front / Back', 'Put the part above or below the parts it overlaps.'],
-  ['Fit', 'Undo a resize: the part takes its own text size and height again.'],
+  ['Free form / Snap to grid', 'Free form places it exactly where you let go; Snap to grid lines it up on 12 columns.'],
+  ['Controls', 'Shows Fade (how see-through), Front and Back (above or below what it overlaps) and Fit (undo a resize).'],
+  ['Class', 'The shared look this part takes, shown in the bar.'],
+  ['Save for', 'This element: your change stays on this part (it saves as you go). Every <class>: copy its size and fade to every part of that class on this page. New class: make a class from it and give it to this part.'],
   ['Duplicate', 'A copy of the part, beside it.'],
   ['Save as template', 'Keep this part to add to any section later.'],
   ['Section', 'Step out to the whole section and its layout choices.'],
-  ['Snap / Free-hand', 'Snap lines parts up on 12 columns; Free-hand places them exactly where you let go.'],
 ]
 
 // Arrange mode (StoryShaped ADR-0010): the page's sections and their parts, on
@@ -245,7 +245,10 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null, tools = true }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null, tools = true, classes = [], addClass = null }) {
+  // Fade and layering stay out of the way until asked for.
+  const [controls, setControls] = useState(false)
+  const [classing, setClassing] = useState(false)
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
@@ -430,10 +433,10 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => cancelAnimationFrame(frame)
   }, [!!sel]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleSnap = () => setSnap((on) => {
-    try { localStorage.setItem(SNAP_KEY, on ? 'free' : 'snap') } catch { /* kept for this visit only */ }
-    return !on
-  })
+  const setSnapTo = (on) => {
+    try { localStorage.setItem(SNAP_KEY, on ? 'snap' : 'free') } catch { /* kept for this visit only */ }
+    setSnap(on)
+  }
   const dismissPrompt = () => {
     try { sessionStorage.setItem(`${PROMPT_KEY}:${prompt.key}`, '1') } catch { /* asked again next time */ }
     setPrompt(null)
@@ -472,6 +475,36 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const toFreeNow = () => write(section, freer(section))
   const opacity = part ? Math.round((parseFloat(part.style.getPropertyValue(phone ? '--qo' : '--o')) || 1) * 100) : 100
   const setPhone = (v) => write(section, (old) => ({ ...old, phone: v }))
+
+  // The part's class: the first of the site's or the owner's whose selector
+  // it (or what it wraps) is drawn with.
+  const matches = (el, sel) => { try { return !!el && (el.matches(sel) || !!el.firstElementChild?.matches(sel)) } catch { return false } }
+  const cls = part ? classes.find((c) => matches(part, c.selector)) ?? null : null
+  // Every <class>: this part's size and fade, copied to each part of the same
+  // class in the page's Free sections (where a part keeps a size of its own).
+  const saveForClass = () => {
+    const n = partNow(part, section)
+    const vals = { w: n.w, h: n.h ?? null, fs: n.fs ?? null, opacity: opacity === 100 ? null : opacity }
+    let count = 0
+    for (const sec of document.querySelectorAll(SECTION)) {
+      if (sec.closest('.eotm-root') || !isFree(sec)) continue
+      const others = partsOf(sec).filter((p) => p !== part && matches(p, cls.selector)).map((p) => p.dataset.eotmPart)
+      if (!others.length) continue
+      count += others.length
+      const ph = phoneEdit(sec)
+      writeNow(sec, layoutField(sec), (old) => others.reduce((o, id) => setPart(o, id, vals, { phone: ph }), old))
+    }
+    notify(count ? `Copied to ${count} more ${cls.label.toLowerCase()} on this page.` : `No other ${cls.label.toLowerCase()} in a Free section on this page.`)
+  }
+  // New class: made from its name, then given to this element.
+  const saveAsClass = async (label) => {
+    try {
+      const made = await addClass(label)
+      if (!made) return
+      writeNow(section, '_elements', (old) => (Array.isArray(old) ? old.map((e) => (e?._id === name ? { ...e, class: made } : e)) : old))
+      setClassing(false)
+    } catch (err) { notify(err.message) }
+  }
 
   // Elements: a section, a row (a glossary term) or a whole document (a
   // library entry) holds them; a region of a document (its header, its
@@ -612,6 +645,10 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
         {tools && <div className="eotm-arrange-tools">
         {part ? (
           <>
+            {cls && <span className="eotm-chip is-class" title="Its class: the shared look it takes">{cls.label}</span>}
+            <button type="button" className={`eotm-target-snap${controls ? ' is-on' : ''}`} aria-pressed={controls} onClick={() => setControls((o) => !o)}
+              title="Fade, layering and fit">Controls {controls ? '▴' : '▾'}</button>
+            {controls && <>
             <label className="eotm-arrange-range">Fade
               <input type="range" min="10" max="100" step="5" value={opacity}
                 onChange={(e) => write(section, (old) => setPart(old, name, { opacity: Number(e.target.value) === 100 ? null : Number(e.target.value) }, { phone }))} />
@@ -620,6 +657,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
             <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => restack(old, name, false, { phone }))} title="Send to back">Back</button>
             <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => setPart(old, name, { h: null, fs: null }, { phone }))}
               title="Let it take its text’s own size and height again">Fit</button>
+            </>}
             {holdsElements && <button type="button" className="eotm-target-snap" onClick={duplicate} title="A copy beside it">Duplicate</button>}
             {holdsElements && part.hasAttribute('data-eotm-element') && onSaveTemplate && (naming ? (
               <form className="eotm-arrange-name" onSubmit={async (e) => {
@@ -633,6 +671,17 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
               </form>
             ) : <button type="button" className="eotm-target-snap" onClick={() => setNaming(true)} title="Keep it to add to any section">Save as template</button>)}
             <button type="button" className="eotm-target-snap" onClick={() => setSel({ section, part: null })}>Section</button>
+            <div className="eotm-arrange-scope" role="group" aria-label="Save this change for">
+              <span className="eotm-arrange-scope-label">Save for</span>
+              <span className="eotm-target-snap is-on" title="Saved as you go">This element ✓</span>
+              {cls && <button type="button" className="eotm-target-snap" onClick={saveForClass} title={`Copy this size and fade to every ${cls.label.toLowerCase()} on this page`}>Every {cls.label}</button>}
+              {addClass && part.hasAttribute('data-eotm-element') && (classing ? (
+                <form className="eotm-arrange-name" onSubmit={(e) => { e.preventDefault(); const v = e.currentTarget.elements.cls.value.trim(); if (v) saveAsClass(v) }}>
+                  <input name="cls" className="eotm-input" placeholder="Class name" maxLength={40} autoFocus aria-label="New class name" />
+                  <button className="eotm-target-snap">Make</button>
+                </form>
+              ) : <button type="button" className="eotm-target-snap" onClick={() => setClassing(true)} title="Make a class from this element and give it to it">New class…</button>)}
+            </div>
           </>
         ) : phone ? (
           // On a phone: how the phone shows this section. Free is the phone's
@@ -689,10 +738,12 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
             )}
           </div>
         )}
-        <button type="button" className={`eotm-target-snap${snap ? ' is-on' : ''}`} aria-pressed={snap} onClick={toggleSnap}
-          title={snap ? 'Snaps to 12 columns and an 8 px step. Click to place freely.' : 'Placing freely. Click to snap to 12 columns and an 8 px step.'}>
-          {snap ? 'Snap' : 'Free-hand'}
-        </button>
+        <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label="Placing">
+          <button type="button" role="radio" aria-checked={!snap} className={!snap ? 'is-on' : ''} onClick={() => setSnapTo(false)}
+            title="Parts go exactly where you let go">Free form</button>
+          <button type="button" role="radio" aria-checked={snap} className={snap ? 'is-on' : ''} onClick={() => setSnapTo(true)}
+            title="Parts line up on 12 columns and an 8 px step">Snap to grid</button>
+        </div>
         <InfoButton open={infoOpen} onToggle={() => setInfoOpen((o) => !o)} label="What these tools do" />
         {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}</span>}
         </div>}

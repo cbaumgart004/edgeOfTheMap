@@ -629,6 +629,13 @@ export async function publishedPages(schema, listPublished) {
 // first photo's description or file name; led by its kind ("Content
 // section"), and by a layout choice when that names it ("Splash").
 export function sectionName(schema, block) {
+  const { kind, name } = sectionParts(schema, block)
+  return name ? `${kind}: ${name}` : kind
+}
+// The same, in its two parts: what kind of section it is (its template, e.g.
+// "Content section") and its own words ("You are resilient"), shown apart so
+// the one is not read as the other.
+export function sectionParts(schema, block) {
   const def = schema.blocks?.[block?._type]
   const kind = def?.label ?? block?._type ?? 'Section'
   const layout = def?.fields?.find((f) => f.name === 'layout' && f.kind === 'select')
@@ -645,5 +652,5 @@ export function sectionName(schema, block) {
   const short = words.length > 48 ? `${words.slice(0, 46).replace(/\s+\S*$/, '')}…` : words
   // "Splash / hero (text over a full-width image)" is a Splash.
   const lead = shape ? shape.split(/\s*[/(]/)[0].trim() || kind : kind
-  return short ? `${lead}: ${short}` : lead
+  return { kind: lead, name: short }
 }
