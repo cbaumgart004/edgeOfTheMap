@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
-import { checkSchema, withSeo, publishedPages, TRAINING_CRAWLERS } from '../schema/schema.js'
+import { checkSchema, defaultData, withSeo, publishedPages, TRAINING_CRAWLERS } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
@@ -525,7 +525,12 @@ export function createHandler(deps) {
         const svc = await serviceFor(site)
         const settingsOf = {}
         for (const type of new Set(conns.map((c) => c.type ?? 'settings'))) {
-          settingsOf[type] = site.schema.types[type] ? (await svc.listPublished(type))[0]?.data ?? {} : {}
+          // The schema's defaults under what is published, as the site reads them
+          // (a switch on by default, an address it ships with), so a row says
+          // Connected exactly when the site shows it.
+          const fields = site.schema.types[type]?.fields
+          const own = fields ? (await svc.listPublished(type))[0]?.data ?? {} : {}
+          settingsOf[type] = { ...defaultData(fields ?? [], site.schema), ...Object.fromEntries(Object.entries(own).filter(([, v]) => v !== '' && v != null)) }
         }
         const connections = conns.map((c) => {
           const value = c.field ? settingsOf[c.type ?? 'settings']?.[c.field] : null

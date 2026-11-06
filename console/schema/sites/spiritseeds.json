@@ -11,7 +11,8 @@
     {"label": "Teaching schedule", "detail": "Collected every night from the studios' booking pages.", "help": "Classes appear on the site without being typed in."},
     {"label": "Facebook", "field": "facebookUrl", "switch": "showFacebook", "show": true},
     {"label": "Instagram", "field": "instagramUrl", "switch": "showInstagram", "show": true},
-    {"label": "Contact email", "field": "contactEmail", "show": true}
+    {"label": "Contact email", "field": "contactEmail", "show": true},
+    {"label": "Google reviews", "field": "reviewUrl", "help": "The footer Add a Review button opens Google so reviews land on your Business Profile."}
   ],
   "version": 2,
   "buttonStyles": [
@@ -134,15 +135,19 @@
         { "name": "promoUntil", "kind": "date", "label": "Show the banner until", "help": "It hides itself after this day. Blank: until you turn it off." },
         { "name": "connectLabel", "kind": "text", "label": "Connect button text", "default": "Connect",
           "help": "Every Connect button opens the Connect page (/connect). A section button with the link /connect goes there too." },
-        { "name": "footerConnect", "kind": "boolean", "label": "Connect button in the footer", "default": true },
+        { "name": "footerConnect", "kind": "boolean", "label": "Newsletter button in the footer", "default": true },
+        { "name": "footerCardTitle", "kind": "text", "label": "Footer card heading", "default": "Connect With Us", "help": "The words at the left of the card with the Newsletter, social and review buttons, above the values." },
+        { "name": "newsletterLabel", "kind": "text", "label": "Footer newsletter button text", "default": "Newsletter", "help": "Opens the Connect page." },
+        { "name": "reviewUrl", "kind": "url", "label": "Google review link", "help": "The Add a Review button in the footer opens this. In your Google Business Profile choose Ask for reviews (or Get more reviews) and paste the link it gives. The button shows once this is filled in." },
+        { "name": "reviewLabel", "kind": "text", "label": "Review button text", "default": "Add a Review" },
         { "name": "connectTitle", "kind": "text", "label": "Connect page heading", "default": "Subscribe to our newsletter" },
         { "name": "connectIntro", "kind": "text", "label": "Connect page message", "default": "Welcome to a journey of healing and transformation! Subscribe to our newsletter for insights on trauma-informed yoga, neuroscience-based massage practices, and holistic wellness tips. Join our community today!" },
         { "name": "connectPortrait", "kind": "image", "label": "Connect page portrait", "help": "The round photo above the heading. Blank: the photo from your Kit page." },
         { "name": "connectBackground", "kind": "image", "label": "Connect page photo", "help": "The photo behind the whole page, under a tint in the season's deepest color. Blank: the season's watercolor." },
         { "name": "showFacebook", "kind": "boolean", "label": "Show Facebook on the Connect page", "default": true },
-        { "name": "facebookUrl", "kind": "url", "label": "Facebook page", "help": "The icon shows once this is filled in and the switch above is on." },
+        { "name": "facebookUrl", "kind": "url", "label": "Facebook page", "default": "https://www.facebook.com/SpiritSeedsWellness", "help": "The icon shows once this is filled in and the switch above is on." },
         { "name": "showInstagram", "kind": "boolean", "label": "Show Instagram on the Connect page", "default": true },
-        { "name": "instagramUrl", "kind": "url", "label": "Instagram profile", "help": "The icon shows once this is filled in and the switch above is on." },
+        { "name": "instagramUrl", "kind": "url", "label": "Instagram profile", "default": "https://www.instagram.com/melissa.spiritseedswellness/", "help": "The icon shows once this is filled in and the switch above is on." },
         { "name": "socials", "kind": "list", "label": "Other links", "itemLabel": "label",
           "help": "More buttons on the Connect page, after Facebook, Instagram and email.",
           "fields": [
