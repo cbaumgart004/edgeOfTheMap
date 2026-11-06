@@ -195,7 +195,11 @@
       "fields": [
         { "name": "title", "kind": "text", "label": "Page", "required": true },
         { "name": "path", "kind": "url", "label": "Address", "required": true, "help": "The page this arranges: / for Home." },
-        { "name": "blocks", "kind": "layout", "label": "Arrangement", "help": "Drag the blocks on the page, or order and size them here." }
+        { "name": "blocks", "kind": "layout", "label": "Arrangement", "help": "Drag the blocks on the page, or order and size them here." },
+        { "name": "cards", "kind": "select", "label": "Cards around a slideshow", "default": "join", "options": [
+          { "value": "join", "label": "The card after it slides over the slideshow and joins the one before" },
+          { "value": "apart", "label": "Each card keeps its place in the page" } ],
+          "help": "For a slideshow the page slides over: the card before it waits once the slideshow is centered, until the next card closes up under it." }
       ]
     }
   },
