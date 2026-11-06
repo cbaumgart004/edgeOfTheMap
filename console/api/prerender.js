@@ -97,6 +97,15 @@ export function pageMeta(schema, siteName, path, doc, base) {
   return { ...meta, jsonLd: structuredData(schema, siteName, doc, meta, base) }
 }
 
+// An address the app serves with no document behind it (the Connect page): the
+// head the schema's `seoPages` gives it, by path, else null.
+export function pathMeta(schema, siteName, path, base) {
+  const p = schema.seoPages?.[path]
+  if (!p) return null
+  return { title: p.title?.trim() || null, description: p.description?.trim() || null, image: p.image ? absolute(p.image, base) : null,
+    noindex: false, url: base + path, siteName, html: '', jsonLd: null }
+}
+
 // The site's index.html with that page's head and words. Tags put here carry
 // data-eotm-seo="added", so the loader takes them out on a page without its own
 // (as it does the ones it adds); the site's own title is kept for it to put back.
@@ -152,7 +161,10 @@ export function createPrerender({ fetch = globalThis.fetch } = {}) {
     const shell = await template(base)
     try {
       const doc = (await publishedPages(schema, listPublished)).get(path)
-      if (!doc) return { html: shell, found: false }
+      if (!doc) {
+        const meta = pathMeta(schema, siteName, path, base)
+        return meta ? { html: renderPage(shell, meta, { preview }), found: true } : { html: shell, found: false }
+      }
       return { html: renderPage(shell, pageMeta(schema, siteName, path, doc, base), { preview }), found: true }
     } catch (err) {
       console.warn('[console-api] prerender fell back to the bare page', path, err?.message)

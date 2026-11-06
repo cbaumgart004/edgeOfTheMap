@@ -102,6 +102,14 @@ export function checkSchema(schema) {
     if (sm.aliases && !Object.entries(sm.aliases).every(([a, b]) => isPath(a) && isPath(b))) errors.push('sitemap.aliases: each maps a path to a path, both starting with /')
     for (const k of ['paths', 'exclude']) if (sm[k] && !(Array.isArray(sm[k]) && sm[k].every(isPath))) errors.push(`sitemap.${k}: a list of paths starting with /`)
   }
+  // A head for an address no document makes (the site's coded Connect page):
+  // { "/connect": { title, description, image } }, pre-rendered and sent to
+  // the loader like a page's Search and sharing (api/prerender.js, pathMeta).
+  if (schema.seoPages != null) {
+    const ok = typeof schema.seoPages === 'object' && Object.entries(schema.seoPages).every(([p, v]) => p.startsWith('/') && v && typeof v === 'object'
+      && ['title', 'description', 'image'].every((k) => v[k] == null || typeof v[k] === 'string'))
+    if (!ok) errors.push('seoPages: maps a path starting with / to { title, description, image } as text')
+  }
   // Structured data on pre-rendered pages (api/prerender.js, structuredData):
   // per type with a page of its own, the schema.org type, an author, the list
   // field holding its sources and the page it sits under.

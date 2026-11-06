@@ -284,6 +284,10 @@ no login.
   title, description, Open Graph and robots tags on each navigation, restoring the site's own on a page
   without them. No site change is needed. Crawlers that do not run JavaScript (link previews) still see
   only the site's HTML; that needs pages rendered at publish.
+  An address the site serves with no document behind it (Spirit Seeds' coded `/connect`) gets its
+  head from the schema's `seoPages` (`{ "/connect": { title, description, image } }`): pre-rendered by
+  `/page` and listed by `/seo` (`pathMeta` in `api/prerender.js`); a site saved without the key
+  uses the shipped one.
 - **Sitemap and robots.txt:** `GET /api/sites/<site>/sitemap.xml` and `/robots.txt` (public). The
   sitemap lists every published page (types with a page of their own, as `/seo` does) not marked
   hidden, with its publish date, plus the schema's `sitemap.paths`, through `sitemap.aliases`

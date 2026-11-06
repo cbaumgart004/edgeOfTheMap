@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { snapshot, pageMeta, renderPage } from '../api/prerender.js'
+import { snapshot, pageMeta, renderPage, pathMeta } from '../api/prerender.js'
 
 const schema = {
   types: { page: { titleField: 'title', fields: [
@@ -32,6 +32,18 @@ describe('prerender', () => {
     const m = pageMeta(schema, 'Spirit Seeds', '/services', { type: 'page', data }, 'https://ss.example')
     expect(m).toMatchObject({ title: 'Services | Spirit Seeds', description: 'Thai Yoga Stretching & rocking. Book Ninety minutes.', image: 'https://ss.example/uploads/a.webp', url: 'https://ss.example/services' })
     expect(pageMeta(schema, 'Spirit Seeds', '/', { type: 'page', data }, 'https://ss.example').title).toBe(null)
+  })
+
+  it('gives an address with no document the head the schema names for it (seoPages)', () => {
+    const s = { ...schema, seoPages: { '/connect': { title: 'Connect | Spirit Seeds', description: 'Join the newsletter.' } } }
+    expect(pathMeta(s, 'Spirit Seeds', '/other', 'https://ss.example')).toBe(null)
+    const page = renderPage('<html><head><title>S</title><meta name="description" content="Home words"></head><body><div id="root"></div></body></html>',
+      pathMeta(s, 'Spirit Seeds', '/connect', 'https://ss.example'))
+    expect(page).toContain('<title data-eotm-orig="S">Connect | Spirit Seeds</title>')
+    expect(page).toContain('<meta name="description" content="Join the newsletter." data-eotm-seo="added">')
+    expect(page).not.toContain('Home words')
+    expect(page).toContain('<link rel="canonical" href="https://ss.example/connect" data-eotm-seo="added">')
+    expect(page).not.toContain('<noscript')
   })
 
   it('marks a preview noindex and escapes what it writes', () => {

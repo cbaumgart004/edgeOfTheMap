@@ -253,6 +253,13 @@ describe('console API', () => {
     expect(robots.body).not.toContain('GPTBot')
   })
 
+  it('lists an address with no document that the schema gives a head in /seo', async () => {
+    const site = { ...SITE, schema: { ...schema, seoPages: { '/connect': { title: 'Connect | SS', description: 'Join us.' } } } }
+    const { call } = setup({ site })
+    const r = await call('GET', `${base}/seo`, { token: null })
+    expect(r.json.pages['/connect']).toEqual({ title: 'Connect | SS', description: 'Join us.' })
+  })
+
   it('turns AI training crawlers away from a site whose schema blocks training, and keeps search ones', async () => {
     const site = { ...SITE, allowed_origins: [ORIGIN, 'https://preview.spiritseedswellness.com'],
       schema: { ...schema, robots: { blockTraining: true } } }

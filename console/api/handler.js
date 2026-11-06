@@ -14,7 +14,7 @@ import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
 import { createTraffic } from './traffic.js'
 import { createPublished, PUBLIC_SITE_FIELDS } from './published.js'
-import { createPrerender, pageMeta } from './prerender.js'
+import { createPrerender, pageMeta, pathMeta } from './prerender.js'
 import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -181,7 +181,7 @@ export function createHandler(deps) {
   // changed `sitemap` or `structuredData` works before the site is saved on
   // the Manage page.
   async function withSitemap(site) {
-    const missing = ['sitemap', 'structuredData', 'robots'].filter((k) => !site.schema[k])
+    const missing = ['sitemap', 'structuredData', 'robots', 'seoPages'].filter((k) => !site.schema[k])
     if (!missing.length || !deps.siteSchema) return site.schema
     const shipped = await deps.siteSchema(site.slug).catch(() => null)
     const add = Object.fromEntries(missing.filter((k) => shipped?.[k]).map((k) => [k, shipped[k]]))
@@ -385,6 +385,12 @@ export function createHandler(deps) {
           const m = pageMeta(schema, site.name, path, doc, base)
           const entry = Object.fromEntries(Object.entries({ title: m.title, description: m.description, image: m.image, noindex: m.noindex || undefined }).filter(([, v]) => v))
           if (Object.keys(entry).length) pages[path] = entry
+        }
+        // Addresses with no document that the schema gives a head (seoPages).
+        for (const path of Object.keys(schema.seoPages ?? {})) {
+          const m = pages[path] ? null : pathMeta(schema, site.name, path, base)
+          const entry = m && Object.fromEntries(Object.entries({ title: m.title, description: m.description, image: m.image }).filter(([, v]) => v))
+          if (entry && Object.keys(entry).length) pages[path] = entry
         }
         return json(200, { pages }, { ...headers, 'cache-control': 'public, max-age=60, stale-while-revalidate=300' })
       }
