@@ -117,7 +117,11 @@
        covered once scrolled to the foot. */
     @media (max-width: 899px) {
       /* The card sits at the top, compact, so the fire at the foot of the screen shows under it. */
-      body { place-items: start center; padding: 12px 20px max(300px, 38dvh); }
+      /* One column no wider than the screen: a long row inside (a log line, a
+         table) scrolls in its card instead of widening the card to the edges. */
+      body { place-items: start center; grid-template-columns: minmax(0, 1fr); padding: 12px max(16px, env(safe-area-inset-left)) max(300px, 38dvh) max(16px, env(safe-area-inset-right)); }
+      main, main.is-wide { min-width: 0; }
+      main :is(pre, table, .log-lines) { max-width: 100%; overflow-x: auto; }
       main, main.is-wide { position: relative; z-index: 1; max-width: 440px; padding: 18px 16px;
         background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px);
         box-shadow: 0 10px 40px rgb(0 0 0 / .45); }

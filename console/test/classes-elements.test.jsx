@@ -13,6 +13,11 @@ const shipped = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8')
 const schema = mergeCustom(shipped, null) // as the API's boot answer is
 const tick = (ms = 0) => act(() => new Promise((r) => setTimeout(r, ms)))
 const byText = (root, sel, text) => [...root.querySelectorAll(sel)].find((el) => el.textContent.includes(text))
+// A heading on the home list, folded open (App.jsx, Home).
+const unfold = (root, label) => act(async () => {
+  const d = [...root.querySelectorAll('details.eotm-home-fold')].find((x) => x.querySelector('.eotm-fold-label').textContent === label)
+  if (!d.open) { d.open = true; d.dispatchEvent(new Event('toggle')) }
+})
 const rect = (el, r) => { el.getBoundingClientRect = () => ({ ...r, right: r.left + r.width, bottom: r.top + r.height, x: r.left, y: r.top }) }
 const settle = async (store, id, pick, has) => {
   for (let i = 0; i < 40; i++) { const v = pick((await store.get(id)).data); if (has(v)) return v; await tick(100) }
@@ -46,9 +51,11 @@ describe('Classes', () => {
     expect(schema.types.classes.fields.map((f) => f.label)).toContain('Buttons')
     const { host, store } = await mount()
     await store.create({ type: 'classes', data: {} })
-    await act(async () => byText(host, 'button.eotm-card', 'Classes').click())
+    await unfold(host, 'Classes')
     await tick(20)
-    await act(async () => host.querySelector('.eotm-doc-open')?.click())
+    // Site, then this page; each class has a Style that opens its look.
+    expect(byText(host, 'summary', 'Whole site')).toBeTruthy()
+    await act(async () => byText(host, '.eotm-class-row', 'Buttons').querySelector('button.is-quiet').click())
     await tick(20)
     expect(byText(host, '.eotm-field', 'Buttons')).toBeTruthy()
     const input = host.querySelector('input[aria-label="Class name"]')
@@ -59,6 +66,35 @@ describe('Classes', () => {
     await act(async () => byText(host, 'button', 'Add class').click())
     await tick(20)
     expect(byText(host, '.eotm-field', 'Gold call-out')).toBeTruthy()
+  })
+})
+
+describe('Classes on the home list', () => {
+  it('nests the open page’s classes as they sit, and + adds an object with one to a section there', async () => {
+    const { store, doc, host } = await mount({ title: 'Home', blocks: [{ _id: 's1', _type: 'contentSection', title: 'Hello' }] })
+    const page = document.createElement('main')
+    page.innerHTML = `<section class="panel" data-eotm-edit="page:${doc.id}" data-eotm-item="s1"><div class="card"><a class="btn">Go</a></div></section>`
+    document.body.append(page)
+    await unfold(host, 'Classes')
+    await tick(400)
+    const here = byText(host, 'details.eotm-fold', 'This page')
+    const panels = byText(here, '.eotm-class-tree[data-depth="0"] > li', 'Panels')
+    expect(byText(panels, '.eotm-class-tree[data-depth="1"] > li', 'Cards').textContent).toContain('Buttons')
+
+    await act(async () => byText(here, '.eotm-class-row', 'Buttons').querySelector('button[aria-label="Add an object with Buttons"]').click())
+    await tick(20)
+    const dialog = host.querySelector('[role="dialog"]')
+    expect(dialog.textContent).toContain('Add an object with this class?')
+    expect(dialog.querySelector('.eotm-class-sample').innerHTML).toContain('class="btn"')
+    const [pageSel, into, kind, klass] = dialog.querySelectorAll('select')
+    expect(pageSel.selectedOptions[0].textContent).toContain('(this page)')
+    expect(into.value).toBe('s1')
+    expect(into.selectedOptions[0].parentElement.label).toBe('Panels')
+    expect(kind.value).toBe('button')
+    expect(klass.value).toBe('btn')
+    await act(async () => byText(dialog, 'button', 'Add').click())
+    const els = await settle(store, doc.id, (d) => d.blocks[0]._elements, (v) => v?.length)
+    expect(els[0]).toMatchObject({ kind: 'button', class: 'btn' })
   })
 })
 

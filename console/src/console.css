@@ -511,6 +511,9 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); transition: none;
 }
 .eotm-sheet.is-loose .eotm-grip { justify-content: space-between; padding: 4px 8px 0; }
+/* Moved, ▴ ▾ still choose half or full (App.jsx), which the rule above would hide. */
+.eotm-sheet.is-loose.is-half { height: min(52dvh, calc(100dvh - 16px)); }
+.eotm-sheet.is-loose.is-full { height: calc(100dvh - 16px); }
 /* The open panel's sizing edge (App.jsx, Sheet): along the bottom where the
    top stays put, along the top of a phone's bottom sheet. */
 .eotm-resize { position: absolute; left: 0; right: 0; height: 14px; z-index: 3; cursor: ns-resize; touch-action: none; }
@@ -553,3 +556,24 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
   font-size: 0.8rem;
   color: #8a5300;
 }
+
+/* The home list as an outline (App.jsx, Home): each heading folds. */
+.eotm-root details.eotm-home-fold > summary { justify-content: flex-start; }
+.eotm-fold-label { flex: 1; }
+.eotm-class-count { font: 500 12px var(--eotm-font); color: var(--eotm-muted); }
+.eotm-plain { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; font: 14px var(--eotm-font); }
+.eotm-plain li { display: flex; justify-content: space-between; gap: 8px; }
+.eotm-sections .eotm-section-open { justify-content: space-between; }
+/* Classes (ClassTree.jsx): site, then this page, nested as on the page. */
+.eotm-class-tree { list-style: none; margin: 6px 0; padding: 0 0 0 4px; display: grid; gap: 4px; }
+.eotm-class-tree .eotm-class-tree { padding-left: 14px; border-left: 1px solid var(--eotm-line); }
+.eotm-class-tree details.eotm-fold { margin: 0; border: 0; padding: 0; }
+.eotm-class-tree details.eotm-fold > summary { min-height: 36px; font: inherit; }
+.eotm-class-row { display: flex; align-items: center; gap: 6px; flex: 1; min-height: 36px; font: 14px var(--eotm-font); }
+.eotm-class-name { flex: 1; display: inline-flex; gap: 6px; align-items: center; }
+.eotm-modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.45); }
+.eotm-modal-card { width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow: auto; display: grid; gap: 10px;
+  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); border-radius: 14px; padding: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+.eotm-modal-card h3 { margin: 0; font: 600 18px var(--eotm-heading); }
+.eotm-modal-card .eotm-label { display: grid; gap: 4px; }
+.eotm-class-sample { max-height: 160px; overflow: hidden; padding: 10px; border: 1px dashed var(--eotm-line); border-radius: 10px; background: #fff; color: #222; pointer-events: none; }

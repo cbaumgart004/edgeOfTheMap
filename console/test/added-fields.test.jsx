@@ -19,6 +19,11 @@ beforeAll(() => {
 
 const tick = (ms = 0) => act(() => new Promise((r) => setTimeout(r, ms)))
 const byText = (root, sel, text) => [...root.querySelectorAll(sel)].find((el) => el.textContent.includes(text))
+// A heading on the home list, folded open (App.jsx, Home).
+const unfold = (root, label) => act(async () => {
+  const d = [...root.querySelectorAll('details.eotm-home-fold')].find((x) => x.querySelector('.eotm-fold-label').textContent === label)
+  if (!d.open) { d.open = true; d.dispatchEvent(new Event('toggle')) }
+})
 const type = async (el, value) => {
   const proto = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype
   await act(async () => {
@@ -70,9 +75,9 @@ describe('fields the owner adds to built-in elements', () => {
     await store.create({ type: 'siteSettings', data: { socials: [{ _id: 's1', label: 'Etsy', url: 'https://etsy.com' }] } })
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    await act(async () => byText(host, 'button.eotm-card', 'Site header and footer').click())
+    await unfold(host, 'Site header and footer')
     await tick(10)
-    await act(async () => host.querySelector('.eotm-doc-open').click())
+    await act(async () => host.querySelector('details.eotm-home-fold[open] .eotm-section-open').click())
     await tick(10)
     // Open the Etsy row, then add a Photo field to it.
     await act(async () => byText(host, '.eotm-item-head button', 'Etsy').click())

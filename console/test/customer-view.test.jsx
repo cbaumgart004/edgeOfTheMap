@@ -49,21 +49,13 @@ describe('customer view', () => {
     expect(seen.filter((c) => c.type === '$preview')).toHaveLength(2)
   })
 
-  it('steps the editor aside and brings it back', async () => {
+  it('offers no Customer view or Preview changes button: edits show as they are made', async () => {
     localStorage.clear()
     const host = document.createElement('div')
     document.body.append(host)
-    const bridge = createBridge()
-    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={bridge} auth={localAuth()} onClose={() => {}} />))
+    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-
-    await act(async () => host.querySelector('button[aria-label="Customer view"]').click())
-    expect(bridge.previewing).toBe(true)
-    expect(host.querySelector('.eotm-sheet')).toBeNull()
-
-    await act(async () => byText(host, 'button', 'Back to editing').click())
-    await tick()
-    expect(bridge.previewing).toBe(false)
-    expect(host.querySelector('.eotm-sheet')).not.toBeNull()
+    expect(host.querySelector('button[aria-label="Customer view"]')).toBeNull()
+    expect(host.querySelector('button[aria-label="Preview changes"]')).toBeNull()
   })
 })

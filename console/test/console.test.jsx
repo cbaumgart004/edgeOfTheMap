@@ -17,6 +17,11 @@ beforeAll(() => {
 
 const tick = (ms = 0) => act(() => new Promise((r) => setTimeout(r, ms)))
 const byText = (root, sel, text) => [...root.querySelectorAll(sel)].find((el) => el.textContent.includes(text))
+// A heading on the home list, folded open (App.jsx, Home).
+const unfold = (root, label) => act(async () => {
+  const d = [...root.querySelectorAll('details.eotm-home-fold')].find((x) => x.querySelector('.eotm-fold-label').textContent === label)
+  if (!d.open) { d.open = true; d.dispatchEvent(new Event('toggle')) }
+})
 
 describe('console in a page', () => {
   it('creates an event, pushes the draft to the page as it is typed, saves and publishes it', async () => {
@@ -30,7 +35,7 @@ describe('console in a page', () => {
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={bridge} auth={localAuth()} onClose={() => {}} />))
     await tick()
 
-    await act(async () => byText(host, 'button.eotm-card', 'Events').click())
+    await unfold(host, 'Events')
     await tick()
     await act(async () => byText(host, 'button', 'New event').click())
     await tick(10)
@@ -89,7 +94,7 @@ describe('console in a page', () => {
     expect(sheet.classList.contains('is-half')).toBe(true)
   })
 
-  it('links home to the dashboard and labels the preview toggle', async () => {
+  it('links home to the dashboard and the account page', async () => {
     localStorage.clear()
     const host = document.createElement('div')
     document.body.append(host)
@@ -98,11 +103,7 @@ describe('console in a page', () => {
     await tick()
     expect(host.querySelector('a[aria-label="Back to your dashboard"]').href).toBe('https://admin.theedgeofthemap.com/')
 
-    const preview = host.querySelector('button[aria-label="Preview changes"]')
-    await act(async () => preview.click())
-    expect(preview.getAttribute('aria-pressed')).toBe('true')
-    expect(preview.textContent).toBe('Back to editing')
-    expect(host.querySelector('.eotm-sheet').classList.contains('is-peek')).toBe(true)
+    expect(host.querySelector('a[aria-label="Your account, pages and requests"]')).toBeTruthy()
   })
 
   it('orders and sizes the blocks the page marks, and writes the whole arrangement', async () => {
@@ -119,13 +120,7 @@ describe('console in a page', () => {
     const root = createRoot(host)
     await act(async () => root.render(<App schema={story} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    // More than six top-level types show as a dropdown on a phone, else cards.
-    const pick = host.querySelector('#eotm-type-pick')
-    await act(async () => {
-      if (!pick) return byText(host, 'button.eotm-card', 'Page layouts').click()
-      pick.value = 'pageLayout'
-      pick.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await unfold(host, 'Page layouts')
     await tick()
     await act(async () => byText(host, 'button.eotm-doc-open', 'Home').click())
     await tick(10)
@@ -236,10 +231,11 @@ describe('console in a page', () => {
     // Home: Site settings sits under Design, beside the templates.
     const head = byText(host, '.eotm-menu-head', 'Design')
     expect(head).toBeTruthy()
-    expect(byText(host, 'ul.eotm-types:last-of-type button.eotm-card', 'Site settings')).toBeTruthy()
-    expect(byText(host, 'button.eotm-card', 'Section templates')).toBeTruthy()
+    const labels = [...host.querySelectorAll('.eotm-fold-label')].map((l) => l.textContent)
+    expect(labels.indexOf('Site settings')).toBeGreaterThan(labels.indexOf('Pages'))
+    expect(labels).toContain('Section templates')
 
-    await act(async () => byText(host, 'button.eotm-card', 'Pages').click())
+    await unfold(host, 'Pages')
     await tick(10)
     await act(async () => host.querySelector('button.eotm-fold-btn').click())
     const rows = [...host.querySelectorAll('.eotm-section-open')].map((b) => b.textContent)
@@ -283,17 +279,12 @@ describe('console in a page', () => {
     await tick()
     const sheet = host.querySelector('.eotm-sheet')
     const fire = (el, type, clientX, clientY) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }))
-    // Preview changes leaves only the header; it still drags the editor.
-    await act(async () => host.querySelector('button[aria-label="Preview changes"]').click())
-    expect(sheet.classList.contains('is-peek')).toBe(true)
+    // The header drags the editor.
     const head = host.querySelector('.eotm-head')
     // A browser ends a drag with a click where it ended, which is swallowed.
     await act(async () => { fire(head, 'pointerdown', 10, 10); fire(head, 'pointermove', 110, 210); fire(head, 'pointerup', 110, 210); head.click() })
     expect(sheet.classList.contains('is-loose')).toBe(true)
     expect(JSON.parse(localStorage.getItem('eotm:panel-pos'))).toEqual({ x: 100, y: 200 })
-    // Its buttons stay buttons: a press on one is not a drag.
-    await act(async () => byText(host, 'button', 'Back to editing').click())
-    expect(sheet.classList.contains('is-peek')).toBe(false)
     // Moved, its top stays put, so the bottom edge sizes it; double-click forgets.
     const edge = host.querySelector('.eotm-resize.is-bottom')
     await act(async () => { fire(edge, 'pointerdown', 0, 500); fire(edge, 'pointermove', 0, 400); fire(edge, 'pointerup', 0, 400) })
@@ -353,7 +344,8 @@ describe('console in a page', () => {
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
 
-    await act(async () => byText(host, 'button.eotm-card', 'Types and names').click())
+    await unfold(host, 'Types and names')
+    await act(async () => byText(host, 'button', 'Rename or design your own').click())
     await act(async () => byText(host, 'button', 'New section type').click())
     await type(host.querySelector('input[placeholder="e.g. Banner"]'), 'Banner')
     await type(host.querySelector('input[aria-label="Field name"]'), 'Message')
@@ -369,7 +361,7 @@ describe('console in a page', () => {
     expect(bridge.schema.blocks.service.label).toBe('Treatment')
 
     await act(async () => host.querySelector('button[aria-label="Back"]').click())
-    await act(async () => byText(host, 'button.eotm-card', 'Pages').click())
+    await unfold(host, 'Pages')
     await tick()
     await act(async () => byText(host, 'button.eotm-doc-open', 'Home').click())
     await tick(10)

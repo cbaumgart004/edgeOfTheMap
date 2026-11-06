@@ -6,6 +6,7 @@ import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
 import ImportDesign from './ImportDesign.jsx'
+import ClassTree from './ClassTree.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
 import { CLASS_TYPE } from '../schema/classes.js'
 import { createPortal } from 'react-dom'
@@ -311,7 +312,7 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     fit()
     addEventListener('resize', fit)
     return () => removeEventListener('resize', fit)
-  }, [bar])
+  }, [bar, size]) // ▴ makes it taller: kept on screen
 
   const onDown = (e) => {
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
@@ -403,16 +404,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const page = usePageWidth()
   const [size, setSize] = useState(wide ? 'full' : 'half')
   const [peek, setPeek] = useState(false)
-  // Customer view: the editor steps aside and the page shows only what is
-  // published, as a visitor sees it (bridge.setPreviewing). Drafts are kept.
-  const [customer, setCustomer] = useState(false)
   // What a click on the page does. View: the page's own (links go, buttons
   // press). Edit: opens what was clicked, buttons included, which are edited,
   // not pressed (Targets.jsx). Arrange: selects a section or part and shows
   // its handles (Arrange.jsx).
   const [clickMode, setClickMode] = useState('edit')
   const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar') }
-  useEffect(() => { bridge.setPreviewing?.(customer) }, [bridge, customer])
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
   const [view, setView] = useState({ name: 'home' })
@@ -431,17 +428,28 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const [unpublished, setUnpublished] = useState(0)
   const [publishing, setPublishing] = useState(false)
   const [published, setPublished] = useState(0) // bumps after a publish, so the counts refresh
-  const [leaving, setLeaving] = useState(false)
+  // Every way out of the editor (✕, the dashboard links) asks Save, Discard
+  // or Cancel while there are changes not yet live or not yet saved; `go` is
+  // where it was going.
+  const [leaving, setLeaving] = useState(null)
   const unsaved = view.saveState === 'pending' || view.saveState === 'saving'
-  // Leaving the page with changes not yet live, or not yet saved: the browser
-  // asks first (its own wording; a page cannot choose it).
+  const going = useRef(false)
+  // Leaving the page another way (reload, the address bar): the browser asks
+  // first, in its own wording (a page cannot choose it).
   useEffect(() => {
     if (!unpublished && !unsaved) return undefined
-    const warn = (e) => { e.preventDefault(); e.returnValue = '' }
+    const warn = (e) => { if (going.current) return; e.preventDefault(); e.returnValue = '' }
     addEventListener('beforeunload', warn)
     return () => removeEventListener('beforeunload', warn)
   }, [unpublished, unsaved])
-  const close = () => (unpublished ? setLeaving(true) : onClose())
+  const leave = (go) => (unpublished || unsaved ? setLeaving({ go }) : go())
+  const close = () => leave(onClose)
+  const goTo = (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return // a new tab leaves nothing
+    e.preventDefault()
+    const href = e.currentTarget.href
+    leave(() => { going.current = true; location.assign(href) })
+  }
   useEffect(() => () => bridge.clear(), [bridge])
 
   // The page laid out wider than the screen is scaled down; the editor is
@@ -466,7 +474,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         <button type="button" className="eotm-icon" aria-label="Back" onClick={() => setView(view.name === 'edit' && view.back ? view.back : view.name === 'edit' ? { name: 'list', type: view.type } : { name: 'home' })}>←</button>
       )}
       {view.name === 'home' && dashboard && (
-        <a className="eotm-icon" href={dashboard} aria-label="Back to your dashboard" title="Back to your dashboard">←</a>
+        <a className="eotm-icon" href={dashboard} onClick={goTo} aria-label="Back to your dashboard" title="Back to your dashboard">←</a>
       )}
       {view.name === 'home' && schema.brand.logo && <img className="eotm-logo" src={schema.brand.logo} alt="" />}
       <button type="button" className="eotm-title" onClick={() => setSize(size === 'bar' ? 'half' : 'bar')} aria-expanded={size !== 'bar'}>
@@ -475,7 +483,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       </button>
       {!wide && <button type="button" className="eotm-icon" aria-label={size === 'full' ? 'Shrink editor' : 'Expand editor'} onClick={() => setSize(size === 'full' ? 'half' : 'full')}>{size === 'full' ? '▾' : '▴'}</button>}
       {dashboard && (
-        <a className="eotm-icon" href={`${dashboard.replace(/\/$/, '')}/?site=${encodeURIComponent(schema.site)}`}
+        <a className="eotm-icon" href={`${dashboard.replace(/\/$/, '')}/?site=${encodeURIComponent(schema.site)}`} onClick={goTo}
           aria-label="Your account, pages and requests" title="Your account, pages and requests">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -503,26 +511,10 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
         ))}
       </div>
-      {/* One small row: the two ways to look at the page, named for what each
-          shows (the owner's changes before they are live, or the live site as
-          customers get it), then the one way to make changes live. Minimised to
-          the bar, only Publish stays, beside the title. */}
+      {/* Edits show on the page as they are made; Publish makes them live.
+          Minimised to the bar, Publish stays beside the title. */}
       {size === 'bar' ? user && publishButton : (
         <div className="eotm-views">
-          <button type="button" className={`eotm-pill${peek ? ' is-on' : ' is-icon'}`} aria-pressed={peek}
-            aria-label={peek ? 'Back to editing' : 'Preview changes'}
-            title={peek ? 'Show the editor again' : 'Preview changes: fade the editor to see them on the page, before they are live'} onClick={() => setPeek((p) => !p)}>
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
-            </svg>
-            {peek && 'Back to editing'}
-          </button>
-          <button type="button" className="eotm-pill is-icon" aria-label="Customer view" title="Customer view: the live site as your customers see it, without your unpublished changes or the editor"
-            onClick={() => { setPeek(false); setCustomer(true) }}>
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-          </button>
           {user && publishButton}
         </div>
       )}
@@ -572,6 +564,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), { name, label }] })
     setSchema(next)
     notify(`Added the class “${label}”. Give it a style here, then give it to any element.`)
+    return name
   }
   // A design brought in from Canva (ImportDesign.jsx): its new classes added
   // to the site's own, each piece given its class, then the design written
@@ -759,18 +752,24 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   )
   else if (leaving) body = (
     <div className="eotm-warn" role="alertdialog" aria-label="Changes not yet live">
-      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} not live yet. Save changes keeps {unpublished === 1 ? 'it' : 'them'} for next time (Publish makes {unpublished === 1 ? 'it' : 'them'} live); Discard changes puts the site back to what is live.</p>
+      <p>{unpublished ? `${unpublished} change${unpublished === 1 ? ' is' : 's are'} not live yet.` : 'A change is still being saved.'} Save keeps your changes for next time (Publish makes them live); Discard puts the site back to what is live.</p>
       <div className="eotm-row">
-        <button type="button" className="eotm-btn" onClick={() => setLeaving(false)}>Cancel</button>
-        <button type="button" className="eotm-btn is-primary" onClick={onClose}>Save changes</button>
+        {/* Save is the default: Enter on the open dialog saves. */}
+        <button type="button" className="eotm-btn is-primary" autoFocus onClick={async () => {
+          try { await editorApi.current?.save?.() } catch (e) { notify(e.message); return }
+          leaving.go()
+        }}>Save</button>
         <button type="button" className="eotm-btn is-danger" onClick={async () => {
-          try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); onClose() } catch (e) { notify(e.message); setLeaving(false) }
-        }}>Discard changes</button>
+          try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); leaving.go() } catch (e) { notify(e.message); setLeaving(null) }
+        }}>Discard</button>
+        <button type="button" className="eotm-btn" onClick={() => setLeaving(null)}>Cancel</button>
       </div>
     </div>)
   else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
-  else if (view.name === 'home') body = <Home schema={schema} store={store} wide={wide} open={(type) => setView({ name: 'list', type })}
+  else if (view.name === 'home') body = <Home schema={schema} store={store} notify={notify}
+    openDoc={(doc, item = null, field = null) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), back: { name: 'home' } })}
+    addClass={addClass} onAddElement={({ element, ...t }) => resizeTarget({ ...t, field: '_elements', value: (old) => [...(Array.isArray(old) ? old : []), element] })}
     onView={openView} onImages={() => setView({ name: 'images' })} onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
   else if (view.name === 'images') body = (
     <Images schema={schema} store={store} bridge={bridge} notify={notify}
@@ -793,13 +792,6 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       onFocus={(item) => setView((v) => ({ ...v, focus: item, focusField: null, focusAt: Date.now() }))}
       focus={view.focus} focusField={view.focusField} focusAt={view.focusAt} editorApi={editorApi} pendingSize={pendingSize} />)
 
-  if (customer) return (
-    <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
-      <button type="button" className="eotm-btn is-primary eotm-return" onClick={() => setCustomer(false)}
-        title="Customer view: this is the live site. Your unpublished changes are kept.">Back to editing</button>
-    </div>
-  )
-
   return (
     <>
     <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
@@ -821,7 +813,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       <div ref={setOverlay} />
       {/* Edit and Arrange both select on a click, with handles to move and
           size; Edit also types text on a double-click. */}
-      {user && overlay && !customer && clickMode !== 'view' && createPortal(
+      {user && overlay && clickMode !== 'view' && createPortal(
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
           onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
@@ -948,17 +940,34 @@ function ToDeveloper({ schema, store, notify, refreshKey, onCount }) {
 }
 
 // More than this many types on a phone become a dropdown instead of cards.
-const CARD_LIMIT = 6
+const HOME_OPEN = 'eotm:home-open'
 
 // Where a type sits on the home menu: with the content, or under Design (its
 // look: themes, layouts, settings, menus). The schema can say (`group`).
 export const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
 
-function Home({ schema, store, wide, open, onView, onImages, onTypes, onTemplates, onTool }) {
+function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTemplates, onTool, addClass, onAddElement }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
   }, [schema, store])
+  // Every heading folds open and shut, and is kept so for next time.
+  const [unfolded, setUnfolded] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(HOME_OPEN) ?? '[]')) } catch { return new Set() }
+  })
+  const toggle = (id, isOpen) => setUnfolded((s) => {
+    if (s.has(id) === isOpen) return s
+    const n = new Set(s)
+    if (isOpen) n.add(id); else n.delete(id)
+    try { localStorage.setItem(HOME_OPEN, JSON.stringify([...n])) } catch { /* private mode */ }
+    return n
+  })
+  const fold = (id, label, count, body) => (
+    <details key={id} className="eotm-fold eotm-home-fold" open={unfolded.has(id)} onToggle={(e) => toggle(id, e.currentTarget.open)}>
+      <summary><span className="eotm-fold-label">{label}</span>{count != null && <span className="eotm-class-count">{count}</span>}</summary>
+      {unfolded.has(id) && body}
+    </details>
+  )
   // A type listed under another (menuUnder) is reached through that one's list.
   // The type Images keeps (schema `images`) is reached through Images.
   const types = Object.entries(schema.types).filter(([n, t]) => !t.menuUnder && n !== schema.images?.type)
@@ -976,46 +985,40 @@ function Home({ schema, store, wide, open, onView, onImages, onTypes, onTemplate
     </li>
   ))
   const templates = schema.custom?.templates ?? []
-  // A type in views (a Theme's Daylight and Blacklight) has a card per view.
-  const card = ([name, t]) => (t.views ? t.views.map((v) => (
-    <li key={`${name}:${v.label}`}>
-      <button type="button" className="eotm-card" onClick={() => onView(name, v)}>
-        <strong>{v.label}</strong>
-        <span>{v.help ?? t.label}</span>
-      </button>
-    </li>
-  )) : (
-    <li key={name}>
-      <button type="button" className="eotm-card" onClick={() => open(name)}>
-        <strong>{t.plural ?? t.label}</strong>
-        <span>{countOf(name) ?? '…'}</span>
-      </button>
-    </li>
-  ))
+  const sectionKinds = Object.entries(schema.blocks ?? {})
+  // What a heading holds: a type in views (a Theme's Daylight and Blacklight)
+  // a card per view; a one-of-a-kind document its settings by name, each
+  // opening there; Classes the class outline; any other type its list.
+  const section = ([name, t]) => {
+    if (t.views) return (
+      <ul key={name} className="eotm-types">{t.views.map((v) => (
+        <li key={`${name}:${v.label}`}>
+          <button type="button" className="eotm-card" onClick={() => onView(name, v)}>
+            <strong>{v.label}</strong>
+            <span>{v.help ?? t.label}</span>
+          </button>
+        </li>
+      ))}</ul>
+    )
+    const label = t.plural ?? t.label
+    if (name === CLASS_TYPE) {
+      const n = (t.fields ?? []).length
+      return fold(name, label, `${n} class${n === 1 ? '' : 'es'}`, (
+        <ClassTree schema={schema} store={store} addClass={addClass} onAdd={onAddElement}
+          openStyle={async (field) => {
+            try { const [doc] = await store.list(name); openDoc(doc ?? (await store.create({ type: name, data: {} })), null, field) } catch (e) { notify(e.message) }
+          }} />
+      ))
+    }
+    if (t.singleton) {
+      const n = (t.fields ?? []).length
+      return fold(name, label, `${n} setting${n === 1 ? '' : 's'}`, <Settings schema={schema} store={store} type={name} openDoc={openDoc} notify={notify} />)
+    }
+    const n = countOf(name)
+    return fold(name, label, n == null ? '…' : String(n), <DocList schema={schema} store={store} type={name} notify={notify} open={(doc, item) => openDoc(doc, item)} />)
+  }
   const design = types.filter(([n, t]) => isDesign(n, t))
   const content = types.filter(([n, t]) => !isDesign(n, t))
-  // Design: the site's look, and the owner's section templates and types,
-  // listed apart from the pages and entries.
-  const designList = (
-    <>
-      <h3 className="eotm-menu-head">Design</h3>
-      <ul className="eotm-types">
-        {design.map(card)}
-        <li>
-          <button type="button" className="eotm-card" onClick={onTemplates}>
-            <strong>Section templates</strong>
-            <span>{templates.length ? `${templates.length} saved` : 'None saved yet'}</span>
-          </button>
-        </li>
-        <li>
-          <button type="button" className="eotm-card is-request" onClick={onTypes}>
-            <strong>Types and names</strong>
-            <span>Design your own, rename the rest</span>
-          </button>
-        </li>
-      </ul>
-    </>
-  )
   const images = schema.images && (
     <li key="images">
       <button type="button" className="eotm-card" onClick={onImages}>
@@ -1024,28 +1027,57 @@ function Home({ schema, store, wide, open, onView, onImages, onTypes, onTemplate
       </button>
     </li>
   )
-  const extra = <>{images}{tools}</>
-  if (!wide && types.length > CARD_LIMIT) {
-    return (
-      <div className="eotm-types-picker">
-        <label className="eotm-label" htmlFor="eotm-type-pick">What would you like to edit?</label>
-        <select id="eotm-type-pick" className="eotm-input" value="" onChange={(e) => e.target.value && open(e.target.value)}>
-          <option value="">Choose…</option>
-          {content.map(([name, t]) => <option key={name} value={name}>{t.plural ?? t.label}{countOf(name) != null ? ` (${countOf(name)})` : ''}</option>)}
-        </select>
-        <ul className="eotm-types">{extra}</ul>
-        {designList}
-      </div>
-    )
-  }
   return (
     <>
-      <ul className="eotm-types">
-        {content.map(card)}
-        {extra}
-      </ul>
-      {designList}
+      {content.map(section)}
+      {(images || tools.length > 0) && <ul className="eotm-types">{images}{tools}</ul>}
+      <h3 className="eotm-menu-head">Design</h3>
+      {design.map(section)}
+      {/* Section templates: the kinds of section the site's schema builds pages
+          from, and copies of sections saved to reuse. */}
+      {fold('templates', 'Section templates', String(sectionKinds.length + templates.length), (
+        <>
+          <p className="eotm-help">Each kind of section a page is built from. Add one with a page&rsquo;s + Add a section; save a finished one with ☆ Save as template to reuse it.</p>
+          <ul className="eotm-plain">{sectionKinds.map(([k, b]) => <li key={k}>{b.label ?? k} <span className="eotm-class-count">{(b.fields ?? []).length} fields</span></li>)}</ul>
+          <button type="button" className="eotm-btn" onClick={onTemplates}>{templates.length ? `Your ${templates.length} saved template${templates.length === 1 ? '' : 's'}` : 'Your saved templates (none yet)'}</button>
+        </>
+      ))}
+      {/* Types and names: every type in the schema by the name the console
+          gives it; renaming them or designing new ones is there. */}
+      {fold('types', 'Types and names', `${Object.keys(schema.types).length} types`, (
+        <>
+          <p className="eotm-help">What each kind of content is called here. Rename any of them to your own words, or design a new kind of section or list.</p>
+          <ul className="eotm-plain">{Object.entries(schema.types).map(([k, t]) => <li key={k}>{t.plural ?? t.label} <span className="eotm-class-count">{(t.fields ?? []).length} fields</span></li>)}</ul>
+          <button type="button" className="eotm-btn is-primary" onClick={onTypes}>Rename or design your own</button>
+        </>
+      ))}
     </>
+  )
+}
+
+// A one-of-a-kind document's settings by name on the home list (Site
+// settings: Site title, Tagline, Logo …), each opening the editor at itself.
+function Settings({ schema, store, type, openDoc, notify }) {
+  const [doc, setDoc] = useState(undefined)
+  useEffect(() => { store.list(type).then((d) => setDoc(d[0] ?? null)).catch((e) => { notify(e.message); setDoc(null) }) }, [store, type, notify])
+  const fields = schema.types[type]?.fields ?? []
+  const shown = (v) => (v == null || v === '' ? '' : typeof v === 'string' ? v.replace(/<[^>]*>/g, '').slice(0, 40)
+    : typeof v === 'boolean' ? (v ? 'On' : 'Off') : Array.isArray(v) ? String(v.length) : typeof v === 'object' ? 'Set' : String(v))
+  const go = async (field) => {
+    try { openDoc(doc ?? (await store.create({ type, data: {} })), null, field) } catch (e) { notify(e.message) }
+  }
+  if (doc === undefined) return <p className="eotm-empty">Loading…</p>
+  return (
+    <ul className="eotm-sections">
+      {fields.map((f) => (
+        <li key={f.name}>
+          <button type="button" className="eotm-section-open" onClick={() => go(f.name)}>
+            <span>{f.label ?? f.name}</span>
+            <span className="eotm-class-count">{shown(doc?.data?.[f.name]) || 'Not set'}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }
 
