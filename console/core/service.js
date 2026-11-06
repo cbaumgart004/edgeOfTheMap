@@ -21,11 +21,21 @@ export class ConflictError extends ServiceError {
   }
 }
 
+// Equal content, whatever order its keys were written in.
+const canon = (v) => (Array.isArray(v) ? v.map(canon)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v)
+const sameData = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b))
+
 // Status: 'draft' (never published), 'published' (live equals draft),
-// 'changed' (live, with unpublished edits).
-function statusAfterEdit(doc) {
-  return doc.publishedData ? 'changed' : 'draft'
+// 'changed' (live, with unpublished edits). A save that leaves the draft as it
+// is live (opening something, an edit undone) is no change.
+function statusAfterEdit(doc, data) {
+  if (!doc.publishedData) return 'draft'
+  return sameData(data, doc.publishedData) ? 'published' : 'changed'
 }
+// A document saved as 'changed' before that rule, though its draft equals
+// what is live, reads as published.
+const fresh = (doc) => (doc && doc.status === 'changed' && sameData(doc.data, doc.publishedData) ? { ...doc, status: 'published' } : doc)
 
 export function createService({ schema, repo, sanitize = (type, data) => data, now = () => new Date().toISOString() }) {
   const typeOf = (name) => {
@@ -59,7 +69,7 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
   async function load(id) {
     const doc = await repo.get(id)
     if (!doc) throw new ServiceError(404, 'Not found.')
-    return doc
+    return fresh(doc)
   }
 
   function checkBase(doc, baseVersion) {
@@ -69,9 +79,9 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
   return {
     schema,
 
-    list(type) {
+    async list(type) {
       typeOf(type)
-      return repo.list(type)
+      return (await repo.list(type)).map(fresh)
     },
 
     get: load,
@@ -107,7 +117,7 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
       const next = {
         ...doc,
         slug: slug && slug !== doc.slug ? await uniqueSlug(doc.type, slug, id) : doc.slug,
-        data: clean, version: doc.version + 1, status: statusAfterEdit(doc), updatedAt: now(), updatedBy: user?.id ?? null,
+        data: clean, version: doc.version + 1, status: statusAfterEdit(doc, clean), updatedAt: now(), updatedBy: user?.id ?? null,
       }
       const saved = await repo.update(next, baseVersion)
       if (!saved) throw new ConflictError(await load(id))
@@ -177,7 +187,7 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
     async pending() {
       const out = []
       for (const type of releaseTypes()) {
-        for (const doc of await repo.list(type)) {
+        for (const doc of (await repo.list(type)).map(fresh)) {
           if (doc.status === 'published') continue
           out.push({
             id: doc.id, type, slug: doc.slug, title: titleOf(schema, doc), status: doc.status, version: doc.version,

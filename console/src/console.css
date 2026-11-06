@@ -112,10 +112,13 @@
   cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
 }
 .eotm-pill svg { display: block; }
-/* The two view buttons: a row of their own under the title, so their full names
-   fit on a phone and in the docked panel. */
-.eotm-views { flex-basis: 100%; display: flex; gap: 8px; }
-.eotm-views .eotm-pill { flex: 1; min-width: 0; justify-content: center; text-align: center; padding: 4px 10px; }
+/* Preview changes, Customer view and Publish: one row of small buttons under
+   the title, so all three fit on a phone and in the docked panel. */
+.eotm-views { flex-basis: 100%; display: flex; gap: 6px; }
+.eotm-views .eotm-pill { flex: 1 1 auto; min-width: 0; justify-content: center; text-align: center; white-space: nowrap;
+  min-height: 30px; padding: 2px 10px; gap: 5px; font-size: 13px; }
+.eotm-pill.is-primary { background: var(--eotm-accent); border-color: var(--eotm-accent); color: var(--eotm-accent-ink); }
+.eotm-pill.is-primary:hover { background: color-mix(in srgb, var(--eotm-accent) 85%, #000); }
 /* Customer view: the editor is gone and this is the one way back. */
 .eotm-return {
   position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 3;
@@ -420,6 +423,11 @@ select.eotm-input[multiple] { min-height: 120px; }
   .eotm-icon { min-width: 34px; min-height: 34px; font-size: 15px; }
   .eotm-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
   .eotm-pill { min-height: 32px; padding: 0 10px; font-size: 13px; }
+  .eotm-views .eotm-pill { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  /* A document's state and its buttons: small, so they share a line. */
+  .eotm-status { gap: 6px; margin-bottom: 12px; }
+  .eotm-status .eotm-row { gap: 6px; flex-wrap: wrap; }
+  .eotm-status .eotm-btn { min-height: 30px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
   .eotm-head { min-height: 44px; gap: 4px; padding: 2px 8px 6px; }
   .eotm-title strong { font-size: 16px; }
   .eotm-logo { height: 26px; }
@@ -530,7 +538,7 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 .eotm-arrange-name .eotm-input { min-height: 36px; width: 160px; }
 
 /* The one Publish, beside the click modes; its dialog lists what goes live. */
-.eotm-publish { margin-inline-start: auto; }
+.eotm-head > .eotm-publish { margin-inline-start: auto; }
 .eotm-publish-dialog .eotm-dev-list { max-height: 40vh; overflow: auto; }
 
 /* A photo with no description yet (Fields.jsx, AltText). */

@@ -98,7 +98,7 @@ describe('console in a page', () => {
     await tick()
     expect(host.querySelector('a[aria-label="Back to your dashboard"]').href).toBe('https://admin.theedgeofthemap.com/')
 
-    const preview = byText(host, 'button', 'Preview current changes')
+    const preview = byText(host, 'button', 'Preview changes')
     await act(async () => preview.click())
     expect(preview.getAttribute('aria-pressed')).toBe('true')
     expect(preview.textContent).toBe('Back to editing')
@@ -283,8 +283,8 @@ describe('console in a page', () => {
     await tick()
     const sheet = host.querySelector('.eotm-sheet')
     const fire = (el, type, clientX, clientY) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }))
-    // Preview current changes leaves only the header; it still drags the editor.
-    await act(async () => byText(host, 'button', 'Preview current changes').click())
+    // Preview changes leaves only the header; it still drags the editor.
+    await act(async () => byText(host, 'button', 'Preview changes').click())
     expect(sheet.classList.contains('is-peek')).toBe(true)
     const head = host.querySelector('.eotm-head')
     // A browser ends a drag with a click where it ended, which is swallowed.

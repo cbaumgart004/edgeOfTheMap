@@ -11,7 +11,7 @@ import { pairedFields, holdsPairs, getAt, updateAt, pairsOf, setSlot, removeSlot
 // together) and reaches the page as a draft, like any edit. Uploads are
 // compressed first (images.js, prepareImage).
 
-const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, with unpublished changes' }
+const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, edited' }
 
 export default function Images({ schema, store, bridge, notify, open }) {
   const conf = schema.images

@@ -192,6 +192,26 @@ describe('publish', () => {
     expect((await s.get(bad.id)).status).toBe('draft')
     expect((await s.pending()).map((d) => d.id).sort()).toEqual([bad.id, article.id].sort())
   })
+
+  it('counts a save that leaves the draft as it is live as no change', async () => {
+    const repo = createMemoryRepo()
+    const s = createService({ schema: storyshaped, repo })
+    const page = await s.create({ type: 'page', data: { title: 'Policies' } })
+    const live = await s.publish(page.id, { baseVersion: page.version })
+    // The same content, keys in another order: still live, nothing pending.
+    const same = await s.save(page.id, { baseVersion: live.version, data: Object.fromEntries(Object.entries(live.data).reverse()) })
+    expect(same.status).toBe('published')
+    const edited = await s.save(page.id, { baseVersion: same.version, data: { ...live.data, title: 'Edited' } })
+    expect(edited.status).toBe('changed')
+    const undone = await s.save(page.id, { baseVersion: edited.version, data: live.data })
+    expect(undone.status).toBe('published')
+    // One stored as changed before that rule reads as live.
+    const stored = await repo.get(page.id)
+    await repo.update({ ...stored, status: 'changed', version: stored.version + 1 }, stored.version)
+    expect((await s.get(page.id)).status).toBe('published')
+    expect((await s.list('page')).find((d) => d.id === page.id).status).toBe('published')
+    expect(await s.pending()).toEqual([])
+  })
 })
 
 describe('discarding unpublished changes', () => {

@@ -22,7 +22,7 @@ function imageWidthIn(html, index, pct) {
 }
 
 const SAVE_DELAY = 800 // ms after the last change (platform plan §3.4)
-const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, with unpublished changes' }
+const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, edited' }
 
 // ---------------------------------------------------------------- brand
 
@@ -442,6 +442,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // A Theme view (Daylight, Blacklight) shows the page in its own look while it is open.
   useEffect(() => { bridge.showMode?.(view.mode ?? null) }, [bridge, view.mode])
 
+  const publishButton = (
+    <button type="button" className="eotm-pill is-primary eotm-publish" onClick={() => setPublishing(true)}
+      title={unpublished ? `${unpublished} change${unpublished === 1 ? '' : 's'} not live yet` : 'Everything is live'}>
+      Publish{unpublished ? ` (${unpublished})` : ''}
+    </button>
+  )
   const header = (
     <header className="eotm-head">
       {view.name !== 'home' && (
@@ -485,31 +491,27 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
         ))}
       </div>
-      {/* The one way to make changes live: a summary of them, then Publish. */}
-      {user && (
-        <button type="button" className="eotm-btn is-primary eotm-publish" onClick={() => setPublishing(true)}
-          title={unpublished ? `${unpublished} change${unpublished === 1 ? '' : 's'} not live yet` : 'Everything is live'}>
-          Publish{unpublished ? ` (${unpublished})` : ''}
-        </button>
-      )}
-      {/* Two ways to look at the page, named for what each shows: the owner's
-          changes before they are live, or the live site as customers get it. */}
-      {size !== 'bar' && (
+      {/* One small row: the two ways to look at the page, named for what each
+          shows (the owner's changes before they are live, or the live site as
+          customers get it), then the one way to make changes live. Minimised to
+          the bar, only Publish stays, beside the title. */}
+      {size === 'bar' ? user && publishButton : (
         <div className="eotm-views">
           <button type="button" className={`eotm-pill${peek ? ' is-on' : ''}`} aria-pressed={peek}
             title={peek ? 'Show the editor again' : 'Fade the editor to see your changes on the page, before they are live'} onClick={() => setPeek((p) => !p)}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
             </svg>
-            {peek ? 'Back to editing' : 'Preview current changes'}
+            {peek ? 'Back to editing' : 'Preview changes'}
           </button>
           <button type="button" className="eotm-pill" title="See the live site as your customers do: none of your unpublished changes, no editor"
             onClick={() => { setPeek(false); setCustomer(true) }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
             Customer view
           </button>
+          {user && publishButton}
         </div>
       )}
     </header>
@@ -722,14 +724,13 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   )
   else if (leaving) body = (
     <div className="eotm-warn" role="alertdialog" aria-label="Changes not yet live">
-      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} saved but not yet live. What should happen to {unpublished === 1 ? 'it' : 'them'}?</p>
+      <p>{unpublished} change{unpublished === 1 ? ' is' : 's are'} saved but not live yet. Leave keeps {unpublished === 1 ? 'it' : 'them'} for next time; Discard changes puts the site back to what is live.</p>
       <div className="eotm-row">
-        <button type="button" className="eotm-btn is-primary" onClick={() => { setLeaving(false); setPublishing(true) }}>Review and publish</button>
-        <button type="button" className="eotm-btn" onClick={onClose}>Keep as drafts</button>
+        <button type="button" className="eotm-btn" onClick={() => setLeaving(false)}>Cancel</button>
+        <button type="button" className="eotm-btn is-primary" onClick={onClose}>Leave</button>
         <button type="button" className="eotm-btn is-danger" onClick={async () => {
           try { const r = await store.discardAll(); notify(r.kept.length ? `Discarded. ${r.kept.length} never-published draft${r.kept.length === 1 ? ' was' : 's were'} kept.` : 'Discarded.'); onClose() } catch (e) { notify(e.message); setLeaving(false) }
         }}>Discard changes</button>
-        <button type="button" className="eotm-btn is-quiet" onClick={() => setLeaving(false)}>Keep editing</button>
       </div>
     </div>)
   else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
