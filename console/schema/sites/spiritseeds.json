@@ -1,6 +1,6 @@
 {
   "site": "spiritseeds",
-  "sitemap": { "aliases": { "/home": "/" } },
+  "sitemap": { "paths": ["/connect"], "aliases": { "/home": "/" } },
   "robots": { "blockTraining": true },
   "connections": [
     {"label": "Newsletter (Kit)", "field": "newsletterFormId", "help": "Signups from the site and the Connect window go to this Kit form."},
