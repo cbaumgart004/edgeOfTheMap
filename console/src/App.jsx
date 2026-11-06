@@ -300,6 +300,18 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
     addEventListener('resize', fit)
     return () => removeEventListener('resize', fit)
   }, [bar])
+  // The open panel too: a spot kept from a wider window would leave it off
+  // screen, open and unseen.
+  useEffect(() => {
+    if (bar) return undefined
+    const fit = () => setPanelPos((p) => {
+      const next = clampPos(p, sheet.current)
+      return next && p && next.x === p.x && next.y === p.y ? p : next
+    })
+    fit()
+    addEventListener('resize', fit)
+    return () => removeEventListener('resize', fit)
+  }, [bar])
 
   const onDown = (e) => {
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
