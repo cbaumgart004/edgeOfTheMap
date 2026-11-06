@@ -577,3 +577,40 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 .eotm-modal-card h3 { margin: 0; font: 600 18px var(--eotm-heading); }
 .eotm-modal-card .eotm-label { display: grid; gap: 4px; }
 .eotm-class-sample { max-height: 160px; overflow: hidden; padding: 10px; border: 1px dashed var(--eotm-line); border-radius: 10px; background: #fff; color: #222; pointer-events: none; }
+
+/* ⓘ (Info.jsx): a circled i that shows what a control or heading is for. */
+.eotm-root .eotm-info { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
+  border: 1.5px solid currentColor; border-radius: 50%; background: transparent; color: var(--eotm-muted); cursor: pointer;
+  font: italic 700 13px/1 Georgia, 'Times New Roman', serif; }
+.eotm-root .eotm-info:hover, .eotm-root .eotm-info.is-on { background: var(--eotm-accent); border-color: var(--eotm-accent); color: var(--eotm-accent-ink); }
+.eotm-root .eotm-info-panel { flex: 1 1 100%; width: 100%; margin: 4px 0; padding: 8px 12px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius);
+  background: var(--eotm-surface); color: var(--eotm-ink); font: 400 13px/1.45 var(--eotm-font, system-ui); cursor: auto; text-align: left; }
+.eotm-root .eotm-info-panel dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; }
+.eotm-root .eotm-info-panel dt { font-weight: 700; }
+.eotm-root .eotm-info-panel dd { margin: 0; }
+@media (max-width: 480px) {
+  .eotm-root .eotm-info-panel dl { grid-template-columns: 1fr; gap: 0; }
+  .eotm-root .eotm-info-panel dd { margin-bottom: 6px; }
+}
+.eotm-root details.eotm-home-fold > summary { flex-wrap: wrap; }
+.eotm-root details.eotm-home-fold > summary > .eotm-info { margin-inline-start: auto; }
+/* On the page, over the arrange toolbar. */
+.eotm-arrange-bar .eotm-info { background: var(--eotm-surface); box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); width: 28px; height: 28px; }
+.eotm-arrange-bar .eotm-info-panel { pointer-events: auto; max-width: min(460px, calc(100vw - 16px)); box-shadow: 0 4px 16px rgb(0 0 0 / 0.25); }
+
+/* The mode that is on, said in a line under the header, tinted per mode. */
+.eotm-root .eotm-modehint { flex: 1 1 100%; margin: 2px 0 0; padding: 5px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.35; color: var(--eotm-ink); }
+.eotm-root .eotm-modehint.is-edit { background: color-mix(in srgb, var(--eotm-accent) 14%, transparent); border-left: 3px solid var(--eotm-accent); }
+.eotm-root .eotm-modehint.is-arrange { background: color-mix(in srgb, #d98a1c 18%, transparent); border-left: 3px solid #d98a1c; }
+.eotm-modes button[aria-checked='true'][role='radio']:nth-child(3) { background: #b86f0e; color: #fff; }
+
+/* A phone: the three modes share one full row (with ⓘ and Publish), so none is cut off. */
+@media (max-width: 1023px) {
+  .eotm-head .eotm-modes { order: 10; flex: 1 1 auto; display: flex; width: auto; min-width: 0; }
+  .eotm-head .eotm-modes button { flex: 1 1 0; min-width: 0; padding: 6px 4px; font-size: 13px; }
+  .eotm-head > .eotm-info { order: 11; }
+  .eotm-head > .eotm-views, .eotm-head > .eotm-publish { order: 12; margin-inline-start: 0; }
+  .eotm-head > .eotm-info-panel { order: 13; }
+  .eotm-head > .eotm-modehint { order: 14; }
+  .eotm-head > .eotm-pagewidth { order: 15; }
+}

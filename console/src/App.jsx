@@ -10,6 +10,15 @@ import ClassTree from './ClassTree.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
 import { CLASS_TYPE } from '../schema/classes.js'
 import { createPortal } from 'react-dom'
+import Info from './Info.jsx'
+
+// What a tap on the page does, by mode: the header's buttons, their ⓘ and the
+// line under the header that says which one is on.
+const MODES = [
+  ['view', 'View', 'The page works as visitors use it: links go, buttons press. Nothing is changed.'],
+  ['edit', 'Edit', 'Tap anything on the page to open it in the editor and change its words, pictures and settings. Double-tap text to type in place.'],
+  ['arrange', 'Arrange', 'Tap a section to move, resize and fade its parts, change its layout, or add parts. Its tools float on the page; the editor shrinks out of the way.'],
+]
 
 // The nth image of a rich text field set to `pct`% wide; its height follows.
 function imageWidthIn(html, index, pct) {
@@ -316,7 +325,7 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
 
   const onDown = (e) => {
     // The bar's own controls stay buttons; anywhere else on it starts a drag.
-    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, .eotm-resize, a, input, select')) return
+    if (e.target.closest?.('.eotm-icon, .eotm-pill, .eotm-tuck, .eotm-dock, .eotm-modes, .eotm-pagewidth, .eotm-resize, .eotm-info, .eotm-info-panel, a, input, select')) return
     // Open, the grip and the header drag it (the faded preview bar too), its
     // title included, which a tap still folds; its other buttons and the form
     // do what they do.
@@ -421,6 +430,9 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // sign-in again; local mode has no admin page, so it shows the form instead.
   const signOut = async () => {
     await auth.signOut()
+    // A site that keeps its own sign-in (Spirit Seeds' live address) cancels
+    // this and ends the session there instead of on the admin page.
+    if (!window.dispatchEvent(new CustomEvent('eotm:signout', { cancelable: true }))) return
     if (auth.redirect) auth.redirect({ signout: true })
     else setUser(null)
   }
@@ -505,12 +517,12 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         </label>
       )}
       <div className="eotm-seg eotm-modes" role="radiogroup" aria-label="What a click on the page does">
-        {[['view', 'View', 'The page works as visitors use it: links go, buttons press'],
-          ['edit', 'Edit', 'A click opens what was clicked to edit; buttons are edited, not pressed'],
-          ['arrange', 'Arrange', 'Move, resize and fade the parts of a section on the page']].map(([m, label, help]) => (
+        {MODES.map(([m, label, help]) => (
           <button key={m} type="button" role="radio" aria-checked={clickMode === m} className={clickMode === m ? 'is-on' : ''} title={help} onClick={() => pickMode(m)}>{label}</button>
         ))}
       </div>
+      <Info label="What View, Edit and Arrange do">{[...MODES.map(([, label, help]) => [label, help]), ['Publish', 'Your changes show on this page as you make them; Publish puts them on the live site.']]}</Info>
+      {!wide && clickMode !== 'view' && size !== 'bar' && <p className={`eotm-modehint is-${clickMode}`}>{MODES.find(([m]) => m === clickMode)[2]}</p>}
       {/* Edits show on the page as they are made; Publish makes them live.
           Minimised to the bar, Publish stays beside the title. */}
       {size === 'bar' ? user && publishButton : (
@@ -816,7 +828,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       {user && overlay && clickMode !== 'view' && createPortal(
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
-          onSelect={(t) => openTarget({ ...t, keepPane: true })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
+          onSelect={(t) => openTarget({ ...t, keepPane: clickMode === 'arrange' })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
+          tools={clickMode === 'arrange'}
           onImport={(target) => { setView({ name: 'import', target, back: view }); setPeek(false); if (size === 'bar') setSize('half') }} />, overlay)}
     </div>
     </>
@@ -962,9 +975,9 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTem
     try { localStorage.setItem(HOME_OPEN, JSON.stringify([...n])) } catch { /* private mode */ }
     return n
   })
-  const fold = (id, label, count, body) => (
+  const fold = (id, label, count, body, help = null) => (
     <details key={id} className="eotm-fold eotm-home-fold" open={unfolded.has(id)} onToggle={(e) => toggle(id, e.currentTarget.open)}>
-      <summary><span className="eotm-fold-label">{label}</span>{count != null && <span className="eotm-class-count">{count}</span>}</summary>
+      <summary><span className="eotm-fold-label">{label}</span>{count != null && <span className="eotm-class-count">{count}</span>}{help && <Info label={`What ${label} is`}>{help}</Info>}</summary>
       {unfolded.has(id) && body}
     </details>
   )
@@ -1008,14 +1021,16 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTem
           openStyle={async (field) => {
             try { const [doc] = await store.list(name); openDoc(doc ?? (await store.create({ type: name, data: {} })), null, field) } catch (e) { notify(e.message) }
           }} />
-      ))
+      ), t.help ?? 'A class is a shared look: every object with that class is drawn the same way. Style changes the look everywhere at once; + adds an object with that class to a section.')
     }
     if (t.singleton) {
       const n = (t.fields ?? []).length
-      return fold(name, label, `${n} setting${n === 1 ? '' : 's'}`, <Settings schema={schema} store={store} type={name} openDoc={openDoc} notify={notify} />)
+      return fold(name, label, `${n} setting${n === 1 ? '' : 's'}`, <Settings schema={schema} store={store} type={name} openDoc={openDoc} notify={notify} />,
+        t.help ?? `There is one ${label}, used across the site. Tap a setting to change it.`)
     }
     const n = countOf(name)
-    return fold(name, label, n == null ? '…' : String(n), <DocList schema={schema} store={store} type={name} notify={notify} open={(doc, item) => openDoc(doc, item)} />)
+    return fold(name, label, n == null ? '…' : String(n), <DocList schema={schema} store={store} type={name} notify={notify} open={(doc, item) => openDoc(doc, item)} />,
+        t.help ?? `Every one of your ${label.toLowerCase()}. Open one to change it, or add a new one.`)
   }
   const design = types.filter(([n, t]) => isDesign(n, t))
   const content = types.filter(([n, t]) => !isDesign(n, t))
@@ -1041,7 +1056,7 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTem
           <ul className="eotm-plain">{sectionKinds.map(([k, b]) => <li key={k}>{b.label ?? k} <span className="eotm-class-count">{(b.fields ?? []).length} fields</span></li>)}</ul>
           <button type="button" className="eotm-btn" onClick={onTemplates}>{templates.length ? `Your ${templates.length} saved template${templates.length === 1 ? '' : 's'}` : 'Your saved templates (none yet)'}</button>
         </>
-      ))}
+      ), 'The kinds of section a page is built from, and sections you saved to reuse.')}
       {/* Types and names: every type in the schema by the name the console
           gives it; renaming them or designing new ones is there. */}
       {fold('types', 'Types and names', `${Object.keys(schema.types).length} types`, (
@@ -1050,7 +1065,7 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTem
           <ul className="eotm-plain">{Object.entries(schema.types).map(([k, t]) => <li key={k}>{t.plural ?? t.label} <span className="eotm-class-count">{(t.fields ?? []).length} fields</span></li>)}</ul>
           <button type="button" className="eotm-btn is-primary" onClick={onTypes}>Rename or design your own</button>
         </>
-      ))}
+      ), 'What each kind of content is called in this editor, and where you design new kinds of section or list.')}
     </>
   )
 }

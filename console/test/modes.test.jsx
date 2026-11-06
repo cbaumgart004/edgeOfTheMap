@@ -82,4 +82,36 @@ describe('View, Edit and Arrange', () => {
       phone = false
     }
   })
+  it('Edit chooses and opens only; the move and size tools are Arrange’s', async () => {
+    const { page, host } = await mount()
+    const section = page.querySelector('section')
+    rect(section, { left: 0, top: 0, width: 400, height: 300 })
+    const press = async () => {
+      await act(async () => section.querySelector('p').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })))
+      await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
+      await tick(20)
+    }
+    await press()
+    expect(document.querySelector('.eotm-arrange-tools')).toBeNull()
+    expect(document.querySelector('.eotm-arrange-handle')).toBeNull()
+    expect(document.querySelector('.eotm-edit-hint')).toBeTruthy()
+    await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
+    await press()
+    expect(document.querySelector('.eotm-arrange-tools')).toBeTruthy()
+    expect(document.querySelector('.eotm-arrange-handle')).toBeTruthy()
+  })
+
+  it('an ⓘ shows what the modes do, and on a home heading it explains without folding', async () => {
+    const { host } = await mount()
+    const modes = host.querySelector('.eotm-head > .eotm-info')
+    await act(async () => modes.click())
+    expect(host.querySelector('.eotm-head .eotm-info-panel').textContent).toContain('Arrange')
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })))
+    expect(host.querySelector('.eotm-head .eotm-info-panel')).toBeNull()
+    const fold = host.querySelector('details.eotm-home-fold')
+    const was = fold.open
+    await act(async () => fold.querySelector('summary .eotm-info').click())
+    expect(fold.open).toBe(was)
+    expect(fold.querySelector('summary .eotm-info-panel')).toBeTruthy()
+  })
 })

@@ -4,6 +4,36 @@ import { newId } from '../schema/schema.js'
 import { newElement, copyElement, ELEMENT_LABELS } from '../schema/elements.js'
 import { prepareImage } from './images.js'
 import { TEXT, startTyping } from './Targets.jsx'
+import { InfoButton, InfoPanel } from './Info.jsx'
+
+// What the toolbar's controls do, behind its ⓘ.
+const SECTION_HELP = [
+  ['Flow / Free', 'Flow stacks the parts as the design lays them out. Free lets you drag each part anywhere in the section.'],
+  ['Phone: stack', 'On a phone, the parts sit in one column, top to bottom.'],
+  ['Keep layout', 'On a phone, show this Free layout scaled down whole.'],
+  ['Phone: own', 'The section has a layout made on a phone, used on phones only.'],
+  ['+ Text, Photo, Button, Box', 'Add a new part to this section.'],
+  ['+ Canva PDF', 'Bring in a design made in Canva, from its PDF.'],
+  ['+ From template', 'Add a part you saved earlier with Save as template.'],
+  ['Snap / Free-hand', 'Snap lines parts up on 12 columns; Free-hand places them exactly where you let go.'],
+  ['Handles', 'Drag the bar under a section to change its height, the one at its side to change its width.'],
+]
+const PHONE_SECTION_HELP = [
+  ['Stack', 'On a phone, the parts sit in one column, top to bottom.'],
+  ['Keep desktop', 'Show the desktop layout on phones, scaled down whole.'],
+  ['Free', 'Arrange the parts by hand for phones only; the desktop layout is left alone.'],
+  ...SECTION_HELP.slice(4),
+]
+const PART_HELP = [
+  ['Drag', 'Move the part. Drag a corner or side to resize; pinch with two fingers on a phone.'],
+  ['Fade', 'How see-through the part is.'],
+  ['Front / Back', 'Put the part above or below the parts it overlaps.'],
+  ['Fit', 'Undo a resize: the part takes its own text size and height again.'],
+  ['Duplicate', 'A copy of the part, beside it.'],
+  ['Save as template', 'Keep this part to add to any section later.'],
+  ['Section', 'Step out to the whole section and its layout choices.'],
+  ['Snap / Free-hand', 'Snap lines parts up on 12 columns; Free-hand places them exactly where you let go.'],
+]
 
 // Arrange mode (StoryShaped ADR-0010): the page's sections and their parts, on
 // the page itself, with handles. In place of click-to-edit (Targets.jsx) while
@@ -215,11 +245,12 @@ const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null, tools = true }) {
   const [sel, setSel] = useState(null) // { section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
   const [drag, setDrag] = useState(null) // { kind } while dragging
+  const [infoOpen, setInfoOpen] = useState(false)
   const [prompt, setPrompt] = useState(() => { const p = promptFor(); return p && !seen(p.key) ? p : null })
   // The screen can turn or the page change width while arranging.
   useEffect(() => {
@@ -228,7 +259,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => removeEventListener('resize', on)
   }, [])
   const latest = useRef({})
-  latest.current = { sel, snap, onChange, onSelect, onText }
+  latest.current = { sel, snap, onChange, onSelect, onText, tools }
 
   // A change written at once (not once a frame): an element and its place.
   const writeNow = (section, field, fn) => latest.current.onChange({ ...targetOf(section), field, value: fn })
@@ -325,7 +356,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       const inside = (sel) => { const n = e.target.closest(sel); return n && section.contains(n) ? n : null }
       const row = inside('[data-eotm-in]')?.dataset.eotmIn
       latest.current.onSelect?.({ ...targetOf(section), ...(row ? { item: row } : {}), field: inside('[data-eotm-field]')?.dataset.eotmField ?? null })
-      if (own) startDrag(section, own, 'move', e)
+      // Edit selects and opens; only Arrange moves what was pressed.
+      if (own && latest.current.tools) startDrag(section, own, 'move', e)
     }
     const click = (e) => {
       if (!onPage(e.target) || typing(e.target) || !e.target.closest(SECTION)) return
@@ -413,7 +445,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       <button type="button" className="eotm-target-snap" onClick={dismissPrompt}>OK</button>
     </div>
   )
-  if (!sel) return <div className="eotm-target eotm-arrange">{banner}<p className="eotm-arrange-hint">Arrange: tap a section to choose it.</p></div>
+  if (!sel) return <div className="eotm-target eotm-arrange">{banner}<p className="eotm-arrange-hint">{tools ? 'Arrange: tap a section to move, size or lay out its parts.' : 'Edit: tap anything on the page to open it in the editor.'}</p></div>
 
   const { section, part } = sel
   const s = section.getBoundingClientRect()
@@ -553,7 +585,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       {part && (
         <>
           <div className="eotm-target-box eotm-arrange-sel" style={{ top: box.top, left: box.left, width: box.width, height: box.height }} />
-          {HANDLES.map((h) => {
+          {tools && HANDLES.map((h) => {
             const x = h.includes('w') ? box.left : h.includes('e') ? box.left + box.width : box.left + box.width / 2
             const y = h.includes('n') ? box.top : h.includes('s') ? box.top + box.height : box.top + box.height / 2
             return (
@@ -564,17 +596,20 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           })}
         </>
       )}
-      {block && sizable && (
+      {tools && block && sizable && (
         <button type="button" className="eotm-arrange-handle is-width" style={ui(uiScale, Math.max(b.top, 0) + Math.min(b.height, innerHeight - Math.max(b.top, 0)) / 2, Math.min(b.right, room - 12))}
           aria-label="Drag to change the section’s width" title={`Section width: ${block.dataset.eotmSpan || COLUMNS} of 12 columns`} onPointerDown={widthDrag} />
       )}
-      {!part && (
+      {tools && !part && (
         <button type="button" className="eotm-arrange-handle is-height" style={ui(uiScale, s.top + s.height, s.left + s.width / 2)}
           aria-label="Drag to change the section’s height" title="Section height" onPointerDown={heightDrag} />
       )}
       <div ref={barRef} className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
         <PathLabel section={section} part={part} describe={describe} onPick={(s) => setSel(s)} />
-        <div className="eotm-arrange-tools">
+        {/* Edit: what was tapped is chosen and opens in the editor; moving,
+            sizing and the layout tools are Arrange's alone. */}
+        {!tools && <span className="eotm-target-hint eotm-edit-hint">{onText ? 'Opens in the editor; double-tap text to type. Arrange moves it.' : 'Opens in the editor.'}</span>}
+        {tools && <div className="eotm-arrange-tools">
         {part ? (
           <>
             <label className="eotm-arrange-range">Fade
@@ -658,8 +693,10 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
           title={snap ? 'Snaps to 12 columns and an 8 px step. Click to place freely.' : 'Placing freely. Click to snap to 12 columns and an 8 px step.'}>
           {snap ? 'Snap' : 'Free-hand'}
         </button>
-        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}{onText ? '; double-click text to type' : ''}</span>}
-        </div>
+        <InfoButton open={infoOpen} onToggle={() => setInfoOpen((o) => !o)} label="What these tools do" />
+        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}</span>}
+        </div>}
+        {tools && <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)}>{part ? PART_HELP : phone ? PHONE_SECTION_HELP : SECTION_HELP}</InfoPanel>}
       </div>
     </div>
   )
