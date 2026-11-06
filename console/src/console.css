@@ -105,18 +105,19 @@
 .eotm-icon { min-width: 40px; min-height: 40px; border-radius: 50%; font-size: 17px; color: var(--eotm-ink); }
 .eotm-icon:hover, .eotm-icon.is-on { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); }
 .eotm-icon[disabled] { opacity: 0.3; cursor: default; }
-/* Preview: labelled, because a bare icon means nothing on a phone, where there is no tooltip. */
 .eotm-pill {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; flex: none;
   border: 1px solid var(--eotm-line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--eotm-ink);
   cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
 }
 .eotm-pill svg { display: block; }
-/* Preview changes, Customer view and Publish: one row of small buttons under
-   the title, so all three fit on a phone and in the docked panel. */
-.eotm-views { flex-basis: 100%; display: flex; gap: 6px; }
-.eotm-views .eotm-pill { flex: 1 1 auto; min-width: 0; justify-content: center; text-align: center; white-space: nowrap;
+/* Preview changes (eye), Customer view (person) and Publish: small, on the
+   same line as View/Edit/Arrange rather than a row of their own. The two views
+   are icons (named in title and aria-label); an active preview says how back. */
+.eotm-views { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.eotm-views .eotm-pill { flex: none; justify-content: center; white-space: nowrap;
   min-height: 30px; padding: 2px 10px; gap: 5px; font-size: 13px; }
+.eotm-views .eotm-pill.is-icon { width: 34px; padding: 0; }
 .eotm-pill.is-primary { background: var(--eotm-accent); border-color: var(--eotm-accent); color: var(--eotm-accent-ink); }
 .eotm-pill.is-primary:hover { background: color-mix(in srgb, var(--eotm-accent) 85%, #000); }
 /* Customer view: the editor is gone and this is the one way back. */
@@ -424,6 +425,7 @@ select.eotm-input[multiple] { min-height: 120px; }
   .eotm-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
   .eotm-pill { min-height: 32px; padding: 0 10px; font-size: 13px; }
   .eotm-views .eotm-pill { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  .eotm-views .eotm-pill.is-icon { width: 30px; padding: 0; }
   /* A document's state and its buttons: small, so they share a line. */
   .eotm-status { gap: 6px; margin-bottom: 12px; }
   .eotm-status .eotm-row { gap: 6px; flex-wrap: wrap; }

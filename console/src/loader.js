@@ -69,8 +69,16 @@ async function open() {
     // However the editor closes (its own button, or bridge.close), this tab
     // stops reopening it and the Edit site button comes back. Consoles before
     // 1.2.0 do not call onClose, so their close button leaves both as they were.
-    const closed = () => {
-      try { sessionStorage.removeItem('eotm:edit') } catch { /* private mode */ }
+    // The console says whether it was signed in when it closed (1.18.0 on): a
+    // password sign-in leaves no editor token here, so this tab remembers it.
+    const closed = (info) => {
+      try {
+        sessionStorage.removeItem('eotm:edit')
+        if (info && typeof info.signedIn === 'boolean') {
+          if (info.signedIn) sessionStorage.setItem(SESSION, '1')
+          else sessionStorage.removeItem(SESSION)
+        }
+      } catch { /* private mode */ }
       editButton(signedIn())
     }
     const { unmount } = window.EOTMConsole.mount({ schema, bridge, apiBase: cfg.apiBase, authBase: cfg.authBase, local: cfg.local, onClose: closed })
@@ -90,7 +98,11 @@ bridge.open = open
 // Whether this browser holds an editor token for this site that has not run
 // out (the loader keeps it in localStorage for its 8 hours, see takeHandoff).
 // Only the expiry is read; the console API checks the signature.
+const SESSION = 'eotm:signed-in'
 function signedIn() {
+  return hasToken() || (() => { try { return sessionStorage.getItem(SESSION) === '1' } catch { return false } })()
+}
+function hasToken() {
   if (!cfg.site) return false
   try {
     const token = localStorage.getItem(`eotm:token:${cfg.site}`)
@@ -110,7 +122,7 @@ function signedIn() {
 // once per token; a network failure counts as accepted, so the editor can say so.
 let checked = null
 async function rejected() {
-  if (cfg.local || !signedIn()) return false
+  if (cfg.local || !hasToken()) return false
   const token = localStorage.getItem(`eotm:token:${cfg.site}`)
   if (token === checked) return false
   try {

@@ -46,6 +46,17 @@ describe('prerender', () => {
     expect(page).not.toContain('<noscript')
   })
 
+  it('uses seoPages as the default under a page’s own Search and sharing', () => {
+    const s = { ...schema, seoPages: { '/': { title: 'Home | Melissa', description: 'Melissa Carey, the founder.' } } }
+    const doc = { type: 'page', data: { title: 'Home', blocks: [] } }
+    const m = pageMeta(s, 'Spirit Seeds', '/', doc, 'https://ss.example')
+    expect(m.title).toBe('Home | Melissa')
+    expect(m.description).toBe('Melissa Carey, the founder.')
+    const own = pageMeta(s, 'Spirit Seeds', '/', { ...doc, data: { ...doc.data, seo: { description: 'Her own words.' } } }, 'https://ss.example')
+    expect(own.description).toBe('Her own words.')
+    expect(own.title).toBe('Home | Melissa')
+  })
+
   it('marks a preview noindex and escapes what it writes', () => {
     const page = renderPage('<html><head><title>S</title></head><body><div id="root"></div></body></html>',
       { title: 'A "quoted" <b>', description: null, image: null, noindex: false, url: 'https://p.example/x', html: '' }, { preview: true })

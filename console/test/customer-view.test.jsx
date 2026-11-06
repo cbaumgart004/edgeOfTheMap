@@ -57,7 +57,7 @@ describe('customer view', () => {
     await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={bridge} auth={localAuth()} onClose={() => {}} />))
     await tick()
 
-    await act(async () => byText(host, 'button', 'Customer view').click())
+    await act(async () => host.querySelector('button[aria-label="Customer view"]').click())
     expect(bridge.previewing).toBe(true)
     expect(host.querySelector('.eotm-sheet')).toBeNull()
 

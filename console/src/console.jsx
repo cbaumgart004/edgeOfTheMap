@@ -12,8 +12,8 @@ import { mergeCustom } from '../schema/custom.js'
 export const VERSION = __CONSOLE_VERSION__
 
 // opts: { schema, bridge, apiBase?, authBase?, local?, onClose? }. onClose runs
-// after the editor has gone, however it was closed (the loader shows its Edit
-// site button again).
+// after the editor has gone, however it was closed, with { signedIn } (the
+// loader shows its Edit site button again while she is).
 export function mount({ schema: given, bridge, apiBase, authBase, local = false, onClose }) {
   // The API's boot answer is merged already; a local schema is merged here, as the API would.
   const schema = local ? mergeCustom(given, null) : given
@@ -31,13 +31,15 @@ export function mount({ schema: given, bridge, apiBase, authBase, local = false,
   const root = createRoot(host)
   bridge.editing = true
 
+  // onClose learns whether the editor was signed in, so the loader keeps its
+  // Edit site button for a password sign-in too (it holds no token for one).
   const unmount = () => {
     root.unmount()
     host.remove()
     style.remove()
     bridge.clear()
     bridge.editing = false
-    onClose?.()
+    Promise.resolve(auth.current()).then((who) => !!who, () => false).then((signedIn) => onClose?.({ signedIn }))
   }
   // The admin page the owner came from; none in local mode.
   const dashboard = local ? null : apiBase

@@ -287,7 +287,8 @@ no login.
   An address the site serves with no document behind it (Spirit Seeds' coded `/connect`) gets its
   head from the schema's `seoPages` (`{ "/connect": { title, description, image } }`): pre-rendered by
   `/page` and listed by `/seo` (`pathMeta` in `api/prerender.js`); a site saved without the key
-  uses the shipped one.
+  uses the shipped one. A path that does have a document takes `seoPages` as its default: the
+  page's own Search and sharing wins, field by field, then the first words under its heading.
 - **Sitemap and robots.txt:** `GET /api/sites/<site>/sitemap.xml` and `/robots.txt` (public). The
   sitemap lists every published page (types with a page of their own, as `/seo` does) not marked
   hidden, with its publish date, plus the schema's `sitemap.paths`, through `sitemap.aliases`

@@ -497,19 +497,19 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           the bar, only Publish stays, beside the title. */}
       {size === 'bar' ? user && publishButton : (
         <div className="eotm-views">
-          <button type="button" className={`eotm-pill${peek ? ' is-on' : ''}`} aria-pressed={peek}
-            title={peek ? 'Show the editor again' : 'Fade the editor to see your changes on the page, before they are live'} onClick={() => setPeek((p) => !p)}>
+          <button type="button" className={`eotm-pill${peek ? ' is-on' : ' is-icon'}`} aria-pressed={peek}
+            aria-label={peek ? 'Back to editing' : 'Preview changes'}
+            title={peek ? 'Show the editor again' : 'Preview changes: fade the editor to see them on the page, before they are live'} onClick={() => setPeek((p) => !p)}>
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
             </svg>
-            {peek ? 'Back to editing' : 'Preview changes'}
+            {peek && 'Back to editing'}
           </button>
-          <button type="button" className="eotm-pill" title="See the live site as your customers do: none of your unpublished changes, no editor"
+          <button type="button" className="eotm-pill is-icon" aria-label="Customer view" title="Customer view: the live site as your customers see it, without your unpublished changes or the editor"
             onClick={() => { setPeek(false); setCustomer(true) }}>
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
-            Customer view
           </button>
           {user && publishButton}
         </div>

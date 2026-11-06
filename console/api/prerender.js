@@ -87,11 +87,13 @@ export function structuredData(schema, siteName, doc, meta, base) {
 // page itself has (its title, its first words, its first photo).
 export function pageMeta(schema, siteName, path, doc, base) {
   const seo = doc.data?.seo ?? {}
+  // The schema's default for this address (seoPages), under what the owner set.
+  const fallback = schema.seoPages?.[path] ?? {}
   const { html, images } = snapshot(schema, doc.type, doc.data)
   const own = doc.data?.[schema.types[doc.type]?.titleField ?? 'title']
-  const title = seo.title?.trim() || (path === '/' ? null : own ? `${own} | ${siteName}` : null)
+  const title = seo.title?.trim() || fallback.title?.trim() || (path === '/' ? null : own ? `${own} | ${siteName}` : null)
   const words = text(html.replace(/^<h1>[\s\S]*?<\/h1>/, '')) // the words under the heading
-  const description = seo.description?.trim() || (words ? (words.length > 160 ? `${words.slice(0, 157).replace(/\s+\S*$/, '')}…` : words) : null)
+  const description = seo.description?.trim() || fallback.description?.trim() || (words ? (words.length > 160 ? `${words.slice(0, 157).replace(/\s+\S*$/, '')}…` : words) : null)
   const src = seo.image?.src || images[0]?.src
   const meta = { title, description, image: src ? absolute(src, base) : null, noindex: seo.noindex === true, url: base + path, siteName, html }
   return { ...meta, jsonLd: structuredData(schema, siteName, doc, meta, base) }
@@ -99,6 +101,7 @@ export function pageMeta(schema, siteName, path, doc, base) {
 
 // An address the app serves with no document behind it (the Connect page): the
 // head the schema's `seoPages` gives it, by path, else null.
+// For an address with a document, seoPages is the default under its own.
 export function pathMeta(schema, siteName, path, base) {
   const p = schema.seoPages?.[path]
   if (!p) return null

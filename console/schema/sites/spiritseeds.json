@@ -2,7 +2,10 @@
   "site": "spiritseeds",
   "sitemap": { "paths": ["/connect"], "aliases": { "/home": "/" } },
   "robots": { "blockTraining": true },
-  "seoPages": { "/connect": { "title": "Connect | Spirit Seeds Wellness", "description": "Subscribe to the Spirit Seeds Wellness newsletter and follow along on social media: trauma-informed yoga, massage and holistic wellness in Lafayette, CO." } },
+  "seoPages": {
+    "/": { "title": "Spirit Seeds Wellness | Melissa Carey, Massage and Yoga in Lafayette, CO", "description": "Melissa Carey, the owner and founder of Spirit Seeds Wellness, is an intuitive healer and trauma informed yoga teacher. With over two decades of experience, she blends holistic wellness practices, including thai massage therapy and crystal bowls sound healing, to create transformative healing experiences." },
+    "/about": { "title": "About Melissa Carey | Spirit Seeds Wellness" },
+    "/connect": { "title": "Connect | Spirit Seeds Wellness", "description": "Subscribe to the Spirit Seeds Wellness newsletter and follow along on social media: trauma-informed yoga, massage and holistic wellness in Lafayette, CO." } },
   "connections": [
     {"label": "Newsletter (Kit)", "field": "newsletterFormId", "help": "Signups from the site and the Connect window go to this Kit form."},
     {"label": "Teaching schedule", "detail": "Collected every night from the studios' booking pages.", "help": "Classes appear on the site without being typed in."},
