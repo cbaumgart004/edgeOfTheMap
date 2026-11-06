@@ -6,6 +6,8 @@ import React, { useEffect, useRef, useState } from 'react'
 //   data-eotm-edit="<type>:<id or slug>"   the document an element shows
 //   data-eotm-item="<_id>"                 optional: the section or row within it
 //   data-eotm-label="Services"             optional: named on the button
+//   data-eotm-add="<block type>"           optional: a section shown but not added
+//                                          yet; selecting it adds it (Arrange.jsx)
 //   data-eotm-field="<field>"              optional: the field a click inside it
 //                                          opens in the pane (the buttons row of
 //                                          Site settings, say)
@@ -47,9 +49,18 @@ const SIZE = '[data-eotm-size]'
 const SNAP_KEY = 'eotm:snap'
 const readSnap = () => { try { return localStorage.getItem(SNAP_KEY) !== 'free' } catch { return true } }
 
+// A section the page shows but the document does not have yet:
+//   data-eotm-add="<block type>"  data-eotm-at="<index>"  data-eotm-seed='<json>'
+// Selecting it adds that section there, filled from the seed (Editor addBlock).
+const addOf = (el) => {
+  if (!el.dataset.eotmAdd) return {}
+  let seed = {}
+  try { seed = JSON.parse(el.dataset.eotmSeed || '{}') } catch { /* no seed */ }
+  return { add: { type: el.dataset.eotmAdd, at: Number(el.dataset.eotmAt ?? 0), seed, field: el.dataset.eotmField || null } }
+}
 function targetOf(el) {
   const [type, ...rest] = (el.dataset.eotmEdit ?? '').split(':')
-  return { type, key: rest.join(':'), item: el.dataset.eotmItem || null }
+  return { type, key: rest.join(':'), item: el.dataset.eotmItem || null, ...addOf(el) }
 }
 
 // The item a sizer belongs to: its own nearest marked element.

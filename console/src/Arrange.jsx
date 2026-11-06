@@ -42,9 +42,18 @@ const TABLET_UPRIGHT = '(min-width: 820px) and (max-width: 1279.98px) and (orien
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
 const readSnap = () => { try { return localStorage.getItem(SNAP_KEY) !== 'free' } catch { return true } }
+// A section the page shows but the document does not have yet:
+//   data-eotm-add="<block type>"  data-eotm-at="<index>"  data-eotm-seed='<json>'
+// Selecting it adds that section there, filled from the seed (Editor addBlock).
+const addOf = (el) => {
+  if (!el.dataset.eotmAdd) return {}
+  let seed = {}
+  try { seed = JSON.parse(el.dataset.eotmSeed || '{}') } catch { /* no seed */ }
+  return { add: { type: el.dataset.eotmAdd, at: Number(el.dataset.eotmAt ?? 0), seed, field: el.dataset.eotmField || null } }
+}
 const targetOf = (el) => {
   const [type, ...rest] = (el.dataset.eotmEdit ?? '').split(':')
-  return { type, key: rest.join(':'), item: el.dataset.eotmItem || null }
+  return { type, key: rest.join(':'), item: el.dataset.eotmItem || null, ...addOf(el) }
 }
 // The section a part belongs to. A part that is a section itself (a design,
 // which arranges its own pieces) is a part of the section around it.

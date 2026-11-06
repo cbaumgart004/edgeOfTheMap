@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, warnDocument, titleOf, setItemField, sectionName } from '../schema/schema.js'
+import { checkDocument, warnDocument, titleOf, setItemField, sectionName, newBlock } from '../schema/schema.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
@@ -643,7 +643,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     if (item && doc) seek(doc.data)
     return { doc: docName, section: block ? (block._type ? sectionName(schema, block) : titleOf(schema, { type, data: block }) || null) : docName }
   }
-  const openTarget = async ({ type, key, item, field = null, keepPane = false }) => {
+  const openTarget = async ({ type, key, item, field = null, keepPane = false, add = null }) => {
     if (!schema.types[type]) return
     try {
       let doc = await findDoc(type, key)
@@ -654,6 +654,16 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       // the page names it (data-eotm-edit="<type>:<key>").
       if (!doc && schema.types[type].overrides) doc = await store.create({ type, slug: key, data: { page: key } })
       if (!doc) return notify('That part of the page is not in the editor yet.')
+      // A section the page shows but the document lacks (data-eotm-add): added
+      // where the page shows it, filled from the page's seed, and opened.
+      if (add && schema.blocks?.[add.type]) {
+        const block = { ...newBlock(schema, add.type), ...add.seed }
+        item = block._id
+        field = field ?? add.field
+        const api = editorApi.current
+        if (api && api.id === doc.id) api.addBlock(block, add.at)
+        else queueWrite({ key: doc.id, item: block._id, field: '$add', add: block, at: add.at })
+      }
       // Selecting on the page (Arrange, Edit) keeps the pane as it is, so it
       // does not cover what was just picked; the Edit button opens it.
       if (!keepPane) {
@@ -1215,13 +1225,29 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
       }
       if (data !== cur.data) change(data, { quiet })
     }
+    // A new section at `at` in the document's sections (openTarget's add).
+    const addBlock = (block, at) => {
+      const cur = docRef.current
+      const list = schema.types[cur.type]?.fields?.find((f) => f.kind === 'blocks')?.name
+      if (!list) return
+      const rows = cur.data?.[list] ?? []
+      if (rows.some((b) => b._id === block._id)) return
+      const i = Math.max(0, Math.min(rows.length, at))
+      change({ ...cur.data, [list]: [...rows.slice(0, i), block, ...rows.slice(i)] })
+      // Picked again once it is in the list, so its row opens even when the
+      // list was drawn before it arrived (a document opened for it).
+      onState({ focus: block._id, focusAt: Date.now() })
+    }
     // After typing on the page: let the page catch up with the document.
     const flushPage = () => bridge.push(docRef.current)
     const d = docRef.current
-    editorApi.current = { id: d.id, slug: d.slug, setField, flushPage, save: flush }
+    editorApi.current = { id: d.id, slug: d.slug, setField, addBlock, flushPage, save: flush }
     const mine = pendingSize.current.filter((p) => p.key === d.id || p.key === d.slug)
     pendingSize.current = pendingSize.current.filter((p) => !mine.includes(p))
-    for (const p of mine) setField(p.item, p.field, p.value, p.imageIndex)
+    for (const p of mine) {
+      if (p.add) addBlock(p.add, p.at)
+      else setField(p.item, p.field, p.value, p.imageIndex)
+    }
     return () => { if (editorApi.current?.id === d.id) editorApi.current = null }
   }, [loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
