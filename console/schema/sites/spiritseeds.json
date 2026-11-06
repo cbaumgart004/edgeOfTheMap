@@ -138,7 +138,7 @@
         { "name": "footerConnect", "kind": "boolean", "label": "Newsletter button in the footer", "default": true },
         { "name": "footerCardTitle", "kind": "text", "label": "Footer card heading", "default": "Connect With Us", "help": "The words at the left of the card with the Newsletter, social and review buttons, above the values." },
         { "name": "newsletterLabel", "kind": "text", "label": "Footer newsletter button text", "default": "Newsletter", "help": "Opens the Connect page." },
-        { "name": "reviewUrl", "kind": "url", "label": "Google review link", "help": "The Add a Review button in the footer opens this. In your Google Business Profile choose Ask for reviews (or Get more reviews) and paste the link it gives. The button shows once this is filled in." },
+        { "name": "reviewUrl", "kind": "url", "default": "https://g.page/r/CQqJOHOJFR57EBM/review", "label": "Google review link", "help": "The Add a Review button in the footer opens this. In your Google Business Profile choose Ask for reviews (or Get more reviews) and paste the link it gives. The button shows once this is filled in." },
         { "name": "reviewLabel", "kind": "text", "label": "Review button text", "default": "Add a Review" },
         { "name": "reelsTitle", "kind": "text", "label": "Reels heading", "default": "Watch on Reels", "help": "Above the reels, which sit above the Connect With Us card. Blank: no heading." },
         { "name": "instagramReels", "kind": "photos", "label": "Instagram reels", "wide": true, "video": true, "help": "Your reels as video files (MP4). Each plays silently while it is on screen; tapping it opens your Instagram reels page. The row shows once a reel is added here or below." },
