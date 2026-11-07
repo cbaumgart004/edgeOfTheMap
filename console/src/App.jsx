@@ -6,6 +6,7 @@ import { FieldList, Elements, RemoveButton } from './Fields.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
+import Media from './Media.jsx'
 import ImportDesign from './ImportDesign.jsx'
 import ClassTree from './ClassTree.jsx'
 import { customName, fieldsAt } from '../schema/custom.js'
@@ -417,9 +418,13 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // What a click on the page does. View: the page's own (links go, buttons
   // press). Edit: opens what was clicked, buttons included, which are edited,
   // not pressed (Targets.jsx). Arrange: selects a section or part and shows
-  // its handles (Arrange.jsx).
-  const [clickMode, setClickMode] = useState('arrange')
-  const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar') }
+  // its handles (Arrange.jsx). The editor opens on View: owners first look at
+  // the page they opened, then choose to change it.
+  const [clickMode, setClickMode] = useState('view')
+  // ✕ in Arrange hides the pane and keeps arranging, so the page can be moved
+  // and sized with nothing over it; the Mode line at the bottom brings it back.
+  const [hidden, setHidden] = useState(false)
+  const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar'); if (m !== 'arrange') setHidden(false) }
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
   const [view, setView] = useState({ name: 'home' })
@@ -456,7 +461,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     return () => removeEventListener('beforeunload', warn)
   }, [unpublished, unsaved])
   const leave = (go) => (unpublished || unsaved ? setLeaving({ go }) : go())
-  const close = () => leave(onClose)
+  const close = () => (clickMode === 'arrange' ? setHidden(true) : leave(onClose))
   const goTo = (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return // a new tab leaves nothing
     e.preventDefault()
@@ -471,7 +476,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   const rootStyle = page.scale < 1 ? { ...style, zoom: 1 / page.scale } : style
   const title = view.name === 'edit' ? view.viewLabel ?? view.title : view.name === 'list' ? schema.types[view.type].plural ?? schema.types[view.type].label
     : view.name === 'types' ? 'Types and names' : view.name === 'templates' ? 'Section templates'
-    : view.name === 'images' ? schema.images?.label ?? 'Images' : view.name === 'import' ? 'Import from Canva' : schema.brand.name
+    : view.name === 'images' ? schema.images?.label ?? 'Images' : view.name === 'media' ? 'Media' : view.name === 'import' ? 'Import from Canva' : schema.brand.name
   // A Theme view (Daylight, Blacklight) shows the page in its own look while it is open.
   useEffect(() => { bridge.showMode?.(view.mode ?? null) }, [bridge, view.mode])
 
@@ -527,7 +532,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         ['Title', 'Where you are. Tap it to fold the editor down to this bar and see the page; tap again to open it. Drag the bar to move the editor.'],
         ...(!wide ? [['▴ ▾', 'Make the editor taller or shorter.']] : []),
         ...(dashboard ? [['⚙', 'Your account, pages and requests.']] : []),
-        ['✕', 'Close the editor. Nothing is lost: it saves as you go.'],
+        ['✕', 'Close the editor. Nothing is lost: it saves as you go. In Arrange, it hides the editor and you keep arranging; Mode at the bottom opens it again.'],
         ...(page.narrow ? [['Page', 'The width the page is laid out at while you edit, so a phone can show the desktop layout.']] : []),
         ...MODES.map(([, label, help]) => [label, help]),
         ['Publish', 'Your changes show on this page as you make them; Publish puts them on the live site.'],
@@ -639,7 +644,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     if (!found) throw new Error('That is not an element of yours: only added elements can be saved as templates.')
     await saveElementTemplate(name, found)
   }
-  const ctxBase = { schema, store, bridge, notify, upload: (blob) => store.upload(blob), overlay, setPeek, saveTemplate, addField, removeField, addClass, saveElementTemplate }
+  const ctxBase = { schema, store, bridge, notify, upload: (blob, meta) => store.upload(blob, meta), overlay, setPeek, saveTemplate, addField, removeField, addClass, saveElementTemplate }
 
   // The page layout document for an address (a type with a `layout` field and a
   // `path`, StoryShaped's pageLayout): Arrange's section-width handle writes it,
@@ -695,6 +700,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       // does not cover what was just picked; the Edit button opens it.
       if (!keepPane) {
         setPeek(false)
+        setHidden(false)
         if (size === 'bar') setSize('half')
       }
       setView({ name: 'edit', type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), onPage: true })
@@ -783,7 +789,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       // The pane opens at the new element: its row, and the Elements it is in.
       if (element?._id) setView((v) => (v.name === 'edit' ? { ...v, focus: element._id, focusField: null, focusAt: Date.now() } : v))
     }}
-    onView={openView} onImages={() => setView({ name: 'images' })} onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
+    onView={openView} onImages={() => setView({ name: 'images' })} onMedia={() => setView({ name: 'media' })} onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
+  else if (view.name === 'media') body = <Media store={store} notify={notify} />
   else if (view.name === 'images') body = (
     <Images schema={schema} store={store} bridge={bridge} notify={notify}
       open={(doc) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), back: { name: 'images' } })} />)
@@ -808,7 +815,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   return (
     <>
     <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
-      <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={docked}>
+      {!hidden && <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={docked}>
         {body}
         {user && view.name === 'home' && !leaving && (
           <p className="eotm-who">
@@ -817,13 +824,17 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           </p>
         )}
         {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={`${view.saveState === 'saved' ? view.title : view.name}:${published}:${publishing}`} />}
-      </Sheet>
+      </Sheet>}
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
     </div>
     {/* The on-page outlines and handles sit over the page in its own
         coordinates, so they are outside the editor's zoom (page width). */}
     <div className="eotm-root eotm-overlay" data-eotm-mode={mode} style={style}>
       <div ref={setOverlay} />
+      <p className="eotm-modeline">
+        Mode: {MODES.find(([m]) => m === clickMode)[1]}
+        {hidden && <> · <button type="button" onClick={() => setHidden(false)}>Open editor</button> · <button type="button" onClick={() => { setHidden(false); leave(onClose) }}>Close</button></>}
+      </p>
       {/* Edit and Arrange both select on a click, with handles to move and
           size; Edit also types text on a double-click. */}
       {user && overlay && clickMode !== 'view' && createPortal(
@@ -960,7 +971,7 @@ const HOME_OPEN = 'eotm:home-open'
 // look: themes, layouts, settings, menus). The schema can say (`group`).
 export const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
 
-function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTemplates, onTool, addClass, onAddElement }) {
+function Home({ schema, store, notify, openDoc, onView, onImages, onMedia, onTypes, onTemplates, onTool, addClass, onAddElement }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -1043,10 +1054,18 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onTypes, onTem
       </button>
     </li>
   )
+  const media = store.media && (
+    <li key="media">
+      <button type="button" className="eotm-card" onClick={onMedia}>
+        <strong>Media</strong>
+        <span>Every photo and clip uploaded, in folders</span>
+      </button>
+    </li>
+  )
   return (
     <>
       {content.map(section)}
-      {(images || tools.length > 0) && <ul className="eotm-types">{images}{tools}</ul>}
+      {(media || images || tools.length > 0) && <ul className="eotm-types">{media}{images}{tools}</ul>}
       <h3 className="eotm-menu-head">Design</h3>
       {design.map(section)}
       {/* Section templates: the kinds of section the site's schema builds pages

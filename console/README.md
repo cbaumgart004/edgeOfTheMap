@@ -21,6 +21,12 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
 - **Photos** compressed in the browser before upload: longest edge 2400 px, WebP, stepping down in
   quality and size until the file is under 900 KB. Each photo can be turned, mirrored and faded,
   reused from the site's other photos, or given by address. StoryShaped photos carry a `Light` or `Dark` index.
+- **Media (1.27.0+).** A Home card listing every upload (`src/Media.jsx`, `core/media.js`), in folders.
+  Many files go up at once by picker or drop, three at a time, each photo shrunk first; a clip goes up
+  as recorded (200 MB at most). Files are renamed and moved in the record only, so a page's address
+  never changes. Deleting one a page uses is refused, naming the page; a folder is deleted once empty.
+  Every upload from any field lands in the library under its file name, and "Site photos" in a photo
+  field lists the library by folder, then photos found on pages that predate it.
 - **Live preview on the page.** Every keystroke is pushed to the page through `window.EOTM`; the page
   re-renders from the draft before anything is saved. Autosave follows 800 ms after the last change.
   Draft and live are separate: nothing reaches visitors until Publish.
@@ -97,6 +103,8 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   Desktop unless chosen, and pinching zooms as on any page. The panel docks right on a desktop and on any
   screen held sideways, and its grip moves it anywhere on any device (Dock returns it). Button styles, fonts
   and Style fields show a sample drawn with the site's own CSS (`previewScope`).
+  The console opens in View (1.27.0+). A small "Mode:" line at the bottom of the page names the mode;
+  closing the pane in Arrange keeps arranging with the pane hidden, and the line offers Open editor and Close.
 - **Arrange (1.5.0+).** A toggle in the editor's header (`src/Arrange.jsx`; StoryShaped ADR-0010). While on, a
   tap on the page selects a section instead of opening it: switch it between Flow and Free, choose Phone: stack or
   Keep layout, and drag a Free section's height. In a Free section, drag a part to move it, a corner to scale it
@@ -355,7 +363,10 @@ no login.
 - **Usage & cost on the Manage page** (`api/usage.js`): API requests per hour (this Lambda's
   `Invocations`), each Amplify app's `Requests`, Neon compute and storage for the billing period
   (Neon's project API, priced at the Launch rates in `usage.js`, an estimate) and AWS month to date by
-  service (Cost Explorer, kept 12 hours because each call costs $0.01). An hourly EventBridge Scheduler
+  service (Cost Explorer, kept 12 hours because each call costs $0.01). File storage per bucket (each
+  site's photo bucket and `PUBLISHED_BUCKET`) comes from CloudWatch's daily `BucketSizeBytes` and
+  `NumberOfObjects`, priced at `S3_GB_MONTH` (S3 Standard, us-east-1; **unverified** against the bill).
+  An hourly EventBridge Scheduler
   schedule, `eotm-usage-check` (`America/Denver`), invokes the function with `{"eotmUsageCheck": true}`
   and emails the saved recipients through `NOTIFY_FROM` when a threshold is passed, at most once per
   breach per six hours. Settings and alert state live in `PUBLISHED_BUCKET` under `monitor/`, never in
@@ -423,7 +434,12 @@ no login.
   from any origin (`*`): the presigned URL is the permission, and CORS cannot restrict a non-browser
   client anyway, so a new site needs no CORS change. The editor scales photos to a 1600 px long
   edge, at most 600 KB; a `wide` field 2560 px, 1.2 MB; "Sharper" 3200 px, 2.5 MB (`src/images.js`,
-  `LIMITS`; SCHEMA.md, `image`).
+  `LIMITS`; SCHEMA.md, `image`). `/uploads` refuses a photo over 3 MB (`MAX_UPLOAD_BYTES`), since
+  nothing the editor sends is larger. The library is the site project's `media` and `media_folders`
+  tables (site migration `002_media.sql`, `api/media-pg.js`); `POST /media` takes only addresses under
+  the site's own `uploads/`. Deleting a file deletes its object through `removeObject`, which needs
+  `s3:DeleteObject` on the photo buckets (**not granted yet, unverified**); without it the record goes,
+  the object stays, and a warning is logged.
 
 ## Not verified yet
 

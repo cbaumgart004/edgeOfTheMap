@@ -137,6 +137,29 @@ describe('console in a page', () => {
     page.remove()
   })
 
+  it('opens on View; ✕ in Arrange hides the pane and keeps arranging, and the Mode line opens it again', async () => {
+    localStorage.clear()
+    const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
+    const store = localStore({ schema: ss })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    let closed = 0
+    await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => { closed++ }} />))
+    await tick()
+    const line = () => host.querySelector('.eotm-modeline').textContent
+    expect(line()).toContain('Mode: View')
+    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Arrange').click())
+    expect(line()).toContain('Mode: Arrange')
+    await act(async () => host.querySelector('[aria-label="Close editor"]').click())
+    expect(host.querySelector('.eotm-sheet')).toBe(null)
+    expect(closed).toBe(0)
+    expect(host.querySelector('.eotm-arrange')).not.toBe(null)
+    await act(async () => [...host.querySelectorAll('.eotm-modeline button')].find((b) => b.textContent === 'Open editor').click())
+    expect(host.querySelector('.eotm-sheet')).not.toBe(null)
+    await act(async () => root.unmount())
+  })
+
   it('opens what is clicked on the page in the pane, that section expanded and the rest folded', async () => {
     localStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
@@ -152,6 +175,8 @@ describe('console in a page', () => {
     document.body.append(host)
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    // The editor opens on View; these click the page in Edit.
+    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
     await tick()
     await act(async () => page.querySelector('h2').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })))
     await tick(50)
@@ -178,6 +203,8 @@ describe('console in a page', () => {
     document.body.append(host)
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    // The editor opens on View; these click the page in Edit.
+    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
     await tick()
 
     // A click on the heading does not follow its link; a double-click types it
@@ -228,6 +255,8 @@ describe('console in a page', () => {
     document.body.append(host)
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    // The editor opens on View; these click the page in Edit.
+    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
     await tick()
 
     // Home: Site settings sits under Design, beside the templates.

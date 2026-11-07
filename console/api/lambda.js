@@ -22,7 +22,7 @@
 
 import pg from 'pg'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs'
 import { CloudWatchClient, GetMetricDataCommand } from '@aws-sdk/client-cloudwatch'
@@ -181,6 +181,23 @@ const usage = process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.PUBLISHED_BUCK
       const byHour = new Map(r.Timestamps.map((t, i) => [new Date(t).getTime(), r.Values[i]]))
       return Array.from({ length: hours }, (_, i) => ({ at: start + i * 3_600_000, value: byHour.get(start + i * 3_600_000) ?? 0 }))
     },
+    // The latest daily S3 storage metric: CloudWatch publishes one a day per
+    // bucket, so the last three days are asked for and the newest kept.
+    async bucketSize(bucket) {
+      const end = Date.now()
+      const metric = (id, name, storageType) => ({
+        Id: id, ReturnData: true,
+        MetricStat: { Stat: 'Average', Period: 86400, Metric: { Namespace: 'AWS/S3', MetricName: name,
+          Dimensions: [{ Name: 'BucketName', Value: bucket }, { Name: 'StorageType', Value: storageType }] } },
+      })
+      const out = await cloudwatch.send(new GetMetricDataCommand({
+        StartTime: new Date(end - 3 * 86_400_000), EndTime: new Date(end), ScanBy: 'TimestampDescending',
+        MetricDataQueries: [metric('b', 'BucketSizeBytes', 'StandardStorage'), metric('n', 'NumberOfObjects', 'AllStorageTypes')],
+      }))
+      const [b, n] = ['b', 'n'].map((id) => out.MetricDataResults?.find((r) => r.Id === id))
+      if (!b?.Values?.length) return null
+      return { bytes: b.Values[0], objects: n?.Values?.[0] ?? null, at: new Date(b.Timestamps[0]).getTime() }
+    },
     async amplifyApps() {
       const { apps = [] } = await amplify.send(new ListAppsCommand({ maxResults: 50 }))
       return apps.map((a) => ({ appId: a.appId, name: a.name }))
@@ -222,6 +239,7 @@ const http = createHandler({
     })),
   } : undefined,
   media: { bucket: process.env.MEDIA_BUCKET, baseUrl: process.env.MEDIA_BASE_URL },
+  publishedBucket: process.env.PUBLISHED_BUCKET,
   async verifyToken(token) {
     if (decodeProtectedHeader(token).alg === 'HS256') {
       const { payload } = await jwtVerify(token, await editorSecret(), { issuer: EDITOR_ISSUER, algorithms: ['HS256'] })
@@ -253,6 +271,8 @@ const http = createHandler({
     if (!res.ok || !data.user?.id) throw new Error(`sign-up failed (${res.status}): ${data.message ?? data.code ?? 'no user returned'}`)
     return { id: data.user.id }
   },
+  // Needs s3:DeleteObject on the photo buckets; without it the file stays and a warning is logged.
+  removeObject: ({ bucket, key }) => s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })),
   presign: ({ bucket, key, contentType, bytes }) =>
     getSignedUrl(s3, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: bytes }),
     { expiresIn: 300 }),

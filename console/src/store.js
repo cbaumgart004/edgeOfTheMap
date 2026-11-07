@@ -1,9 +1,15 @@
 // How the console reaches documents. Two implementations of one interface:
 //   httpStore  - the Lambda API (production)
 //   localStore - the same service over localStorage (demo and local development)
+//
+// upload(blob, meta) puts the file in storage and then in the media library
+// (core/media.js) under meta.name and meta.folder, so every upload, from a
+// field, the page or the Media tab, can be found and used again. A library
+// record that fails to save does not fail the upload: the photo is in place.
 
 import { createService, ServiceError } from '../core/service.js'
 import { createMemoryRepo } from '../core/repo-memory.js'
+import { createMedia, createMemoryMediaRepo, usesIn } from '../core/media.js'
 import { sanitizeDocumentData } from './richtext.js'
 import { checkCustom, mergeCustom } from '../schema/custom.js'
 
@@ -45,12 +51,29 @@ export function httpStore({ apiBase, site, getToken }) {
     discardAll: () => call('POST', '/release/discard'),
     // The owner's own types (schema/custom.js); answers { schema } merged.
     saveCustom: (custom) => call('PUT', '/custom-schema', { custom }),
-    async upload(blob) {
+    async upload(blob, meta = {}) {
       const { uploadUrl, src } = await call('POST', '/uploads', { contentType: blob.type, bytes: blob.size })
       const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'content-type': blob.type }, body: blob })
       if (!put.ok) throw new StoreError(put.status, 'The photo did not upload.')
+      await call('POST', '/media', libraryEntry(src, blob, meta)).catch((e) => console.warn('[media] not added to the library:', e.message))
       return src
     },
+    media: {
+      list: () => call('GET', '/media'),
+      update: (id, patch) => call('PUT', `/media/${id}`, patch),
+      remove: (id) => call('DELETE', `/media/${id}`),
+      addFolder: (path) => call('POST', '/media/folders', { path }),
+      renameFolder: (from, to) => call('PUT', '/media/folders', { from, to }),
+      removeFolder: (path) => call('DELETE', `/media/folders?path=${encodeURIComponent(path)}`),
+    },
+  }
+}
+
+const stamp = () => new Date().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+function libraryEntry(src, blob, meta) {
+  return {
+    src, name: meta.name || `Upload ${stamp()}`, folder: meta.folder ?? '',
+    width: meta.width, height: meta.height, bytes: blob.size, contentType: blob.type,
   }
 }
 
@@ -61,6 +84,15 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
   const make = (schema) => createService({ schema, repo, sanitize: (type, data) => sanitizeDocumentData(schema, type, data) })
   // As the API does: the shipped schema with its Classes document (schema/classes.js).
   let svc = make(mergeCustom(base, null))
+  let current = mergeCustom(base, null)
+  const mediaKey = `${key}:media`
+  const media = createMedia({
+    repo: createMemoryMediaRepo({
+      load: () => { try { return JSON.parse(localStorage.getItem(mediaKey)) } catch { return null } },
+      persist: (v) => { try { localStorage.setItem(mediaKey, JSON.stringify(v)) } catch { /* private mode or full: memory only */ } },
+    }),
+    uses: async (src) => usesIn((await Promise.all(Object.keys(current.types).map((t) => repo.list(t)))).flat(), src),
+  })
   const wrap = (fn) => async (...args) => {
     try {
       return await fn(...args)
@@ -94,14 +126,27 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
       if (errors.length) throw new StoreError(400, `Those types cannot be saved: ${errors[0]}`, { errors })
       const schema = mergeCustom(base, custom)
       svc = make(schema)
+      current = schema
       return { schema }
     },
     // Local mode keeps photos as data URLs; fine for a demo, never for a site.
-    upload: (blob) => new Promise((resolve, reject) => {
-      const r = new FileReader()
-      r.onload = () => resolve(r.result)
-      r.onerror = () => reject(r.error)
-      r.readAsDataURL(blob)
-    }),
+    async upload(blob, meta = {}) {
+      const src = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(r.result)
+        r.onerror = () => reject(r.error)
+        r.readAsDataURL(blob)
+      })
+      await media.add(libraryEntry(src, blob, meta)).catch((e) => console.warn('[media] not added to the library:', e.message))
+      return src
+    },
+    media: {
+      list: wrap(() => media.list()),
+      update: wrap((id, patch) => media.update(id, patch)),
+      remove: wrap(async (id) => { await media.remove(id); return { ok: true } }),
+      addFolder: wrap(async (path) => ({ path: await media.addFolder(path) })),
+      renameFolder: wrap(async (from, to) => ({ path: await media.renameFolder(from, to) })),
+      removeFolder: wrap(async (path) => ({ path: await media.removeFolder(path) })),
+    },
   }
 }

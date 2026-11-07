@@ -9,6 +9,8 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
+import { createPgMediaRepo, pgUses } from './media-pg.js'
+import { createMedia } from '../core/media.js'
 import { checkSchema, defaultData, withSeo, publishedPages, TRAINING_CRAWLERS } from '../schema/schema.js'
 import { createManage } from './manage.js'
 import { createRequests } from './requests.js'
@@ -17,7 +19,10 @@ import { createPublished, PUBLIC_SITE_FIELDS } from './published.js'
 import { createPrerender, pageMeta, pathMeta } from './prerender.js'
 import { mergeCustom, checkCustom, droppedCustom } from '../schema/custom.js'
 
-const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+// The console shrinks every photo before it goes up (images.js: 600 KB for a
+// standard photo, 2.5 MB at full quality), so anything larger did not come
+// through it and is refused rather than stored and served to every visitor.
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024
 const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/avif': 'avif' }
 // Short clips for a photos field that allows video (a slideshow). They go up as
 // recorded, so their limit is larger; a browser cannot shrink a video cheaply.
@@ -66,6 +71,7 @@ function parseBody(event) {
 //   releases(): Promise<[{ version, integrity }]>      released console versions
 //   createLogin({ email, password, name }): Promise<{ id }>   a new Neon Auth login
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
+//   removeObject({ bucket, key }): Promise   optional: deletes a file the library let go
 //   media: { bucket, baseUrl }                        the shared photo bucket; each site
 //                                                     writes under sites/<slug>/. A site's own
 //                                                     media_bucket, where set, overrides it.
@@ -575,11 +581,42 @@ ${pushed}`, page: body.page })
         const ext = IMAGE_TYPES[body.contentType] ?? video
         if (!ext) return json(415, { error: 'Photos must be WebP, JPEG, PNG or AVIF; videos MP4, WebM or MOV.' }, headers)
         if (!(body.bytes > 0 && body.bytes <= (video ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES))) {
-          return json(413, { error: video ? 'Video is too large (200 MB at most).' : 'Photo is too large.' }, headers)
+          return json(413, { error: video ? 'Video is too large (200 MB at most).' : 'Photo is too large (3 MB at most). Upload it through the editor, which shrinks it first.' }, headers)
         }
         const key = `${own ? '' : `sites/${site.slug}/`}uploads/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
         const uploadUrl = await deps.presign({ bucket, key, contentType: body.contentType, bytes: body.bytes })
-        return json(200, { uploadUrl, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
+        return json(200, { uploadUrl, key, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
+      }
+
+      // The media library (core/media.js): what was uploaded, named and in folders.
+      if (rest === '/media' || rest.startsWith('/media/')) {
+        const db = await deps.siteDb(site)
+        const media = createMedia({ repo: createPgMediaRepo(db), uses: (src) => pgUses(db, src) })
+        const own = Boolean(site.media_bucket)
+        const bucket = own ? site.media_bucket : deps.media?.bucket
+        const baseUrl = String((own ? site.media_base_url : deps.media?.baseUrl) ?? '').replace(/\/$/, '')
+        if (method === 'GET' && rest === '/media') return json(200, await media.list(), headers)
+        if (method === 'POST' && rest === '/media') {
+          // Only this site's own uploads: an address elsewhere is not its file to keep or delete.
+          const prefix = `${baseUrl}/${own ? '' : `sites/${site.slug}/`}uploads/`
+          if (!baseUrl || !String(body.src ?? '').startsWith(prefix)) throw new ServiceError(400, 'Only files uploaded to this site go in its library.')
+          const key = String(body.src).slice(baseUrl.length + 1)
+          return json(201, await media.add({ ...body, key }, user), headers)
+        }
+        if (method === 'POST' && rest === '/media/folders') return json(201, { path: await media.addFolder(body.path) }, headers)
+        if (method === 'PUT' && rest === '/media/folders') return json(200, { path: await media.renameFolder(body.from, body.to) }, headers)
+        if (method === 'DELETE' && rest === '/media/folders') return json(200, { path: await media.removeFolder(query.path) }, headers)
+        const one = rest.match(/^\/media\/([0-9a-f-]{36})$/i)
+        if (one && method === 'PUT') return json(200, await media.update(one[1], body), headers)
+        if (one && method === 'DELETE') {
+          const item = await media.remove(one[1])
+          // The record is gone either way; a file left in the bucket is only cost.
+          if (item.key && deps.removeObject) {
+            try { await deps.removeObject({ bucket, key: item.key }) } catch (err) { console.warn(`[media] ${item.key} not deleted from ${bucket}: ${err.message}`) }
+          }
+          return json(200, { ok: true }, headers)
+        }
+        return json(404, { error: 'Not found' }, headers)
       }
 
       const doc = rest.match(/^\/documents\/([0-9a-f-]{36})(\/(duplicate|publish|unpublish|discard))?$/i)

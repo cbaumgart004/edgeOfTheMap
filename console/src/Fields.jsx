@@ -7,6 +7,7 @@ import Layout from './Layout.jsx'
 import Sketch from './Sketch.jsx'
 import Info from './Info.jsx'
 import { prepareImage } from './images.js'
+import { nameFromFile } from '../core/media.js'
 
 // One editor per field kind (schema/SCHEMA.md). `ctx` carries the schema, the
 // store (relations and uploads) and the errors for this document.
@@ -262,9 +263,9 @@ function withOffset(local) {
   return `${local}:00${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`
 }
 
-export async function uploadPhoto(file, ctx, limit) {
+export async function uploadPhoto(file, ctx, limit, folder) {
   const { blob, width, height } = await prepareImage(file, limit)
-  const src = await ctx.upload(blob)
+  const src = await ctx.upload(blob, { name: nameFromFile(file.name), width, height, folder })
   return { src, width, height, alt: '' }
 }
 
@@ -294,9 +295,13 @@ function PhotoLook({ value, onChange }) {
   )
 }
 
-// Every photo address already used in this site's documents, for reusing one
-// without uploading it again (what a media library is for).
+// The photos in the media library (Media.jsx), named and in folders, then any
+// photo address already used in this site's documents that the library does
+// not hold (uploaded before it existed), for reusing one without uploading it again.
+// -> [{ src, name, folder }]; folder null for one found only on a page.
 async function sitePhotos(ctx) {
+  let kept = []
+  try { kept = ((await ctx.store.media?.list())?.items ?? []).filter((i) => !i.contentType || i.contentType.startsWith('image/')) } catch { /* no library: pages only */ }
   const srcs = new Set()
   const walk = (v) => {
     if (Array.isArray(v)) return v.forEach(walk)
@@ -308,12 +313,15 @@ async function sitePhotos(ctx) {
     try { walk((await ctx.store.list(type)).map((d) => d.data)) } catch { /* a type that fails to list is skipped */ }
   }
   walk(ctx.docData)
-  return [...srcs]
+  const have = new Set(kept.map((i) => i.src))
+  return [...kept.map(({ src, name, folder }) => ({ src, name, folder })),
+    ...[...srcs].filter((s) => !have.has(s) && !/\.(mp4|webm|mov)(\?|$)/i.test(s)).map((src) => ({ src, name: '', folder: null }))]
 }
 
 function ImageField({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(false)
   const [library, setLibrary] = useState(null) // null closed, [] loading or empty
+  const [folder, setFolder] = useState('*') // '*' every photo; '' top of the library; null on pages only
   // The file just uploaded, kept so "Sharper" can send it again at full size
   // without the owner picking it a second time. Gone on reload, by design.
   const [last, setLast] = useState(null) // { file, src, limit }
@@ -352,8 +360,16 @@ function ImageField({ id, field, value, onChange, ctx }) {
       </div>
       {library && (
         <div className="eotm-library">
-          {library.length ? library.map((src) => (
-            <button key={src} type="button" className={`eotm-thumb${value?.src === src ? ' is-on' : ''}`} aria-label="Use this photo"
+          {library.some((p) => p.folder) && (
+            <select className="eotm-input" aria-label="Folder" value={folder ?? '~pages'} onChange={(e) => setFolder(e.target.value === '~pages' ? null : e.target.value)}>
+              <option value="*">Every photo</option>
+              <option value="">Media (top)</option>
+              {[...new Set(library.map((p) => p.folder).filter(Boolean))].sort().map((f) => <option key={f} value={f}>{f.replaceAll('/', ' / ')}</option>)}
+              {library.some((p) => p.folder === null) && <option value={'~pages'}>On pages, not in Media</option>}
+            </select>
+          )}
+          {library.length ? library.filter((p) => folder === '*' || p.folder === folder).map(({ src, name }) => (
+            <button key={src} type="button" className={`eotm-thumb${value?.src === src ? ' is-on' : ''}`} aria-label={name ? `Use ${name}` : 'Use this photo'} title={name || undefined}
               onClick={() => { onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' }); setLibrary(null) }}>
               <img src={src} alt="" loading="lazy" />
             </button>)) : <p className="eotm-help">No photos on the site yet.</p>}
@@ -392,7 +408,7 @@ function AltText({ value, video, onChange }) {
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
 async function uploadVideo(file, ctx) {
   if (!VIDEO_TYPES.includes(file.type)) throw new Error('Videos must be MP4, WebM or MOV.')
-  const src = await ctx.upload(file)
+  const src = await ctx.upload(file, { name: nameFromFile(file.name) })
   return { src, kind: 'video', alt: '' }
 }
 

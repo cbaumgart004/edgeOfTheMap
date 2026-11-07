@@ -666,3 +666,41 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 .eotm-class-lineage { margin: 0; font-size: 13px; }
 .eotm-class-actions { flex-wrap: wrap; }
 .eotm-class-add { display: grid; gap: 8px; border-top: 1px solid var(--eotm-line); padding-top: 10px; }
+
+/* The Mode line: which mode a click on the page is in, small, at the bottom,
+   in the brand's font; with the editor hidden in Arrange, it opens it again. */
+.eotm-root .eotm-modeline {
+  position: fixed; left: 50%; bottom: calc(3px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  margin: 0; padding: 1px 8px; border-radius: 999px; pointer-events: none; white-space: nowrap;
+  font: 500 10px/1.5 var(--eotm-font, system-ui, sans-serif); letter-spacing: 0.02em;
+  color: var(--eotm-ink); background: color-mix(in srgb, var(--eotm-bg, #fff) 82%, transparent);
+}
+.eotm-root .eotm-modeline button {
+  pointer-events: auto; border: 0; padding: 0; background: none; font: inherit; color: var(--eotm-accent); text-decoration: underline; cursor: pointer;
+}
+
+/* Media (Media.jsx) */
+.eotm-root .eotm-media { display: grid; gap: 12px; border-radius: 10px; outline: 2px dashed transparent; outline-offset: 4px; }
+.eotm-root .eotm-media.is-over { outline-color: var(--eotm-accent); }
+.eotm-root .eotm-media-crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 14px; }
+.eotm-root .eotm-media-crumbs button { background: none; border: 0; padding: 4px 6px; color: var(--eotm-accent); cursor: pointer; font: inherit; text-decoration: underline; }
+.eotm-root .eotm-media-crumbs button.is-on { color: var(--eotm-ink); font-weight: 600; text-decoration: none; }
+.eotm-root .eotm-media-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.eotm-root .eotm-media-queue li { display: flex; justify-content: space-between; gap: 8px; }
+.eotm-root .eotm-media-queue li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-root .eotm-media-queue .is-failed { color: #b3261e; }
+.eotm-root .eotm-media-queue .is-done { opacity: .7; }
+.eotm-root .eotm-media-folders { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.eotm-root .eotm-media-folders li { display: flex; align-items: center; gap: 2px; }
+.eotm-root .eotm-media-folder { flex: 1; text-align: left; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--eotm-line); background: none; color: var(--eotm-ink); font: inherit; cursor: pointer; }
+.eotm-root .eotm-media-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.eotm-root .eotm-media-item { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.eotm-root .eotm-media-item .eotm-row { flex-wrap: nowrap; gap: 2px; }
+.eotm-root .eotm-media-thumb { position: relative; aspect-ratio: 1; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--eotm-ink) 8%, transparent); cursor: pointer; }
+.eotm-root .eotm-media-item.is-picked .eotm-media-thumb { border-color: var(--eotm-accent); }
+.eotm-root .eotm-media-thumb img, .eotm-root .eotm-media-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.eotm-root .eotm-media-check { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; background: rgba(255,255,255,.85); color: #000; border: 1px solid rgba(0,0,0,.3); }
+.eotm-root .eotm-media-item.is-picked .eotm-media-check { background: var(--eotm-accent); color: #fff; }
+.eotm-root .eotm-media-name { font-size: 13px; min-width: 0; }
+.eotm-root .eotm-media-move { min-width: 0; flex: 1; font-size: 13px; }
+.eotm-root .eotm-media-bulk { position: sticky; top: 0; z-index: 1; padding: 8px; border-radius: 8px; background: var(--eotm-surface); box-shadow: 0 2px 8px rgba(0,0,0,.12); }

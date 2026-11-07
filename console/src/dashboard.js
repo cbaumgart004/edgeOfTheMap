@@ -557,10 +557,12 @@ function usageBars(hours, limit) {
 }
 function renderUsage(r) {
   const s = r.settings
-  const t = r.traffic.value; const n = r.neon.value; const a = r.aws.value
+  const t = r.traffic.value; const n = r.neon.value; const a = r.aws.value; const f = r.storage?.value
+  const gb = (x) => (x >= 1 ? `${x.toFixed(2)} GB` : `${Math.round(x * 1024)} MB`)
+  const s3 = a?.byService.find((x) => /simple storage|\bs3\b/i.test(x.service))
   const gap = (part) => `<p class="meta">Could not read: ${esc(part.error)}</p>`
   const over = { requests: t && t.api.lastHour > s.requestsPerHour, neon: n && s.neonMonthly && n.projected > s.neonMonthly, aws: a && s.awsMonthly && a.projected > s.awsMonthly }
-  $('#u-sum').textContent = [t && `${count(t.api.lastHour)} API req last hour`, n && `Neon ${money(n.cost)}`, a && `AWS ${money(a.total)}`].filter(Boolean).join(' · ') +
+  $('#u-sum').textContent = [t && `${count(t.api.lastHour)} API req last hour`, n && `Neon ${money(n.cost)}`, a && `AWS ${money(a.total)}`, f && `files ${gb(f.gb)}, about ${money(f.monthly)}/mo`].filter(Boolean).join(' · ') +
     (Object.values(over).some(Boolean) ? ' · over a threshold' : '')
   const alerts = Object.entries(r.alerts ?? {})
   $('#u-body').innerHTML = `
@@ -569,6 +571,7 @@ function renderUsage(r) {
       <div><span class="meta">API requests, 24 hours</span><strong>${t ? esc(count(t.api.total)) : '—'}</strong><span class="meta">this Lambda's invocations</span></div>
       <div class="${over.neon ? 'is-over' : ''}"><span class="meta">Neon this period</span><strong>${n ? esc(money(n.cost)) : '—'}</strong><span class="meta">${n ? `projected ${esc(money(n.projected))}` : ''}${s.neonMonthly ? ` · alert above ${esc(money(s.neonMonthly))}` : ''}</span></div>
       <div class="${over.aws ? 'is-over' : ''}"><span class="meta">AWS this month</span><strong>${a ? esc(money(a.total)) : '—'}</strong><span class="meta">${a ? `projected ${esc(money(a.projected))}` : ''}${s.awsMonthly ? ` · alert above ${esc(money(s.awsMonthly))}` : ''}</span></div>
+      <div><span class="meta">File storage, per month</span><strong>${f ? esc(money(f.monthly)) : '—'}</strong><span class="meta">${f ? `${esc(gb(f.gb))} stored, estimated` : ''}${s3 ? ` · S3 billed ${esc(money(s3.amount))} this month` : ''}</span></div>
     </div>
     <div><h3>API requests per hour, last 24 hours</h3>${t ? usageBars(t.api.hours, s.requestsPerHour) : gap(r.traffic)}</div>
     <div><h3>Site requests, 24 hours <span class="meta">(every file Amplify served: a page view is several)</span></h3>
@@ -578,6 +581,8 @@ function renderUsage(r) {
     <div><h3>AWS by service, month to date <span class="meta">${a ? `(Cost Explorer, as of ${esc(when(a.at))})` : ''}</span></h3>
       ${a ? `<ul>${a.byService.map((x) => `<li><span>${esc(x.service)}</span><span>${esc(money(x.amount))}</span></li>`).join('') || '<li class="empty">Nothing billed yet.</li>'}</ul>` : gap(r.aws)}
       <div class="row"><button type="button" id="u-cost-refresh" class="link">Refresh AWS cost ($0.01)</button></div></div>
+    <div><h3>File storage by bucket <span class="meta">(S3 Standard at $${esc(r.rates.s3GbMonth ?? '')}/GB-month: an estimate of holding the files; CloudWatch measures each bucket once a day${s3 ? `. Billed for S3 this month, requests included: ${esc(money(s3.amount))}` : ''})</span></h3>
+      ${f ? `<ul>${f.buckets.map((b) => `<li><span>${esc(b.use)} <span class="meta">${esc(b.bucket)}${b.objects != null ? ` · ${esc(count(b.objects))} files` : ''}${b.at ? ` · measured ${esc(new Date(b.at).toLocaleDateString())}` : ' · not measured yet'}</span></span><span>${esc(gb(b.gb))} · ${esc(money(b.monthly))}/mo</span></li>`).join('') || '<li class="empty">No buckets.</li>'}</ul>` : gap(r.storage ?? { error: 'not reported by this API version' })}</div>
     <form id="u-form" class="usage-form card">
       <h3 class="wide">Alert thresholds <span class="meta">(checked hourly; one email per breach every six hours)</span></h3>
       <div><label for="u-req">API requests per hour</label><input id="u-req" type="number" min="10" step="1" required value="${esc(s.requestsPerHour)}" /></div>

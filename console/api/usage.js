@@ -18,6 +18,12 @@
 //                    priced at the Launch rates below. Estimated, not Neon's invoice.
 //   AWS              Cost Explorer, month to date by service. Each call costs
 //                    $0.01, so the result is kept COST_FRESH.
+//   File storage     each bucket's size from CloudWatch's daily S3 storage
+//                    metric (BucketSizeBytes, Standard), priced at S3 Standard's
+//                    first-tier rate below: an estimate of the monthly charge for
+//                    holding the files, not requests or transfer. The S3 line of
+//                    Cost Explorer above is the billed figure. CloudWatch reports
+//                    a bucket once a day, so a new upload shows the next day.
 // "Projected" is the period so far scaled to the whole period: an estimate.
 //
 // deps: store { read(key), write(key, value) } JSON in the published bucket
@@ -25,6 +31,7 @@
 //       amplifyApps() -> [{ appId, name }]
 //       neon(path) -> parsed JSON from https://console.neon.tech/api/v2<path>
 //       monthCost({ start, end }) -> { total, byService: [{ service, amount }] }
+//       bucketSize(bucket) -> { bytes, objects, at } the latest daily S3 metric, or null
 //       sendEmail({ to, subject, text }) (optional: no email when unset)
 //       functionName: this Lambda's name
 //       now() (optional)
@@ -34,6 +41,9 @@ import { ServiceError } from '../core/service.js'
 // Neon Launch plan rates (neon.com pricing, checked 2026-10-23).
 export const NEON_CU_HOUR = 0.106
 export const NEON_GB_MONTH = 0.35
+// S3 Standard, first 50 TB per month, us-east-1 and us-west-2 (unverified against
+// this account's region; checked from AWS's published price list, not an invoice).
+export const S3_GB_MONTH = 0.023
 
 export const DEFAULT_SETTINGS = {
   requestsPerHour: 500, // ~5x the ~90/hour that exhausted Neon's free quota
@@ -126,21 +136,35 @@ export function createUsage(deps) {
     }
   }
 
+  // File storage: every bucket the sites keep photos and snapshots in, each read
+  // once (several sites may share one).
+  async function storage(buckets = []) {
+    if (!deps.bucketSize) throw new Error('bucket sizes are only readable when running in Lambda')
+    const unique = buckets.filter((b, i, all) => b.bucket && all.findIndex((x) => x.bucket === b.bucket) === i)
+    const list = await Promise.all(unique.map(async (b) => {
+      const m = await deps.bucketSize(b.bucket)
+      const gb = (m?.bytes ?? 0) / GB
+      return { bucket: b.bucket, use: b.use, bytes: m?.bytes ?? 0, objects: m?.objects ?? null, at: m?.at ?? null, gb: Math.round(gb * 1000) / 1000, monthly: round2(gb * S3_GB_MONTH) }
+    }))
+    const bytes = list.reduce((n, b) => n + b.bytes, 0)
+    return { buckets: list.sort((a, b) => b.bytes - a.bytes), bytes, gb: Math.round((bytes / GB) * 1000) / 1000, monthly: round2((bytes / GB) * S3_GB_MONTH) }
+  }
+
   // Each figure on its own, so one source failing (a missing grant, Neon's API
   // down) still shows the rest with the reason beside the gap.
   const attempt = (p) => p.then((value) => ({ value }), (err) => ({ error: err.message }))
 
-  async function report({ defaultRecipient, refreshCost = false } = {}) {
+  async function report({ defaultRecipient, refreshCost = false, buckets = [] } = {}) {
     let s = await settings()
     if (!s.recipients.length && defaultRecipient && EMAIL.test(defaultRecipient)) {
       s = { ...s, recipients: [defaultRecipient] }
       // Shown either way; a refused write (a missing grant) leaves it unsaved.
       try { await deps.store.write(SETTINGS_KEY, s) } catch (err) { console.warn('[usage] default recipient not saved:', err.message) }
     }
-    const [t, n, a, state] = await Promise.all([attempt(traffic()), attempt(neonUsage()), attempt(awsCost({ refresh: refreshCost })), deps.store.read(STATE_KEY).catch(() => null)])
+    const [t, n, a, f, state] = await Promise.all([attempt(traffic()), attempt(neonUsage()), attempt(awsCost({ refresh: refreshCost })), attempt(storage(buckets)), deps.store.read(STATE_KEY).catch(() => null)])
     return {
-      at: now(), settings: s, traffic: t, neon: n, aws: a,
-      lastCheck: state?.at ?? null, alerts: state?.alerts ?? {}, rates: { cuHour: NEON_CU_HOUR, gbMonth: NEON_GB_MONTH },
+      at: now(), settings: s, traffic: t, neon: n, aws: a, storage: f,
+      lastCheck: state?.at ?? null, alerts: state?.alerts ?? {}, rates: { cuHour: NEON_CU_HOUR, gbMonth: NEON_GB_MONTH, s3GbMonth: S3_GB_MONTH },
     }
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createUsage, NEON_CU_HOUR } from '../api/usage.js'
+import { createUsage, NEON_CU_HOUR, S3_GB_MONTH } from '../api/usage.js'
 
 const HOUR = 3_600_000
 const NOW = Date.parse('2026-10-24T12:00:00Z')
@@ -28,11 +28,23 @@ function setup({ lastHour = 40, cuSeconds = 3600, stored = {}, sendEmail = vi.fn
     },
     monthCost,
     sendEmail,
+    bucketSize: async (bucket) => (bucket === 'photos' ? { bytes: 2 * 1024 ** 3, objects: 900, at: NOW - 20 * HOUR } : null),
   })
   return { usage, files, store, monthCost, sendEmail }
 }
 
 describe('usage report', () => {
+  it('prices each bucket once, a shared one named for every site in it, and an unmeasured one as nothing yet', async () => {
+    const { usage } = setup()
+    const r = await usage.report({ buckets: [
+      { bucket: 'photos', use: 'Photos: Spirit Seeds, StoryShaped' }, { bucket: 'photos', use: 'again' }, { bucket: 'snapshots', use: 'Published pages' },
+    ] })
+    expect(r.storage.value.buckets.map((b) => [b.bucket, b.use, b.gb, b.objects])).toEqual([
+      ['photos', 'Photos: Spirit Seeds, StoryShaped', 2, 900], ['snapshots', 'Published pages', 0, null],
+    ])
+    expect(r.storage.value.monthly).toBe(Math.round(2 * S3_GB_MONTH * 100) / 100)
+  })
+
   it('adds API, site, Neon and AWS figures, and projects Neon over its period', async () => {
     const { usage } = setup()
     const r = await usage.report()

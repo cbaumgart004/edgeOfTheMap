@@ -35,6 +35,8 @@ describe('Edge of the Map: overrides of the site’s own elements', () => {
     const host = document.createElement('div')
     document.body.append(host)
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    // The editor opens on View; these click the page in Edit.
+    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
     await tick()
     const h1 = page.querySelector('h1')
     await act(async () => h1.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true })))

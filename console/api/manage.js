@@ -98,6 +98,21 @@ export function createManage(deps, { onSiteChange }) {
              ON CONFLICT (site_id, user_id) DO UPDATE SET role = $3`, [await siteId(slug), userId, role])
   }
 
+  // Every bucket holding files for a site: each site's photos (its own bucket,
+  // or the shared one under sites/<slug>/) and the published snapshots.
+  async function buckets() {
+    const sites = (await q('SELECT name, media_bucket FROM sites ORDER BY name')).rows
+    const out = []
+    for (const site of sites) {
+      const bucket = site.media_bucket || deps.media?.bucket
+      const seen = out.find((b) => b.bucket === bucket)
+      if (seen) seen.use += `, ${site.name}`
+      else if (bucket) out.push({ bucket, use: `Photos: ${site.name}` })
+    }
+    if (deps.publishedBucket) out.push({ bucket: deps.publishedBucket, use: 'Published pages and usage settings' })
+    return out
+  }
+
   async function overview() {
     const sites = (await q(`SELECT id, slug, name, repo, notes, allowed_origins, console_version, media_bucket, media_base_url, profile, updated_at
                             FROM sites ORDER BY name`)).rows
@@ -229,8 +244,8 @@ export function createManage(deps, { onSiteChange }) {
     }
     if (rest === '/usage' || rest === '/usage/settings') {
       if (!deps.usage) throw new ServiceError(503, 'Usage is only readable when running in Lambda.')
-      if (method === 'GET' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email })
-      if (method === 'POST' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email, refreshCost: true })
+      if (method === 'GET' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email, buckets: await buckets() })
+      if (method === 'POST' && rest === '/usage') return deps.usage.report({ defaultRecipient: user.email, refreshCost: true, buckets: await buckets() })
       if (method === 'PUT' && rest === '/usage/settings') return deps.usage.saveSettings(body)
     }
     if (method === 'POST' && rest === '/push') { await deps.requests.subscribe(user, body.subscription); return { ok: true } }

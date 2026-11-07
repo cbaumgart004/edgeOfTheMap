@@ -48,7 +48,7 @@ export default function Images({ schema, store, bridge, notify, open }) {
     if (!file) return
     setBusy(`${doc.id}:${loc.key}:${k}:${ix}`)
     try {
-      const photo = await uploadPhoto(file, { upload: (b) => store.upload(b) }, loc.field.wide ? 'wide' : 'standard')
+      const photo = await uploadPhoto(file, { upload: (b, meta) => store.upload(b, meta) }, loc.field.wide ? 'wide' : 'standard')
       await write(doc, loc.path, (photos) => setSlot(photos, loc.field.indexes, k, ix, photo, { maxItems: loc.field.maxItems }))
     } catch (e) { notify(e.message) } finally { setBusy(null) }
   }
