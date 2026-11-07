@@ -612,9 +612,18 @@ ${pushed}`, page: body.page })
         if (one && method === 'PUT') return json(200, await media.update(one[1], body), headers)
         if (one && method === 'DELETE') {
           const item = await media.remove(one[1])
-          // The record is gone either way; a file left in the bucket is only cost.
-          if (item.key && deps.removeObject) {
-            try { await deps.removeObject({ bucket, key: item.key }) } catch (err) { console.warn(`[media] ${item.key} not deleted from ${bucket}: ${err.message}`) }
+          // The record is gone either way; a file left in the bucket is only
+          // cost, so it is listed for an operator to remove (Manage, Usage).
+          if (item.key && bucket) {
+            try {
+              if (!deps.removeObject) throw new Error('this API cannot delete files')
+              await deps.removeObject({ bucket, key: item.key })
+            } catch (err) {
+              console.warn(`[media] ${item.key} not deleted from ${bucket}: ${err.message}`)
+              await deps.control.query(`INSERT INTO orphan_files (bucket, key, site_id, error) VALUES ($1, $2, $3, $4)
+                ON CONFLICT (bucket, key) DO UPDATE SET error = $4, failed_at = now()`, [bucket, item.key, site.id, err.message])
+                .catch((e) => console.warn(`[media] ${item.key} not listed as left in storage: ${e.message}`))
+            }
           }
           return json(200, { ok: true }, headers)
         }

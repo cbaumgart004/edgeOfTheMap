@@ -583,6 +583,7 @@ function renderUsage(r) {
       <div class="row"><button type="button" id="u-cost-refresh" class="link">Refresh AWS cost ($0.01)</button></div></div>
     <div><h3>File storage by bucket <span class="meta">(S3 Standard at $${esc(r.rates.s3GbMonth ?? '')}/GB-month: an estimate of holding the files; CloudWatch measures each bucket once a day${s3 ? `. Billed for S3 this month, requests included: ${esc(money(s3.amount))}` : ''})</span></h3>
       ${f ? `<ul>${f.buckets.map((b) => `<li><span>${esc(b.use)} <span class="meta">${esc(b.bucket)}${b.objects != null ? ` · ${esc(count(b.objects))} files` : ''}${b.at ? ` · measured ${esc(new Date(b.at).toLocaleDateString())}` : ' · not measured yet'}</span></span><span>${esc(gb(b.gb))} · ${esc(money(b.monthly))}/mo</span></li>`).join('') || '<li class="empty">No buckets.</li>'}</ul>` : gap(r.storage ?? { error: 'not reported by this API version' })}</div>
+    <div id="u-orphans"><h3>Files left in storage</h3><p class="meta">Loading…</p></div>
     <form id="u-form" class="usage-form card">
       <h3 class="wide">Alert thresholds <span class="meta">(checked hourly; one email per breach every six hours)</span></h3>
       <div><label for="u-req">API requests per hour</label><input id="u-req" type="number" min="10" step="1" required value="${esc(s.requestsPerHour)}" /></div>
@@ -593,16 +594,43 @@ function renderUsage(r) {
         <span class="meta">${r.lastCheck ? `Last hourly check ${esc(when(r.lastCheck))}` : 'No hourly check has run yet'}${alerts.length ? ` · alerted: ${esc(alerts.map(([k, at]) => `${k} ${when(at)}`).join(', '))}` : ''}</span></div>
     </form>`
 }
+// Files a site deleted from its library that are still in a bucket, because
+// deleting the object failed (api/manage.js, /orphans). Each is cost until removed.
+async function loadOrphans() {
+  const box = $('#u-orphans')
+  if (!box) return
+  try {
+    const rows = await api('GET', '/api/manage/orphans')
+    box.innerHTML = `<h3>Files left in storage <span class="meta">(deleted from a site's library, still in its bucket: removing needs s3:DeleteObject on the API role)</span></h3>
+      ${rows.length ? `<ul>${rows.map((o) => `<li><span>${esc(o.site ?? 'No site')} <span class="meta">${esc(o.bucket)}/${esc(o.key)} · ${esc(when(o.failed_at))}${o.error ? ` · ${esc(o.error)}` : ''}</span></span>
+        <span class="row"><button type="button" class="link" data-orphan="remove" data-bucket="${esc(o.bucket)}" data-key="${esc(o.key)}">Remove</button>
+        <button type="button" class="link" data-orphan="dismiss" data-bucket="${esc(o.bucket)}" data-key="${esc(o.key)}">Dismiss</button></span></li>`).join('')}</ul>`
+        : '<p class="empty">None. Every file a site deleted left its bucket too.</p>'}`
+    const sum = $('#u-sum')
+    if (rows.length && sum && !sum.textContent.includes('left in storage')) sum.textContent += ` · ${rows.length} file${rows.length === 1 ? '' : 's'} left in storage`
+  } catch (err) {
+    box.innerHTML = `<h3>Files left in storage</h3><p class="meta">Could not read: ${esc(err.message)}</p>`
+  }
+}
 async function loadUsage({ refreshCost = false } = {}) {
   if (!$('#u-body').innerHTML) $('#u-body').innerHTML = '<p class="empty">Loading…</p>'
   try {
     renderUsage(await api(refreshCost ? 'POST' : 'GET', '/api/manage/usage'))
+    loadOrphans()
   } catch (err) {
     $('#u-body').innerHTML = `<p class="empty">Usage could not load: ${esc(err.message)}</p>`
   }
 }
 $('#usage').addEventListener('toggle', () => { if ($('#usage').open) loadUsage() })
-$('#u-body').addEventListener('click', (e) => { if (e.target.id === 'u-cost-refresh') run(() => loadUsage({ refreshCost: true }))(e) })
+$('#u-body').addEventListener('click', (e) => {
+  if (e.target.id === 'u-cost-refresh') return run(() => loadUsage({ refreshCost: true }))(e)
+  const b = e.target.closest('button[data-orphan]')
+  if (b) run(async () => {
+    await api('POST', `/api/manage/orphans/${b.dataset.orphan}`, { bucket: b.dataset.bucket, key: b.dataset.key })
+    say(b.dataset.orphan === 'remove' ? 'Removed from storage.' : 'Dismissed; the file stays in its bucket.')
+    await loadOrphans()
+  })(e)
+})
 $('#u-body').addEventListener('submit', (e) => {
   if (e.target.id !== 'u-form') return
   e.preventDefault()

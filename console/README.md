@@ -439,7 +439,10 @@ no login.
   tables (site migration `002_media.sql`, `api/media-pg.js`); `POST /media` takes only addresses under
   the site's own `uploads/`. Deleting a file deletes its object through `removeObject`, which needs
   `s3:DeleteObject` on the photo buckets (**not granted yet, unverified**); without it the record goes,
-  the object stays, and a warning is logged.
+  the object stays, a warning is logged, and the file is listed in control table `orphan_files`
+  (migration `011`). Manage shows them under Usage, "Files left in storage": Remove retries the
+  delete, Dismiss forgets the row and leaves the file. A delete that failed before `011` is only in
+  the log.
 
 ## Not verified yet
 

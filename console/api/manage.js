@@ -226,6 +226,33 @@ export function createManage(deps, { onSiteChange }) {
     return { version: release.version, updated: rows.map((r) => r.slug) }
   }
 
+  // Files a library let go of that are still in a bucket (migration 011).
+  // Remove tries the delete again; Dismiss forgets the row and leaves the file.
+  async function orphans() {
+    const { rows } = await q(`SELECT o.bucket, o.key, o.error, o.failed_at, s.name AS site FROM orphan_files o
+                              LEFT JOIN sites s ON s.id = o.site_id ORDER BY o.failed_at DESC`)
+    return rows
+  }
+  async function orphanRow(body) {
+    const bucket = String(body?.bucket ?? '')
+    const key = String(body?.key ?? '')
+    const { rows } = await q('SELECT bucket, key FROM orphan_files WHERE bucket = $1 AND key = $2', [bucket, key])
+    if (!rows.length) throw new ServiceError(404, 'That file is not listed.')
+    return rows[0]
+  }
+  async function removeOrphan(body) {
+    const row = await orphanRow(body)
+    if (!deps.removeObject) throw new ServiceError(501, 'This API cannot delete files.')
+    try {
+      await deps.removeObject(row)
+    } catch (err) {
+      await q('UPDATE orphan_files SET error = $3, failed_at = now() WHERE bucket = $1 AND key = $2', [row.bucket, row.key, err.message])
+      throw new ServiceError(502, `Still not deleted: ${err.message}`)
+    }
+    await q('DELETE FROM orphan_files WHERE bucket = $1 AND key = $2', [row.bucket, row.key])
+    return { ok: true }
+  }
+
   // rest: the path after /api/manage
   return async function manage(method, rest, body, user) {
     await requireOperator(user)
@@ -235,6 +262,13 @@ export function createManage(deps, { onSiteChange }) {
     const req = rest.match(/^\/requests\/([0-9a-f-]{36})(\/comments)?$/i)
     if (method === 'PUT' && req && !req[2]) { await deps.requests.update(req[1], body, user); return { ok: true } }
     if (method === 'POST' && req && req[2]) return deps.requests.comment(req[1], body, user)
+    if (method === 'GET' && rest === '/orphans') return orphans()
+    if (method === 'POST' && rest === '/orphans/remove') return removeOrphan(body)
+    if (method === 'POST' && rest === '/orphans/dismiss') {
+      const row = await orphanRow(body)
+      await q('DELETE FROM orphan_files WHERE bucket = $1 AND key = $2', [row.bucket, row.key])
+      return { ok: true }
+    }
     if (method === 'GET' && rest === '/monitors') return deps.monitors ? deps.monitors.list() : { configured: false, monitors: [] }
     if (method === 'PUT' && rest === '/monitors/key' && deps.monitors) return deps.monitors.connect(body.key)
     if (method === 'DELETE' && rest === '/monitors/key' && deps.monitors) { await deps.monitors.disconnect(); return { ok: true } }
