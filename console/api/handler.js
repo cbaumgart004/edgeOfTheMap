@@ -67,7 +67,7 @@ function parseBody(event) {
 //   siteDb(site): Promise<{ query }>                  that customer's project
 //   verifyToken(jwt): Promise<{ id, email, site? }>   throws when invalid; `site`
 //                                                     is set on an editor token
-//   signEditorToken({ id, email, site }): Promise<string>
+//   signEditorToken({ id, email, name, site }): Promise<string>
 //   releases(): Promise<[{ version, integrity }]>      released console versions
 //   createLogin({ email, password, name }): Promise<{ id }>   a new Neon Auth login
 //   presign({ bucket, key, contentType, bytes }): Promise<string>
@@ -174,12 +174,14 @@ export function createHandler(deps) {
 
   async function authorize(event, site) {
     const user = await verified(event)
+    // The login's name comes along so the site can greet its editor by it.
     const { rows } = await deps.control.query(
-      'SELECT role FROM site_members WHERE site_id = $1 AND user_id = $2', [site.id, user.id])
+      `SELECT m.role, u.name FROM site_members m LEFT JOIN neon_auth."user" u ON u.id::text = m.user_id
+       WHERE m.site_id = $1 AND m.user_id = $2`, [site.id, user.id])
     if (!rows.length) throw new ServiceError(403, 'This login cannot edit this site.')
     // An editor token opens one site only.
     if (user.site && user.site !== site.slug) throw new ServiceError(403, 'This sign-in is for another site.')
-    return { ...user, role: rows[0].role }
+    return { ...user, name: rows[0].name ?? user.name ?? null, role: rows[0].role }
   }
 
   // The site's sitemap and structured data settings (schema.js, checkSchema):
@@ -263,7 +265,7 @@ export function createHandler(deps) {
         const site = /^[a-z0-9-]+$/.test(slug) ? await loadSite(slug) : null
         if (!site) return json(404, { error: 'No such site.' }, { 'cache-control': 'no-store' })
         const member = await authorize(event, site)
-        const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
+        const token = await deps.signEditorToken({ id: member.id, email: member.email, name: member.name, site: site.slug })
         // Which of the site's addresses to open (production or a preview);
         // only one the site lists, so this cannot send a token elsewhere.
         const asked = parseBody(event).origin
@@ -476,8 +478,8 @@ export function createHandler(deps) {
         if (user.site) throw new ServiceError(403, 'Sign in again.')
         if (await passwordChangeRequired(user.id)) throw new ServiceError(403, 'Choose your own password first, on the admin page.')
         const member = await authorize(event, site)
-        const token = await deps.signEditorToken({ id: member.id, email: member.email, site: site.slug })
-        return json(200, { token, email: member.email ?? null, role: member.role }, headers)
+        const token = await deps.signEditorToken({ id: member.id, email: member.email, name: member.name, site: site.slug })
+        return json(200, { token, email: member.email ?? null, name: member.name ?? null, role: member.role }, headers)
       }
       // Visitors over the last 30 days (or ?days=): the site's members on the
       // admin page's Visitors fold, and operators for any site on the Manage page.

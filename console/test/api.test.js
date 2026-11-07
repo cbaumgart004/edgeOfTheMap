@@ -392,6 +392,25 @@ describe('editor handoff', () => {
     expect((await call('POST', '/api/handoff', { body: { site: 'spiritseeds' } })).status).toBe(401)
   })
 
+  it('carries the name of the login into the editor token', async () => {
+    let signed = null
+    const handle = createHandler({
+      control: { async query(sql) {
+        if (sql.startsWith('SELECT 1 FROM password_change_required')) return { rows: [] }
+        if (sql.includes('FROM sites')) return { rows: [SITE] }
+        if (sql.includes('FROM site_members')) return { rows: [{ role: 'owner', name: 'Melissa Carey' }] }
+        throw new Error(sql)
+      } },
+      siteDb: async () => fakeSiteDb(),
+      verifyToken: async () => ({ id: 'user-1', email: 'o@x.example' }),
+      signEditorToken: async (who) => { signed = who; return 'editor:spiritseeds' },
+      presign: async () => '', sanitize: () => (t, d) => d,
+    })
+    const r = await handle({ requestContext: { http: { method: 'POST' } }, rawPath: '/api/handoff', headers: { authorization: 'Bearer neon' }, body: JSON.stringify({ site: 'spiritseeds' }) })
+    expect(r.statusCode).toBe(200)
+    expect(signed).toMatchObject({ id: 'user-1', name: 'Melissa Carey', site: 'spiritseeds' })
+  })
+
   it('opens only an address the site lists', async () => {
     const call = make()
     expect((await call('POST', '/api/handoff', { token: 'neon', body: { site: 'spiritseeds', origin: 'https://evil.example' } })).json.url).toBe(ORIGIN)

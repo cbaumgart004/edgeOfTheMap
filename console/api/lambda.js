@@ -244,14 +244,14 @@ const http = createHandler({
     if (decodeProtectedHeader(token).alg === 'HS256') {
       const { payload } = await jwtVerify(token, await editorSecret(), { issuer: EDITOR_ISSUER, algorithms: ['HS256'] })
       if (!payload.site) throw new Error('editor token without a site')
-      return { id: payload.sub, email: payload.email ?? null, site: payload.site }
+      return { id: payload.sub, email: payload.email ?? null, name: payload.name ?? null, site: payload.site }
     }
     if (!jwks) throw new Error('NEON_AUTH_URL is not set')
     const { payload } = await jwtVerify(token, jwks, { issuer: new URL(authUrl).origin })
     return { id: payload.sub, email: payload.email ?? null }
   },
-  async signEditorToken({ id, email, site }) {
-    return new SignJWT({ email, site }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
+  async signEditorToken({ id, email, name, site }) {
+    return new SignJWT({ email, name: name || undefined, site }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
       .setIssuer(EDITOR_ISSUER).setIssuedAt().setExpirationTime(`${EDITOR_HOURS}h`).sign(await editorSecret())
   },
   siteSchema: async (slug) => {

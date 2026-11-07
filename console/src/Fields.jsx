@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useState } from 'react'
-import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName, sectionParts } from '../schema/schema.js'
+import { newBlock, newListItem, duplicateData, titleOf, suggestionsFor, STYLE, optionsOf, newId, sectionName, sectionParts, shown, fillCandidates, fillItem } from '../schema/schema.js'
 import { ELEMENT_KINDS, ELEMENT_LABELS, elementFields, classOptions, newElement, copyElement, fsToPoints, pointsToFs } from '../schema/elements.js'
 import { googleHas, closestFonts, loadFont, kindOf } from './fonts.js'
 import RichText from './RichText.jsx'
@@ -18,7 +18,7 @@ import { nameFromFile } from '../core/media.js'
 export function FieldList({ fields, value, onChange, ctx, path = '', at = null }) {
   return (
     <>
-      {fields.map((f) => (
+      {fields.filter((f) => shown(f, value, fields)).map((f) => (
         <Field key={f.name} field={f} value={value?.[f.name]} ctx={ctx} path={path ? `${path}.${f.name}` : f.name} at={at} owner={value}
           onChange={(v) => onChange({ ...value, [f.name]: v })} />
       ))}
@@ -227,8 +227,11 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
       return (
         <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path}
           itemTitle={(item, i) => (field.itemLabel && item[field.itemLabel]) || `${field.itemLabel ?? 'Item'} ${i + 1}`}
-          fieldsFor={() => field.fields} atFor={() => at && `${at}.${field.name}`}
-          add={[{ key: 'item', label: `Add ${field.itemLabel ?? 'item'}`, make: () => newListItem(field, ctx.schema) }]} />)
+          fieldsFor={() => field.fields} atFor={() => at && `${at}.${field.name}`} fill={field.fill ? field : null}
+          add={field.presets?.length
+            // Ready-made rows (a banner's Upcoming events slide), each a start she changes.
+            ? field.presets.map((p, i) => ({ key: `preset-${i}`, label: p.label, make: () => newListItem(field, ctx.schema, p.item) }))
+            : [{ key: 'item', label: `Add ${field.itemLabel ?? 'item'}`, make: () => newListItem(field, ctx.schema) }]} />)
     case 'blocks':
       return (
         <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path} sections
@@ -497,7 +500,30 @@ function Relation({ id, field, value, onChange, ctx }) {
 const holds = (item, id) => Boolean(id) && JSON.stringify(item).includes(`"_id":"${id}"`)
 
 // Page sections and list rows: add from a palette, duplicate, reorder, remove.
-function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemParts = null, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs }) {
+// Start a row from something already on the site (schema.js fillCandidates):
+// its words, picture and link copied in, then hers to change.
+function FillPicker({ field, ctx, label, onPick }) {
+  const [cands, setCands] = useState(null)
+  useEffect(() => {
+    let live = true
+    fillCandidates(ctx.schema, field, (type) => ctx.store.list(type)).then((c) => live && setCands(c)).catch(() => live && setCands([]))
+    return () => { live = false }
+  }, [field, ctx.schema, ctx.store])
+  const groups = [...new Set((cands ?? []).map((c) => c.group))]
+  return (
+    <select className="eotm-input eotm-fill" aria-label={label} value="" disabled={!cands?.length}
+      onChange={(e) => { const c = cands.find((x) => x.key === e.target.value); if (c) onPick(c) }}>
+      <option value="">{cands == null ? 'Looking through the site…' : cands.length ? label : 'Nothing on the site to fill from'}</option>
+      {groups.map((g) => (
+        <optgroup key={g} label={g}>
+          {cands.filter((c) => c.group === g).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
+
+function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemParts = null, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs, fill = null }) {
   // Save as template: a section's by default (ctx.saveTemplate); an element's when given.
   const saveTemplate = saveAs ?? (sections ? ctx.saveTemplate : null)
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
@@ -631,6 +657,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
               )}
               {isOpen && (
                 <div className="eotm-item-body">
+                  {fill && <FillPicker field={fill} ctx={ctx} label="Fill this from the site…" onPick={(c) => update(i, { ...item, ...fillItem(fill, c) })} />}
                   <FieldList fields={fieldsFor(item)} value={item} onChange={(v) => update(i, v)} ctx={ctx} path={`${path}[${i}]`} at={atFor(item)} />
                   {/* A section's own elements, beyond its fields (schema/elements.js). */}
                   {(sections || item._elements?.length > 0 || item.kind === 'design') && (item.kind === 'design'
@@ -680,6 +707,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
       ) : (
         <div className="eotm-palette">
           {add.map((a) => <button key={a.key} type="button" className="eotm-btn is-quiet" onClick={() => insert(a.make)}>+ {a.label}</button>)}
+          {fill && <FillPicker field={fill} ctx={ctx} label="+ Add from the site…" onPick={(c) => insert(() => ({ ...newListItem(fill, ctx.schema), ...fillItem(fill, c) }))} />}
         </div>
       )}
     </>

@@ -66,10 +66,12 @@ says what each key means.
 | `relation` | document id, or an array of ids when `many` | `to: "<type>"` |
 | `style` | `{ size?, font?, family?, weight?, align?, color?, background?, width? }`, each part optional | How one element looks. `size` small, large, xlarge; `font` heading, body; `family` a font by name (the site's, or one Google Fonts serves, which the site loads when asked: 1.15.0+); `weight` normal, bold; `align` left, center, right; `color` and `background` a value from the schema's `styleColors` or `#rrggbb`; `width` 10 to 100 (%). The site turns it into CSS on the element holding it |
 | `group` | object | `fields` |
-| `list` | array of objects, each with an `_id` | `fields`, `itemLabel` (field shown per row), `maxItems` |
+| `list` | array of objects, each with an `_id` | `fields`, `itemLabel` (field shown per row), `maxItems`; `presets: [{ label, item }]` replaces the one Add button with a button per ready-made row (1.28.0+); `fill` adds "Add from the site" and a per-row "Fill this from the site", copying a section's words, picture and link into the row, which stays the owner's to change (1.28.0+, see `fillCandidates` in `schema.js`) |
 | `blocks` | array of `{ _id, _type, ...fields }` | `of: ["<block>", ...]` |
 
 Every field also takes `label`, `help`, `required` and `default`.
+
+`when: { field, is }` (1.28.0+) shows a field, and checks it, only while the field beside it named `field` holds `is` (or one of `is`, a list). A value never saved counts as that field's `default`.
 
 ## The owner's own types
 

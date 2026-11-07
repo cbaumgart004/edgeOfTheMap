@@ -188,6 +188,28 @@ export function checkSchema(schema) {
       if (f.suggest && (f.kind !== 'text' || !blocks[f.suggest.block] || !f.suggest.field)) {
         errors.push(`${at}: suggest needs a text field and { block, field } naming a block and one of its fields`)
       }
+      if (f.when != null) {
+        const w = f.when
+        const plain = (v) => ['string', 'number', 'boolean'].includes(typeof v)
+        if (!w.field || w.field === f.name || !fields.some((g) => g?.name === w.field) || !(plain(w.is) || (Array.isArray(w.is) && w.is.length && w.is.every(plain)))) {
+          errors.push(`${at}: when needs { field, is } naming another field beside it and the value(s) that show this one`)
+        }
+      }
+      if ('presets' in f && (f.kind !== 'list' || !Array.isArray(f.presets) || f.presets.some((p) => !p?.label || typeof p.item !== 'object'))) {
+        errors.push(`${at}: presets is a list of { label, item }, on a list field`)
+      }
+      if ('fill' in f) {
+        const names = (f.fields ?? []).map((g) => g.name)
+        const fill = f.fill
+        if (f.kind !== 'list' || typeof fill?.map !== 'object' || !Array.isArray(fill.sources) || !fill.sources.length) {
+          errors.push(`${at}: fill needs { map, sources }, on a list field`)
+        } else {
+          for (const k of [...Object.keys(fill.map), ...Object.keys(fill.set ?? {}), ...Object.keys(fill.fallback ?? {})]) {
+            if (!names.includes(k)) errors.push(`${at}: fill names "${k}", which is not one of its fields`)
+          }
+          for (const s of fill.sources) if (!types[s?.type]) errors.push(`${at}: fill source type "${s?.type}" is not a type`)
+        }
+      }
       if (f.kind === 'group' || f.kind === 'list') checkFields(f.fields, at)
       if (f.kind === 'blocks') {
         if (!(f.of?.length > 0)) errors.push(`${at}: blocks needs "of"`)
@@ -243,8 +265,104 @@ export function newBlock(schema, blockName) {
   return { _id: newId(), _type: blockName, ...defaultData(def.fields, schema) }
 }
 
-export function newListItem(field, schema) {
-  return { _id: newId(), ...defaultData(field.fields, schema) }
+export function newListItem(field, schema, start = null) {
+  return { _id: newId(), ...defaultData(field.fields, schema), ...(start ? structuredClone(start) : {}) }
+}
+
+// ---------------------------------------------------------------- conditional fields
+
+// A field with `when: { field, is }` shows (and is checked) only while the field
+// beside it named `field` holds `is`, or one of `is` when a list. A value never
+// saved counts as that field's default: a banner slide saved before it had a
+// kind is the kind its field defaults to.
+export function shown(field, data, fields = []) {
+  if (!field.when) return true
+  const beside = fields.find((f) => f.name === field.when.field)
+  const v = data?.[field.when.field] ?? beside?.default ?? ''
+  return [].concat(field.when.is).includes(v)
+}
+
+// ---------------------------------------------------------------- fill from the site
+
+// A list field's `fill` lets the owner start a row from something already on
+// the site, copied in and then hers to change (it does not follow the source):
+//   fill: {
+//     map: { <row field>: <source field> | [<source field>, ...] | "$link" },
+//     set: { <row field>: value },        always, as the row is filled
+//     fallback: { <row field>: value },   when nothing mapped gave it one
+//     sources: [
+//       { type: "page", blocks: true }    every titled section of every page,
+//                                         linked as /<slug>#<its title, slugified>
+//       { type: "settings", label, link, map, values }   the document itself
+//     ]
+//   }
+// A source's own `map` overrides the field's; its `values` stand in for a
+// source field left blank (a site's built-in wording).
+
+// Formatted text as plain words, for a short text or paragraph field.
+export function htmlToText(html) {
+  return String(html ?? '')
+    .replace(/<\/(p|h[1-6]|li|div)>|<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&rsquo;/g, '\u2019').replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{2,}/g, '\n').trim()
+}
+
+const pageLink = (slug, title, home = 'home') => `/${slug === home ? '' : slug}${title ? `#${slugify(title)}` : ''}`
+
+// What a fill can start from: [{ key, group, label, values, link, map }].
+// `docsOf(type)` is the documents of one type, as the store lists them.
+export async function fillCandidates(schema, field, docsOf) {
+  const out = []
+  for (const src of field.fill?.sources ?? []) {
+    let docs = []
+    try { docs = await docsOf(src.type) } catch { continue }
+    const type = schema.types[src.type]
+    if (src.blocks) {
+      const blockFields = (type?.fields ?? []).filter((f) => f.kind === 'blocks')
+      for (const d of docs) {
+        const page = titleOf(schema, d)
+        for (const bf of blockFields) {
+          for (const b of d.data?.[bf.name] ?? []) {
+            const title = typeof b?.title === 'string' ? b.title.trim() : ''
+            if (!title) continue
+            out.push({ key: `${d.id}:${b._id}`, group: page, label: title, values: b, link: pageLink(d.slug, title, src.home), map: src.map })
+          }
+        }
+      }
+    } else {
+      for (const d of docs) {
+        out.push({ key: d.id, group: src.group ?? type?.label ?? src.type, label: src.label ?? titleOf(schema, d),
+          values: { ...(src.values ?? {}), ...Object.fromEntries(Object.entries(d.data ?? {}).filter(([, v]) => !isBlank(v))) },
+          link: src.link ?? pageLink(d.slug, ''), map: src.map })
+      }
+    }
+  }
+  return out
+}
+
+// The row values a candidate fills: copied, so the owner can change them.
+export function fillItem(field, cand) {
+  const fill = field.fill ?? {}
+  const map = { ...(fill.map ?? {}), ...(cand.map ?? {}) }
+  const out = {}
+  for (const [target, from] of Object.entries(map)) {
+    const def = (field.fields ?? []).find((f) => f.name === target)
+    if (!def) continue
+    for (const n of [].concat(from)) {
+      let v = n === '$link' ? cand.link : cand.values?.[n]
+      if (isBlank(v)) continue
+      if (typeof v === 'string' && ['text', 'textarea'].includes(def.kind) && /<[a-z][^>]*>/i.test(v)) v = htmlToText(v)
+      if (typeof v === 'string' && def.kind === 'text') v = v.split('\n')[0]
+      if (def.kind === 'image' && typeof v !== 'object') continue
+      if (['text', 'textarea', 'url'].includes(def.kind) && typeof v !== 'string') continue
+      out[target] = structuredClone(v)
+      break
+    }
+  }
+  for (const [k, v] of Object.entries(fill.fallback ?? {})) if (isBlank(out[k])) out[k] = v
+  return { ...out, ...(fill.set ?? {}) }
 }
 
 // ---------------------------------------------------------------- duplicate
@@ -412,7 +530,7 @@ function checkValue(field, value, at, schema, errors, opts) {
 }
 
 function checkFields(fields, data, at, schema, errors, opts) {
-  for (const f of fields) checkValue(f, data?.[f.name], at ? `${at}.${f.name}` : f.name, schema, errors, opts)
+  for (const f of fields) if (shown(f, data, fields)) checkValue(f, data?.[f.name], at ? `${at}.${f.name}` : f.name, schema, errors, opts)
   // _layout, or _layout_<region> for one of several arranged regions of one
   // document (a site's header and its button bar, both Site settings).
   for (const k of Object.keys(data ?? {})) {
