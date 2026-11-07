@@ -134,9 +134,10 @@ export function createUsage(deps) {
     let s = await settings()
     if (!s.recipients.length && defaultRecipient && EMAIL.test(defaultRecipient)) {
       s = { ...s, recipients: [defaultRecipient] }
-      await deps.store.write(SETTINGS_KEY, s)
+      // Shown either way; a refused write (a missing grant) leaves it unsaved.
+      try { await deps.store.write(SETTINGS_KEY, s) } catch (err) { console.warn('[usage] default recipient not saved:', err.message) }
     }
-    const [t, n, a, state] = await Promise.all([attempt(traffic()), attempt(neonUsage()), attempt(awsCost({ refresh: refreshCost })), deps.store.read(STATE_KEY)])
+    const [t, n, a, state] = await Promise.all([attempt(traffic()), attempt(neonUsage()), attempt(awsCost({ refresh: refreshCost })), deps.store.read(STATE_KEY).catch(() => null)])
     return {
       at: now(), settings: s, traffic: t, neon: n, aws: a,
       lastCheck: state?.at ?? null, alerts: state?.alerts ?? {}, rates: { cuHour: NEON_CU_HOUR, gbMonth: NEON_GB_MONTH },
