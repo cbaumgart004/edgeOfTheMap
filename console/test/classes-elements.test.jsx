@@ -120,6 +120,7 @@ describe('Elements from Arrange', () => {
     await act(async () => section.querySelector('h2').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 200, clientY: 60 })))
     await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true })))
     await tick(20)
+    await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Controls').click())
     await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Duplicate').click())
     const copied = await settle(store, doc.id, (d) => d.sections[0], (s) => s._elements?.length === 2)
     expect(copied._elements[1]).toMatchObject({ kind: 'text', text: 'Hello', tag: 'h2' })

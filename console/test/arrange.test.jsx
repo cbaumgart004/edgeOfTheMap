@@ -109,7 +109,7 @@ describe('Arrange on the page', () => {
     await act(async () => section.querySelector('[data-eotm-part="heading"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
     await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
     await tick(20)
-    await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Section').click())
+    await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layer up').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click())
     await tick(20)
     await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())
     expect(await saved(store, doc.id, (v) => v?.mode === 'free')).toEqual({ mode: 'free', height: 40, parts: { heading: { x: 10, y: 5, w: 50 }, items: { x: 0, y: 15, w: 100 } } })

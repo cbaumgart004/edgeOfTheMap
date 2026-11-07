@@ -238,5 +238,10 @@
     "version": "1.21.0",
     "integrity": "sha384-4SoFJhU/NSqj45h/hHZEfOyyLEybrGrfVZAWMnIC/TCP488Ziikg/q0R+HFyb+m5",
     "releasedAt": "2026-11-06"
+  },
+  {
+    "version": "1.22.0",
+    "integrity": "sha384-oCIA5ypvntlZawqzw3YW1WjosU4X5ibWDG1LBMj/Vnks9XQ9LSFUuOQwbI2IkTeW",
+    "releasedAt": "2026-11-07"
   }
 ]

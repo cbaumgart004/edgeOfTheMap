@@ -493,6 +493,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
     const hit = focused()
     if (!hit) return
     setOpen(new Set([hit._id]))
+    setAll(false)
     // Scroll only at the row itself; a row holding it opens and the list
     // inside it scrolls.
     if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
@@ -500,8 +501,12 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
   // Opening a row selects it: the trail above follows, and a section on the
   // page is brought into view and outlined, so the pane and page agree. The
   // rows beside it fold, so what is open is the one thing being worked on.
+  // With one row open, the rows beside it are hidden (the trail leads back
+  // up); "Show the other N" brings them back.
+  const [all, setAll] = useState(false)
   const toggle = (key) => {
     const opening = !open.has(key)
+    setAll(false)
     setOpen((s) => (s.has(key) ? new Set([...s].filter((k) => k !== key)) : new Set([key])))
     if (!opening) return
     ctx.onPick?.(key)
@@ -554,12 +559,19 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
       {help && <Info label={`About ${label}`}>{help}</Info>}
     </>
   )
+  const focusOnly = !all && items.length > 1 && items.some((x, i) => open.has(x._id ?? i))
   const body = (
     <>
+      {focusOnly && (
+        <button type="button" className="eotm-show-all" onClick={() => setAll(true)}>
+          ↕ Show the other {items.length - 1} {items.length - 1 === 1 ? 'one' : label.toLowerCase()}
+        </button>
+      )}
       <ol>
         {items.map((item, i) => {
           const key = item._id ?? i
           const isOpen = open.has(key)
+          if (focusOnly && !isOpen) return null
           const hasError = ctx.errors?.some((e) => e.startsWith(`${path}[${i}]`))
           const state = ctx.stateOf?.(item)
           const parts = itemParts?.(item, i)

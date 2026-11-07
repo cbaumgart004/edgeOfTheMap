@@ -652,3 +652,26 @@ button.eotm-crumb:hover { border-color: var(--eotm-accent); }
   .eotm-head .eotm-modes button { white-space: nowrap; padding: 6px 2px; }
   .eotm-head > .eotm-views, .eotm-head > .eotm-publish { margin-inline-start: auto; }
 }
+
+/* ---- Handles: small, so they do not cover what is inside a card. */
+.eotm-arrange-handle { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
+.eotm-arrange-handle.is-height { width: 40px; height: 8px; margin: -4px 0 0 -20px; border-radius: 4px; }
+.eotm-arrange-handle.is-width { width: 8px; height: 40px; margin: -20px 0 0 -4px; border-radius: 4px; }
+@media (pointer: coarse) {
+  .eotm-arrange-handle { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 8px; }
+  .eotm-arrange-handle.is-height { width: 48px; height: 14px; margin: -7px 0 0 -24px; }
+  .eotm-arrange-handle.is-width { width: 14px; height: 48px; margin: -24px 0 0 -7px; }
+}
+/* Layers: what is on the layer being worked on, each named, a name picks it. */
+.eotm-arrange-ghost.is-layer { outline: 1.5px dashed var(--eotm-accent); }
+.eotm-arrange-ghost.is-layer.is-here { outline: 2px solid var(--eotm-accent); }
+.eotm-layer-tab { position: absolute; top: 0; left: 0; transform: translateY(-100%); pointer-events: auto; display: inline-flex; align-items: center; gap: 4px;
+  max-width: 220px; padding: 1px 6px; border: 0; border-radius: 4px 4px 0 0; background: var(--eotm-accent); color: var(--eotm-accent-ink);
+  font: 600 11px/1.5 var(--eotm-font, system-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.eotm-layer-tab .eotm-chip.is-class { padding: 0 5px; font-size: 10px; }
+.eotm-arrange-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex-basis: 100%; }
+.eotm-arrange-layers > .eotm-info-panel { flex-basis: 100%; }
+/* The pane: with a row open, the way back to the rows beside it. */
+.eotm-show-all { display: block; width: 100%; margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--eotm-line); border-radius: var(--eotm-radius);
+  background: transparent; color: var(--eotm-muted); font-size: 12.5px; text-align: left; cursor: pointer; }
+.eotm-show-all:hover { color: var(--eotm-ink); border-color: var(--eotm-accent); }

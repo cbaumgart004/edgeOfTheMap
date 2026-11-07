@@ -156,7 +156,9 @@ describe('console in a page', () => {
     await act(async () => page.querySelector('h2').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })))
     await tick(50)
     expect(host.querySelector('[data-eotm-item="thai"]').classList.contains('is-open')).toBe(true)
-    expect(host.querySelector('[data-eotm-item="intro"]').classList.contains('is-open')).toBe(false)
+    // The rows beside it are hidden until asked for.
+    expect(host.querySelector('[data-eotm-item="intro"]')).toBe(null)
+    expect(host.querySelector('.eotm-show-all')).not.toBe(null)
     await act(async () => root.unmount())
     page.remove()
   })

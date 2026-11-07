@@ -72,7 +72,7 @@ describe('View, Edit and Arrange', () => {
       await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
       await tick(20)
       // A click on a part selects the part; Section steps out to the section's own choices.
-      await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Section').click())
+      await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layer up').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click())
       await tick(20)
       await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())
       let layout
