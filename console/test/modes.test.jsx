@@ -48,6 +48,7 @@ describe('View, Edit and Arrange', () => {
       const e = new MouseEvent('click', { bubbles: true, cancelable: true }); img.dispatchEvent(e); return e
     }
     let e
+    await act(async () => byText(host, '.eotm-modes button', 'Edit').click())
     await act(async () => { e = click() })
     await tick(20)
     expect(e.defaultPrevented).toBe(true)
@@ -72,9 +73,11 @@ describe('View, Edit and Arrange', () => {
       await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
       await tick(20)
       // A click on a part selects the part; Section steps out to the section's own choices.
-      await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layer up').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click())
+      await act(async () => document.querySelector('.eotm-arrange-panel [aria-label="Layers"]').click())
+      await act(async () => document.querySelector('.eotm-arrange-panel [aria-label^="Layer down"]').click())
       await tick(20)
-      await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())
+      await act(async () => document.querySelector('.eotm-arrange-panel [aria-label="Controls"]').click())
+      await act(async () => byText(document.body, '.eotm-arrange-panel button', 'Free').click())
       let layout
       for (let i = 0; i < 30 && !layout?.phoneParts; i++) { await tick(100); layout = (await store.get(doc.id)).data.sections[0]._layout }
       expect(layout).toEqual({ phone: 'free', phoneHeight: 75, phoneParts: { tagline: { x: 5, y: 5, w: 90 }, buttons: { x: 5, y: 25, w: 50 } } })
@@ -91,13 +94,14 @@ describe('View, Edit and Arrange', () => {
       await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
       await tick(20)
     }
+    await act(async () => byText(host, '.eotm-modes button', 'Edit').click())
     await press()
-    expect(document.querySelector('.eotm-arrange-tools')).toBeNull()
+    expect(document.querySelector('.eotm-arrange-panel [aria-label="Controls"]')).toBeNull()
     expect(document.querySelector('.eotm-arrange-handle')).toBeNull()
-    expect(document.querySelector('.eotm-edit-hint')).toBeTruthy()
+    expect(document.querySelector('.eotm-arrange-panel [aria-label="Edit"]')).toBeTruthy()
     await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
     await press()
-    expect(document.querySelector('.eotm-arrange-tools')).toBeTruthy()
+    expect(document.querySelector('.eotm-arrange-panel [aria-label="Controls"]')).toBeTruthy()
     expect(document.querySelector('.eotm-arrange-handle')).toBeTruthy()
   })
 

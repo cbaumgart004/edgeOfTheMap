@@ -447,44 +447,40 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 .eotm-style .eotm-range { grid-column: 1 / -1; }
 
 /* Arrange mode (Arrange.jsx): handles over the page. */
-.eotm-arrange-sel { border-style: solid; }
-.eotm-arrange-ghost { position: fixed; outline: 1px dashed color-mix(in srgb, var(--eotm-accent) 55%, transparent); border-radius: 4px; }
-.eotm-arrange-handle { position: fixed; pointer-events: auto; touch-action: none; width: 16px; height: 16px; margin: -8px 0 0 -8px; padding: 0;
-  border: 2px solid var(--eotm-accent); border-radius: 4px; background: var(--eotm-surface); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
-.eotm-arrange-handle.is-nw, .eotm-arrange-handle.is-se { cursor: nwse-resize; }
-.eotm-arrange-handle.is-ne, .eotm-arrange-handle.is-sw { cursor: nesw-resize; }
-.eotm-arrange-handle.is-n, .eotm-arrange-handle.is-s { cursor: ns-resize; }
-.eotm-arrange-handle.is-e, .eotm-arrange-handle.is-w { cursor: ew-resize; }
-.eotm-arrange-handle.is-height { width: 56px; height: 14px; margin: -7px 0 0 -28px; border-radius: 7px; background: var(--eotm-accent); cursor: ns-resize; }
-.eotm-arrange-handle.is-width { width: 14px; height: 56px; margin: -28px 0 0 -7px; border-radius: 7px; background: var(--eotm-accent); cursor: ew-resize; }
-/* Fingers need bigger targets than a pointer. */
+.eotm-arrange-sel { position: fixed; outline: 2px solid var(--eotm-accent); border-radius: 2px; pointer-events: none; }
+/* Layers open: what else is on the pick's layer, dotted. */
+.eotm-arrange-ghost { position: fixed; outline: 1.5px dotted var(--eotm-accent); border-radius: 2px; pointer-events: none; }
+/* Three handles, small: the right side, the bottom, the corner for both. */
+.eotm-arrange-handle { position: fixed; pointer-events: auto; touch-action: none; padding: 0; border: 1.5px solid var(--eotm-accent); background: var(--eotm-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); border-radius: 3px; }
+.eotm-arrange-handle.is-e { width: 6px; height: 22px; margin: -11px 0 0 -3px; cursor: ew-resize; }
+.eotm-arrange-handle.is-s { width: 22px; height: 6px; margin: -3px 0 0 -11px; cursor: ns-resize; }
+.eotm-arrange-handle.is-se { width: 10px; height: 10px; margin: -5px 0 0 -5px; cursor: nwse-resize; }
 @media (pointer: coarse) {
-  .eotm-arrange-handle { width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 13px; }
-  .eotm-arrange-handle.is-height { width: 64px; height: 22px; margin: -11px 0 0 -32px; }
-  .eotm-arrange-handle.is-width { width: 22px; height: 64px; margin: -32px 0 0 -11px; }
+  .eotm-arrange-handle.is-e { width: 10px; height: 32px; margin: -16px 0 0 -5px; }
+  .eotm-arrange-handle.is-s { width: 32px; height: 10px; margin: -5px 0 0 -16px; }
+  .eotm-arrange-handle.is-se { width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 9px; }
 }
-/* The selection's name on a line of its own, its controls under it, so the
-   controls never cover what is chosen. */
-.eotm-arrange-bar { position: fixed; display: grid; gap: 4px; justify-items: start; max-width: min(640px, calc(100vw - 16px)); pointer-events: none; }
-.eotm-arrange-label { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; border: 0; pointer-events: auto; max-width: 100%; padding: 2px 10px; border-radius: 999px; font: 600 12px/1.6 var(--eotm-font, system-ui);
-  background: var(--eotm-accent); color: var(--eotm-accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
-.eotm-arrange-label.is-open { white-space: normal; text-align: left; border-radius: 10px; flex-wrap: wrap; gap: 4px; }
-.eotm-arrange-level { border: 0; padding: 0 4px; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
-.eotm-arrange-level:hover { background: rgb(255 255 255 / 0.2); }
-.eotm-arrange-caret { font-size: 10px; opacity: 0.8; }
-.eotm-arrange-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%; pointer-events: none; }
-.eotm-arrange-tools > * { pointer-events: auto; }
-/* A phone: the controls are one row that scrolls sideways, so the toolbar stays a strip. */
-@media (max-width: 819.98px) {
-  .eotm-arrange-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
-  .eotm-arrange-tools > * { flex: none; }
-}
-.eotm-arrange-seg { background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
-.eotm-arrange-range { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px;
-  background: var(--eotm-surface); color: var(--eotm-ink); border: 1px solid var(--eotm-line); font: 600 13px var(--eotm-font); }
-.eotm-arrange-hint, .eotm-arrange-prompt { position: fixed; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 8px 14px;
+/* The panel beside the pick: Layers, Controls, Edit as icons; what is open beside them. */
+.eotm-arrange-panel { position: fixed; display: flex; gap: 6px; align-items: flex-start; pointer-events: auto; font: 500 13px var(--eotm-font); color: var(--eotm-ink); }
+.eotm-arrange-panel.is-left { flex-direction: row-reverse; }
+.eotm-arrange-icons { display: grid; gap: 2px; padding: 3px; border-radius: 10px; background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+.eotm-arrange-icon { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--eotm-ink); cursor: pointer; }
+.eotm-arrange-icon:hover:not(:disabled) { background: color-mix(in srgb, var(--eotm-accent) 14%, transparent); }
+.eotm-arrange-icon.is-on { background: var(--eotm-accent); color: var(--eotm-accent-ink); }
+.eotm-arrange-icon:disabled { opacity: 0.35; cursor: default; }
+@media (pointer: coarse) { .eotm-arrange-icon { width: 40px; height: 40px; } }
+.eotm-arrange-fly { display: grid; gap: 6px; width: 236px; max-width: calc(100vw - 72px); overflow-y: auto; overscroll-behavior: contain; }
+.eotm-arrange-card { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; background: var(--eotm-surface); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+.eotm-arrange-card h4 { margin: 0; font: 600 11px var(--eotm-font); letter-spacing: 0.04em; text-transform: uppercase; color: var(--eotm-muted); }
+.eotm-arrange-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.eotm-arrange-row label.eotm-target-snap { display: inline-flex; align-items: center; }
+.eotm-arrange-card .eotm-arrange-seg { box-shadow: none; justify-self: start; }
+.eotm-arrange-range { display: flex; align-items: center; gap: 8px; }
+.eotm-arrange-range input { flex: 1; min-width: 0; }
+.eotm-arrange-range span { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.eotm-arrange-prompt { position: fixed; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 8px 14px;
   border-radius: 999px; background: var(--eotm-ink); color: var(--eotm-bg); font: 500 13px var(--eotm-font); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
-.eotm-arrange-hint { top: 12px; pointer-events: none; }
 .eotm-arrange-prompt { top: 56px; display: flex; gap: 10px; align-items: center; width: max-content; max-width: calc(100vw - 24px); border-radius: 14px; }
 /* The parts of a Free section are dragged, not scrolled, while arranging. */
 html.eotm-arranging [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; cursor: move; user-select: none; }
@@ -536,11 +532,8 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 /* The page's width while editing on a narrow screen. */
 .eotm-pagewidth { display: inline-flex; align-items: center; gap: 4px; font: 600 12px var(--eotm-font); color: var(--eotm-muted); }
 .eotm-pagewidth .eotm-input { min-height: 30px; padding: 2px 6px; font-size: 13px; width: auto; }
-/* Adding to a section in Arrange: + Text, + Photo, + Button, + Box, templates. */
-.eotm-arrange-add { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.eotm-arrange-add label.eotm-target-snap { display: inline-flex; align-items: center; }
-.eotm-arrange-name { display: inline-flex; gap: 6px; }
-.eotm-arrange-name .eotm-input { min-height: 36px; width: 160px; }
+.eotm-arrange-name { display: flex; gap: 6px; }
+.eotm-arrange-name .eotm-input { min-height: 32px; flex: 1; min-width: 0; }
 
 /* The one Publish, beside the click modes; its dialog lists what goes live. */
 .eotm-head > .eotm-publish { margin-inline-start: auto; }
@@ -594,9 +587,6 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 }
 .eotm-root details.eotm-home-fold > summary { flex-wrap: wrap; }
 .eotm-root details.eotm-home-fold > summary > .eotm-info { margin-inline-start: auto; }
-/* On the page, over the arrange toolbar. */
-.eotm-arrange-bar .eotm-info { background: var(--eotm-surface); box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); width: 28px; height: 28px; }
-.eotm-arrange-bar .eotm-info-panel { pointer-events: auto; max-width: min(460px, calc(100vw - 16px)); box-shadow: 0 4px 16px rgb(0 0 0 / 0.25); }
 
 /* The mode that is on, said in a line under the header, tinted per mode. */
 .eotm-root .eotm-modehint { flex: 1 1 100%; margin: 2px 0 0; padding: 5px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.35; color: var(--eotm-ink); }
@@ -617,7 +607,6 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 
 /* ---- The editor's tree: sections and elements as cards, each level folded. */
 .eotm-root .eotm-info { width: 16px; height: 16px; border-width: 1.25px; font-size: 10.5px; }
-.eotm-arrange-bar .eotm-info { width: 20px; height: 20px; }
 .eotm-label-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .eotm-label-row > .eotm-label { margin-bottom: 0; }
 .eotm-repeater.is-sections > ol > .eotm-item { background: var(--eotm-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); margin-bottom: 10px; }
@@ -643,9 +632,6 @@ button.eotm-crumb:hover { border-color: var(--eotm-accent); }
 .eotm-crumb.is-root { background: color-mix(in srgb, var(--eotm-accent) 14%, var(--eotm-bg)); border-color: var(--eotm-accent); font-weight: 600; }
 .eotm-crumb.is-here { padding-inline: 2px; }
 .eotm-crumb-sep { color: var(--eotm-muted); }
-/* Arrange: what to save a change for, on a line of its own. */
-.eotm-arrange-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex-basis: 100%; }
-.eotm-arrange-scope-label { font-size: 12px; font-weight: 600; color: var(--eotm-muted); }
 /* A phone: the three modes take a row of their own, whole; ⓘ and Publish go under them. */
 @media (max-width: 1023px) {
   .eotm-head .eotm-modes { flex: 1 1 100%; }
@@ -653,24 +639,6 @@ button.eotm-crumb:hover { border-color: var(--eotm-accent); }
   .eotm-head > .eotm-views, .eotm-head > .eotm-publish { margin-inline-start: auto; }
 }
 
-/* ---- Handles: small, so they do not cover what is inside a card. */
-.eotm-arrange-handle { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
-.eotm-arrange-handle.is-height { width: 40px; height: 8px; margin: -4px 0 0 -20px; border-radius: 4px; }
-.eotm-arrange-handle.is-width { width: 8px; height: 40px; margin: -20px 0 0 -4px; border-radius: 4px; }
-@media (pointer: coarse) {
-  .eotm-arrange-handle { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 8px; }
-  .eotm-arrange-handle.is-height { width: 48px; height: 14px; margin: -7px 0 0 -24px; }
-  .eotm-arrange-handle.is-width { width: 14px; height: 48px; margin: -24px 0 0 -7px; }
-}
-/* Layers: what is on the layer being worked on, each named, a name picks it. */
-.eotm-arrange-ghost.is-layer { outline: 1.5px dashed var(--eotm-accent); }
-.eotm-arrange-ghost.is-layer.is-here { outline: 2px solid var(--eotm-accent); }
-.eotm-layer-tab { position: absolute; top: 0; left: 0; transform: translateY(-100%); pointer-events: auto; display: inline-flex; align-items: center; gap: 4px;
-  max-width: 220px; padding: 1px 6px; border: 0; border-radius: 4px 4px 0 0; background: var(--eotm-accent); color: var(--eotm-accent-ink);
-  font: 600 11px/1.5 var(--eotm-font, system-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.eotm-layer-tab .eotm-chip.is-class { padding: 0 5px; font-size: 10px; }
-.eotm-arrange-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex-basis: 100%; }
-.eotm-arrange-layers > .eotm-info-panel { flex-basis: 100%; }
 /* The pane: with a row open, the way back to the rows beside it. */
 .eotm-show-all { display: block; width: 100%; margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--eotm-line); border-radius: var(--eotm-radius);
   background: transparent; color: var(--eotm-muted); font-size: 12.5px; text-align: left; cursor: pointer; }

@@ -96,22 +96,22 @@ describe('Arrange on the page', () => {
     await tick(20)
     // A click on a part selects it (no movement, so the section stays Flow);
     // Section steps out to the section's own choices.
-    expect(document.querySelectorAll('.eotm-arrange-handle:not(.is-height):not(.is-width)')).toHaveLength(8)
-    // The selection is named; opened, its path: the section by what it holds, then the page.
-    const label = document.querySelector('.eotm-arrange-label')
-    expect(label.textContent).toBe('Heading▸')
-    await act(async () => label.click())
-    const path = document.querySelector('.eotm-arrange-label.is-open')
-    expect(path.textContent).toMatch(/^Heading‹.+: Hello‹.+: Home▾$/)
-    // Each level chooses it: the section's own takes the part's handles away.
-    await act(async () => path.querySelector('.eotm-arrange-level').click())
-    expect(document.querySelectorAll('.eotm-arrange-handle:not(.is-height):not(.is-width)')).toHaveLength(0)
-    await act(async () => section.querySelector('[data-eotm-part="heading"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
-    await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
+    // Three handles: the right side, the bottom, the corner. Nothing is written on the page.
+    expect([...document.querySelectorAll('.eotm-arrange-handle')].map((h) => h.className.split('is-')[1])).toEqual(['e', 's', 'se'])
+    expect(document.querySelector('.eotm-arrange-panel').textContent).toBe('')
+    // Layer down: back to what holds the heading, the section (its height handle only).
+    await act(async () => document.querySelector('.eotm-arrange-panel [aria-label="Layers"]').click())
+    await act(async () => document.querySelector('.eotm-arrange-panel [aria-label^="Layer down"]').click())
     await tick(20)
-    await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layer up').click()); await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Layers').click())
+    expect(document.querySelectorAll('.eotm-arrange-handle')).toHaveLength(1)
+    // Layer up: forward again, to what is on it.
+    await act(async () => document.querySelector('.eotm-arrange-panel [aria-label^="Layer up"]').click())
     await tick(20)
-    await act(async () => byText(document.body, '.eotm-arrange-bar button', 'Free').click())
+    expect(document.querySelectorAll('.eotm-arrange-handle')).toHaveLength(3)
+    await act(async () => document.querySelector('.eotm-arrange-panel [aria-label^="Layer down"]').click())
+    await tick(20)
+    await act(async () => document.querySelector('.eotm-arrange-panel [aria-label="Controls"]').click())
+    await act(async () => byText(document.body, '.eotm-arrange-panel button', 'Free').click())
     expect(await saved(store, doc.id, (v) => v?.mode === 'free')).toEqual({ mode: 'free', height: 40, parts: { heading: { x: 10, y: 5, w: 50 }, items: { x: 0, y: 15, w: 100 } } })
 
     // The site redraws it Free; dragging the heading 100 px right moves it 10

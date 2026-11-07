@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { checkDocument, warnDocument, titleOf, setItemField, sectionName, sectionParts, newBlock } from '../schema/schema.js'
+import { checkDocument, warnDocument, titleOf, setItemField, sectionParts, newBlock } from '../schema/schema.js'
 import { ELEMENT_LABELS } from '../schema/elements.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements, RemoveButton } from './Fields.jsx'
@@ -18,7 +18,7 @@ import Info from './Info.jsx'
 const MODES = [
   ['view', 'View', 'The page works as visitors use it: links go, buttons press. Nothing is changed.'],
   ['edit', 'Edit', 'Tap anything on the page to open it in the editor and change its words, pictures and settings. Double-tap text to type in place.'],
-  ['arrange', 'Arrange', 'Tap a section to move, resize and fade its parts, change its layout, or add parts. Its tools float on the page; the editor shrinks out of the way.'],
+  ['arrange', 'Arrange', 'Tap anything to pick it, drag to move it, and use the small handles to size it. Beside it: Layers, to reach what is under or on it; Controls; and Edit.'],
 ]
 
 // The nth image of a rich text field set to `pct`% wide; its height follows.
@@ -418,7 +418,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // press). Edit: opens what was clicked, buttons included, which are edited,
   // not pressed (Targets.jsx). Arrange: selects a section or part and shows
   // its handles (Arrange.jsx).
-  const [clickMode, setClickMode] = useState('edit')
+  const [clickMode, setClickMode] = useState('arrange')
   const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar') }
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
   const [user, setUser] = useState(undefined)
@@ -657,21 +657,6 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   // Click-to-edit (Targets.jsx): the page names a document by id or slug.
   const findDoc = async (type, key) => bridge.draft(type, key) ?? (await store.list(type)).find((d) => d.id === key || d.slug === key)
-  // Arrange's path: the section by what it holds, the document by its kind and title.
-  const describe = async ({ type, key, item }) => {
-    const def = schema.types[type]
-    const doc = def && (def.singleton ? (await store.list(type))[0] : await findDoc(type, key))
-    const docName = def ? `${def.label}${doc && !def.singleton ? `: ${titleOf(schema, doc)}` : ''}` : null
-    let block = null
-    const seek = (v) => {
-      if (block || !v || typeof v !== 'object') return
-      if (Array.isArray(v)) { v.forEach(seek); return }
-      if (v._id === item) { block = v; return }
-      Object.values(v).forEach(seek)
-    }
-    if (item && doc) seek(doc.data)
-    return { doc: docName, section: block ? (block._type ? sectionName(schema, block) : titleOf(schema, { type, data: block }) || null) : docName }
-  }
   // Sections added from a page's placeholder this visit, by doc, type and place.
   const added = useRef(new Map())
   const openTarget = async ({ type, key, item, field = null, keepPane = false, add = null }) => {
@@ -844,7 +829,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
       {user && overlay && clickMode !== 'view' && createPortal(
         <Arrange key={clickMode} onChange={resizeTarget} uiScale={1 / page.scale} upload={(blob) => store.upload(blob)} notify={notify}
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
-          onSelect={(t) => openTarget({ ...t, keepPane: clickMode === 'arrange' })} onText={clickMode === 'edit' ? textTarget : null} describe={describe}
+          onSelect={(t) => openTarget({ ...t, keepPane: clickMode === 'arrange' })} onEdit={(t) => openTarget({ ...t, keepPane: false })} onText={textTarget}
           tools={clickMode === 'arrange'} classes={classesOf(schema)} addClass={addClass}
           onImport={(target) => { setView({ name: 'import', target, back: view }); setPeek(false); if (size === 'bar') setSize('half') }} />, overlay)}
     </div>

@@ -2,64 +2,26 @@ import React, { useEffect, useRef, useState } from 'react'
 import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLUMNS } from './arrange.js'
 import { newId } from '../schema/schema.js'
 import { canCarry } from '../schema/classes.js'
-import { newElement, copyElement, ELEMENT_LABELS } from '../schema/elements.js'
+import { newElement, copyElement } from '../schema/elements.js'
 import { prepareImage } from './images.js'
 import { TEXT, startTyping } from './Targets.jsx'
-import { InfoButton, InfoPanel } from './Info.jsx'
 
-// What the toolbar's controls do, behind its ⓘ.
-const SECTION_HELP = [
-  ['Flow / Free', 'Flow stacks the parts as the design lays them out. Free lets you drag each part anywhere in the section.'],
-  ['Phone: stack', 'On a phone, the parts sit in one column, top to bottom.'],
-  ['Keep layout', 'On a phone, show this Free layout scaled down whole.'],
-  ['Phone: own', 'The section has a layout made on a phone, used on phones only.'],
-  ['+ Text, Photo, Button, Box', 'Add a new part to this section.'],
-  ['+ Canva PDF', 'Bring in a design made in Canva, from its PDF.'],
-  ['+ From template', 'Add a part you saved earlier with Save as template.'],
-  ['Free form / Snap to grid', 'Free form places parts exactly where you let go; Snap to grid lines them up on 12 columns.'],
-  ['Handles', 'Drag the bar under a section to change its height, the one at its side to change its width.'],
-]
-const PHONE_SECTION_HELP = [
-  ['Stack', 'On a phone, the parts sit in one column, top to bottom.'],
-  ['Keep desktop', 'Show the desktop layout on phones, scaled down whole.'],
-  ['Free', 'Arrange the parts by hand for phones only; the desktop layout is left alone.'],
-  ...SECTION_HELP.slice(4),
-]
-const LAYER_HELP = [
-  ['Layers', 'The page is built in layers, one inside another: a section, then a card in it, then the card\u2019s heading, text, photo and buttons. Layers lets you pick by layer, so a button inside a card is easy to reach.'],
-  ['Layer down', 'Go one layer in: to what is inside what is chosen (from a card to its buttons).'],
-  ['Layer up', 'Go one layer out: to what holds what is chosen (from a button to its card).'],
-  ['Outlines', 'Everything you can pick on the layer you are on, each with its name and class. Tap a name to pick it.'],
-  ['Tap again', 'With Layers on, tapping what is already chosen goes one layer in, to what you tapped inside it.'],
-]
-const PART_HELP = [
-  ['Drag', 'Move the part. Drag a corner or side to resize; pinch with two fingers on a phone.'],
-  ['Free form / Snap to grid', 'Free form places it exactly where you let go; Snap to grid lines it up on 12 columns.'],
-  ['Layers', 'Pick by layer: up to what holds this part, down to what is inside it.'],
-  ['Controls', 'Fade (how see-through), Front and Back (above or below what it overlaps), Fit (undo a resize), Duplicate and Save as template.'],
-  ['Class', 'The shared look this part takes, shown in the bar.'],
-  ['Save for', 'Shown once you change a part. This element: your change stays on this part (it saves as you go). Every <class>: copy its size and fade to every part of that class on this page. New class: make a class from it and give it to this part.'],
-]
-
-// Arrange mode (StoryShaped ADR-0010): the page's sections and their parts, on
-// the page itself, with handles. In place of click-to-edit (Targets.jsx) while
-// it is on, so a click selects instead of opening text to type.
+// Arrange mode (StoryShaped ADR-0010), drawn as Canva and Wix draw a
+// selection: a tap picks what is under it (a card, the picture or button in
+// it, a part of a section, a section), outlined solid. Nothing else is written
+// on the page: names, classes and fields are the editor pane's.
 //
-//   A section (a marked element holding parts, data-eotm-part): switch it
-//   between Flow and Free, choose how a phone shows it (stack, keep the
-//   desktop layout scaled down, or its own) and, when Free, drag its height.
-//   On a phone, what is arranged is the phone's own layout (phoneParts): the
-//   desktop one is arranged on a wider screen, or with the page at Desktop
-//   width (App's page width), and a prompt says so.
-//   A part of a Free section: drag it to move; drag a corner to scale it (its
-//   text too, as Canva does), a side to change only that side; pinch with two
-//   fingers to scale; arrow keys nudge (Shift for 10 px); fade it, bring it
-//   forward or send it back. Snap puts edges on the 12 columns and an 8 px step.
-//   Add a text, photo, button or box to a section (its `_elements`, schema/
-//   elements.js), from a template too; duplicate any part (an element is
-//   copied; one of the site's own parts becomes an element with its content);
-//   save an element as a template. A new one is drawn at once, placed in view
-//   when the section is Free, and selected.
+//   Handles: three, small: the right side (width), the bottom (height) and the
+//   bottom-right corner (both). A section's are its height and its width.
+//   The panel beside the selection, never over the editor pane or off screen:
+//     Layers (the stack icon): up brings the pick forward, to what is on it
+//       (a card's picture and button); down goes back, to what holds it. While
+//       open, everything on the same layer is outlined dotted and a tap picks
+//       among them; tapping again where several overlap goes to the next.
+//     Controls: cards. A part: opacity, front and back, snap or free placing,
+//       and More (fit, duplicate, template, class). A section: Flow or Free,
+//       how a phone shows it, add a part, placing.
+//     Edit: open it in the editor (text starts typing where it stands).
 //
 // Every change is an updater of the section's `_layout`, written through the
 // editor like a drag-to-size (App's resizeTarget), so it saves, undoes and
@@ -75,7 +37,8 @@ const PROMPT_KEY = 'eotm:arrange-prompt'
 const PHONE = '(max-width: 819.98px)'
 // A tablet held upright: wider than a phone, narrower than a desktop.
 const TABLET_UPRIGHT = '(min-width: 820px) and (max-width: 1279.98px) and (orientation: portrait)'
-const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+// The three handles: the right side, the bottom, and the corner for both.
+const HANDLES = ['e', 's', 'se']
 
 const readSnap = () => { try { return localStorage.getItem(SNAP_KEY) !== 'free' } catch { return true } }
 // A section the page shows but the document does not have yet:
@@ -177,88 +140,43 @@ function elementFromPart(part, id) {
   return newElement('text', id, { text, tag })
 }
 
-// What the selection is called, on the toolbar's first line: its own name,
-// and, opened, every level it sits in: the parts around it, its section (named
-// by what it holds, App's describe) and the page. A part is called by its own
-// label (data-eotm-label), an element by its kind and first words, else by its
-// name made readable ("taglineHeading" is Tagline heading).
-const readable = (name) => String(name ?? '').replace(/[-_]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/^./, (c) => c.toUpperCase())
-function partName(part) {
-  const kind = part.dataset.eotmElement
-  const words = (part.innerText ?? part.textContent ?? '').trim().replace(/\s+/g, ' ')
-  return part.dataset.eotmLabel ? readable(part.dataset.eotmLabel)
-    : kind ? `${ELEMENT_LABELS[kind] ?? readable(kind)}${words ? `: ${words.length > 32 ? `${words.slice(0, 30)}…` : words}` : ''}`
-    : readable(part.dataset.eotmPart)
-}
-// Innermost first: the part, the parts holding it, the section, the sections
-// around it (a design inside a section), the page. Each level that can be
-// chosen carries what choosing it selects: { name, pick? }.
-function pathOf(section, part, names) {
-  const out = []
-  for (let p = part; p && p !== section && section.contains(p); p = p.parentElement?.closest(PART)) out.push({ name: partName(p), pick: { section, part: p } })
-  out.push({ name: section.dataset.eotmLabel && section.matches(PART) ? readable(section.dataset.eotmLabel) : names?.section ?? (section.dataset.eotmLabel ? readable(section.dataset.eotmLabel) : 'Section'), pick: { section, part: null } })
-  // A section that is a part of another (a design): that one, with it chosen in it.
-  for (let s = section; s.matches(PART);) {
-    const outer = s.parentElement?.closest(SECTION)
-    if (!outer) break
-    out.push({ name: names?.section ?? 'Section', pick: { section: outer, part: s }, outer: true })
-    s = outer
-  }
-  if (names?.doc) out.push({ name: names.doc })
-  return out
-}
-// Layers: what is marked on the page (sections, and parts in them), one
-// inside another. A plain holder (a page's layout cell, a whole page around
-// its sections) is no layer of its own: nothing is picked there.
+// Layers: what can be picked, one inside another. The marked sections and
+// parts, a card (data-eotm-holds, a place that holds objects) and the pieces
+// of a card (its picture, its lines of text, its button), which the site does
+// not mark as parts. A plain holder (a page's layout cell, a whole page around
+// its sections) is no layer of its own.
 const MARK = `${SECTION}, ${PART}`
+const HOLDS = '[data-eotm-holds]'
+const LEAF = 'img, video, [data-eotm-text], [data-eotm-richtext], .btn'
+const NODE = `${MARK}, ${HOLDS}, ${LEAF}`
 const layerSkip = (n) => !n.matches(PART) && !isSection(n) && !!n.querySelector(MARK)
-const layerUp = (n) => {
-  for (let p = n?.parentElement?.closest(MARK); p; p = p.parentElement?.closest(MARK)) if (!layerSkip(p) && !p.closest('.eotm-root')) return p
-  return null
+const isNode = (n) => {
+  if (!n || n.closest('.eotm-root')) return false
+  if (n.matches(MARK)) return !layerSkip(n)
+  if (n.matches(HOLDS)) return true
+  return !!n.parentElement?.closest(`${MARK}, ${HOLDS}`)?.matches(HOLDS)
 }
-const layerKids = (n) => [...(n ?? document.body).querySelectorAll(MARK)]
-  .filter((k) => !k.closest('.eotm-root') && !layerSkip(k) && layerUp(k) === (n ?? null) && (rectOf(k).width > 0))
-// What holds the point pressed, innermost first.
+const layerUp = (n) => {
+  let p = n?.parentElement?.closest(NODE)
+  while (p && !isNode(p)) p = p.parentElement?.closest(NODE)
+  return p ?? null
+}
+const layerKids = (n) => [...(n ?? document.body).querySelectorAll(NODE)]
+  .filter((k) => isNode(k) && layerUp(k) === (n ?? null) && rectOf(k).width > 0)
+// What is under the point pressed, innermost first.
 const chainAt = (t) => {
   const out = []
-  for (let p = t?.closest?.(MARK); p; p = p.parentElement?.closest(MARK)) if (!layerSkip(p)) out.push(p)
+  for (let p = t?.closest?.(NODE); p; p = p.parentElement?.closest(NODE)) if (isNode(p)) out.push(p)
   return out
 }
-const depthOf = (n) => { let d = 0; for (let p = layerUp(n); p; p = layerUp(p)) d++; return d }
-// What picking a layer selects: a part in its section, or a section itself.
-const selFor = (n) => (n.matches(PART) && ownerOf(n) ? { section: ownerOf(n), part: n } : isSection(n) ? { section: n, part: null } : null)
-const layerName = (n) => (n.matches(PART) ? partName(n) : n.dataset.eotmLabel ? readable(n.dataset.eotmLabel) : 'Section')
-
-function PathLabel({ section, part, describe, onPick }) {
-  const [open, setOpen] = useState(false)
-  const [names, setNames] = useState(null)
-  const id = `${section.dataset.eotmEdit}|${section.dataset.eotmItem ?? ''}`
-  useEffect(() => {
-    let live = true
-    setNames(null)
-    describe?.(targetOf(section)).then((n) => { if (live) setNames(n) }).catch(() => {})
-    return () => { live = false }
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const path = pathOf(section, part, names)
-  const all = path.map((l) => l.name).join(' ‹ ')
-  if (!open) return (
-    <button type="button" className="eotm-arrange-label" aria-expanded={false} title={all} onClick={() => setOpen(true)}>
-      {path[0].name}{path.length > 1 && <span aria-hidden="true" className="eotm-arrange-caret">▸</span>}
-    </button>
-  )
-  // Open: each level a button that chooses it, the page last, plain.
-  return (
-    <div className="eotm-arrange-label is-open" role="group" aria-label="Where it is">
-      {path.map((l, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <span aria-hidden="true">‹</span>}
-          {l.pick && i > 0 ? <button type="button" className="eotm-arrange-level" onClick={() => onPick(l.pick)} title={`Choose ${l.name}`}>{l.name}</button> : <span>{l.name}</span>}
-        </React.Fragment>
-      ))}
-      <button type="button" className="eotm-arrange-level" aria-label="Close" onClick={() => setOpen(false)}>▾</button>
-    </div>
-  )
+// The section a pick belongs to, and the part of it the pick is (moved and sized).
+const sectionAround = (n) => { let s = n?.closest(SECTION); while (s && !isSection(s)) s = s.parentElement?.closest(SECTION); return s ?? null }
+const selFor = (n) => {
+  if (n.matches(PART) && ownerOf(n) && isSection(ownerOf(n))) return { node: n, section: ownerOf(n), part: n }
+  if (isSection(n)) return { node: n, section: n, part: null }
+  return { node: n, section: sectionAround(n), part: null }
 }
+const inside = (r, x, y) => x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height
 
 // What to tell the owner about the screen they arrange on, once a visit each.
 function promptFor() {
@@ -268,27 +186,48 @@ function promptFor() {
 }
 const seen = (key) => { try { return sessionStorage.getItem(`${PROMPT_KEY}:${key}`) } catch { return false } }
 
-// `uiScale`: how much the page is scaled down (App's page width); the toolbar,
+// `uiScale`: how much the page is scaled down (App's page width); the panel,
 // prompt and handles are drawn that much larger so they keep their size on
 // screen. CSS zoom also scales an element's offsets, so its position is divided.
 const ui = (k, top, left) => (k > 1 ? { zoom: k, top: top / k, left: left / k } : { top, left })
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onText = null, describe = null, onImport = null, tools = true, classes = [], addClass = null }) {
-  // Fade and layering stay out of the way until asked for.
-  const [controls, setControls] = useState(false)
+const Icon = ({ d }) => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d.map((p, i) => <path key={i} d={p} />)}
+  </svg>
+)
+const ICONS = {
+  layers: ['M12 3 2 8l10 5 10-5-10-5Z', 'm2 13 10 5 10-5', 'm2 17.5 10 5 10-5'],
+  controls: ['M4 6h10', 'M18 6h2', 'M4 12h4', 'M12 12h8', 'M4 18h12', 'M20 18h0', 'M16 4v4', 'M10 10v4', 'M18 16v4'],
+  edit: ['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'],
+  up: ['M12 19V5', 'm5 12 7-7 7 7'],
+  down: ['M12 5v14', 'm19 12-7 7-7-7'],
+  front: ['M8 8h12v12H8Z', 'M4 16V4h12'],
+  back: ['M4 4h12v12H4Z', 'M20 8v12H8'],
+}
+
+function Btn({ icon, label, on, onClick, disabled }) {
+  return <button type="button" className={`eotm-arrange-icon${on ? ' is-on' : ''}`} aria-label={label} title={label} aria-pressed={on ?? undefined} disabled={disabled} onClick={onClick}><Icon d={ICONS[icon]} /></button>
+}
+function Seg({ label, value, options, onPick }) {
+  return (
+    <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label={label}>
+      {options.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={value === v} className={value === v ? 'is-on' : ''} onClick={() => onPick(v)}>{l}</button>)}
+    </div>
+  )
+}
+
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onEdit = null, onText = null, onImport = null, tools = true, classes = [], addClass = null }) {
+  // Which of the panel's buttons is open: 'layers', 'controls' or none.
+  const [open, setOpen] = useState(null)
   const [classing, setClassing] = useState(false)
-  // Layers: pick by layer (up, down, what is on this one), Layer help apart.
-  const [layers, setLayers] = useState(false)
-  const [layerInfo, setLayerInfo] = useState(false)
-  // The part changed since it was picked: then what to save it for is offered.
-  const [touched, setTouched] = useState(null)
-  // A press on what is already chosen, with Layers on: a tap there goes a layer in.
+  // A press on what is already picked with Layers open: a tap there (no drag)
+  // goes to the next thing on the layer under the finger.
   const press = useRef(null)
-  const [sel, setSel] = useState(null) // { section, part }
+  const [sel, setSel] = useState(null) // { node, section, part }
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
   const [drag, setDrag] = useState(null) // { kind } while dragging
-  const [infoOpen, setInfoOpen] = useState(false)
   const [prompt, setPrompt] = useState(() => { const p = promptFor(); return p && !seen(p.key) ? p : null })
   // The screen can turn or the page change width while arranging.
   useEffect(() => {
@@ -297,7 +236,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => removeEventListener('resize', on)
   }, [])
   const latest = useRef({})
-  latest.current = { sel, snap, onChange, onSelect, onText, tools, layers }
+  latest.current = { sel, snap, onChange, onSelect, onText, tools, open }
 
   // A change written at once (not once a frame): an element and its place.
   const writeNow = (section, field, fn) => latest.current.onChange({ ...targetOf(section), field, value: fn })
@@ -311,8 +250,6 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const write = (section, fn) => {
     const first = !queued.current
     queued.current = { section, fn }
-    const p = latest.current.sel?.part
-    if (p) setTouched(p.dataset.eotmPart)
     if (!first) return
     requestAnimationFrame(() => {
       const q = queued.current
@@ -334,12 +271,12 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     const pointers = new Map([[e.pointerId, { x: e.clientX, y: e.clientY }]])
     let pinch = null
     let moved = handle !== 'move'
-    setDrag({ kind: handle })
+    if (moved) setDrag({ kind: handle })
     const move = (ev) => {
       if (!pointers.has(ev.pointerId)) return
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
       if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) return
-      moved = true
+      if (!moved) { moved = true; setDrag({ kind: handle }) }
       let next
       if (pointers.size >= 2) {
         const [a, b] = [...pointers.values()]
@@ -357,6 +294,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     const end = (ev) => {
       pointers.delete(ev.pointerId)
       if (pointers.size) return
+      if (moved) press.current = null
       setDrag(null)
       removeEventListener('pointerdown', down, true)
       removeEventListener('pointermove', move, true)
@@ -369,17 +307,28 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     addEventListener('pointercancel', end, true)
   }
 
-  // Pick a layer: select it, and open it in the pane as a press on it would.
-  const choose = (n) => {
-    const s = selFor(n)
-    if (!s) { setSel(null); latest.current.onSelect?.(targetOf(n)); return }
-    setSel(s)
-    const row = n.closest('[data-eotm-in]')
-    const f = n.closest('[data-eotm-field]')
-    latest.current.onSelect?.({ ...targetOf(s.section), ...(row && s.section.contains(row) ? { item: row.dataset.eotmIn } : {}), field: f && s.section.contains(f) ? f.dataset.eotmField : null })
+  // What a pick opens in the pane: its document, the row it is in (a card's
+  // id, a button's own row) and the field it shows.
+  // `from`: what was pressed, when it is inside the pick (a button in a bar of them).
+  const targetFor = (n, from = null) => {
+    const marked = n.closest(SECTION)
+    if (!marked) return null
+    const at = from && n.contains(from) ? from : n
+    const row = at.closest('[data-eotm-in]')
+    const card = at.closest(HOLDS)
+    const f = at.closest('[data-eotm-field], [data-eotm-text], [data-eotm-richtext]')
+    const item = (row && marked.contains(row) ? row.dataset.eotmIn : null) ?? (card && marked.contains(card) ? card.dataset.eotmHolds : null)
+    const field = f && marked.contains(f) ? (f.dataset.eotmField ?? f.dataset.eotmText ?? f.dataset.eotmRichtext ?? null) : null
+    return { ...targetOf(marked), ...(item ? { item } : {}), field }
+  }
+  const choose = (n, from = null) => {
+    if (!n) return
+    setSel(selFor(n))
+    const t = targetFor(n, from)
+    if (t) latest.current.onSelect?.(t)
   }
 
-  // The page: a press selects (and on a Free section's part starts moving it);
+  // The page: a press picks what is under it (and on a part starts moving it);
   // clicks are the editor's while arranging, so links do not navigate.
   useEffect(() => {
     document.documentElement.classList.add('eotm-arranging')
@@ -387,60 +336,55 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     const typing = (t) => t instanceof Element && t.closest('[contenteditable="true"], [contenteditable="plaintext-only"]')
     const down = (e) => {
       if (!onPage(e.target) || typing(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return
-      const cur0 = latest.current.sel
-      // Layers on: the press picks on the layer being worked on (or the
-      // nearest one above it), not the deepest thing under the finger.
-      if (latest.current.layers) {
-        const chain = chainAt(e.target)
-        if (chain.length) {
-          const L = cur0 ? (cur0.part ?? cur0.section) : null
-          let n
-          if (L && chain.includes(L)) { n = L; press.current = { L, chain, x: e.clientX, y: e.clientY } }
-          else { press.current = null; const d = L ? depthOf(L) : 0; n = chain.find((c) => depthOf(c) <= d) ?? chain[chain.length - 1] }
-          e.preventDefault()
-          e.stopPropagation()
-          if (n !== L) choose(n)
-          const s = selFor(n)
-          if (s?.part && latest.current.tools) startDrag(s.section, s.part, 'move', e)
-          return
+      const cur = latest.current.sel
+      // A second finger on the picked part is a pinch, handled by its drag.
+      if (cur?.part && e.target.closest(PART) === cur.part && document.querySelector('.eotm-arrange.is-dragging')) return
+      const chain = chainAt(e.target)
+      if (!chain.length) { if (cur) setSel(null); return }
+      e.preventDefault()
+      e.stopPropagation()
+      let n = chain[0]
+      press.current = null
+      // Layers open: the press picks among what is on the picked one's layer,
+      // the topmost under the finger first.
+      if (latest.current.open === 'layers' && cur?.node?.isConnected) {
+        const stack = document.elementsFromPoint(e.clientX, e.clientY)
+        const at = (k) => stack.findIndex((el) => k.contains(el))
+        const hits = layerKids(layerUp(cur.node)).filter((k) => inside(rectOf(k), e.clientX, e.clientY) && at(k) >= 0).sort((a, b) => at(a) - at(b))
+        if (hits.length) {
+          n = hits.includes(cur.node) ? cur.node : hits[0]
+          if (n === cur.node && hits.length > 1) press.current = { hits, n, x: e.clientX, y: e.clientY }
         }
       }
-      const marked = e.target.closest(SECTION)
-      let section = marked
-      while (section && !isSection(section)) section = section.parentElement?.closest(SECTION)
-      const cur = latest.current.sel
-      // Something marked with nothing to arrange (a menu, a setting) still
-      // opens in the pane, as a click did before Edit could size and move.
-      if (!section) { if (cur) setSel(null); if (marked) latest.current.onSelect?.(targetOf(marked)); return }
-      // A second finger on the selected part is a pinch, handled by its drag.
-      if (cur?.part && e.target.closest(PART) === cur.part && document.querySelector('.eotm-arrange.is-dragging')) return
-      e.preventDefault()
-      e.stopPropagation()
-      const part = e.target.closest(PART)
-      const own = part && ownerOf(part) === section ? part : null
-      setSel({ section, part: own })
-      // The pane follows every pick: what was pressed opens there (a button's
-      // own row, data-eotm-in, and the field around it), the rest fold.
-      const inside = (sel) => { const n = e.target.closest(sel); return n && section.contains(n) ? n : null }
-      const row = inside('[data-eotm-in]')?.dataset.eotmIn
-      latest.current.onSelect?.({ ...targetOf(section), ...(row ? { item: row } : {}), field: inside('[data-eotm-field]')?.dataset.eotmField ?? null })
-      // Edit selects and opens; only Arrange moves what was pressed.
-      if (own && latest.current.tools) startDrag(section, own, 'move', e)
+      if (n !== cur?.node) choose(n, e.target)
+      const s = selFor(n)
+      if (s.part && latest.current.tools) startDrag(s.section, s.part, 'move', e)
     }
     const click = (e) => {
-      if (!onPage(e.target) || typing(e.target) || !e.target.closest(SECTION)) return
+      if (!onPage(e.target) || typing(e.target) || !chainAt(e.target).length) return
       e.preventDefault()
       e.stopPropagation()
-      // A tap (not a drag) on what was already chosen: one layer in.
       const p = press.current
       press.current = null
-      if (p && latest.current.layers && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 5) {
-        const deeper = p.chain[p.chain.indexOf(p.L) - 1]
-        if (deeper) choose(deeper)
-      }
+      if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 5) choose(p.hits[(p.hits.indexOf(p.n) + 1) % p.hits.length])
     }
-    // Edit mode: a double-click on text types it where it stands, its field
-    // open in the pane (Targets' startTyping); one click selects and sizes.
+    const key = (e) => {
+      const { sel: s } = latest.current
+      if (!s) return
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (e.key === 'Escape') { setSel(null); setOpen(null); return }
+      const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
+      if (!step || !s.part || !latest.current.tools) return
+      e.preventDefault()
+      const px = e.shiftKey ? 10 : 1
+      const start = partNow(s.part, s.section)
+      const width = s.section.getBoundingClientRect().width
+      const { drawnH, ...next } = dragPart(start, 'move', step[0] * px, step[1] * px, { width, snap: false }) // eslint-disable-line no-unused-vars
+      const free = freer(s.section)
+      write(s.section, (old) => setPart(free(old), s.part.dataset.eotmPart, next, { phone: phoneEdit(s.section) }))
+    }
+    // A double-click on text types it where it stands, its field open in the
+    // pane (Targets' startTyping).
     const dbl = (e) => {
       const typed = latest.current.onText
       const node = typed && onPage(e.target) ? e.target.closest(TEXT) : null
@@ -449,23 +393,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       e.stopPropagation()
       setSel(null)
       startTyping(node, typed)
-      const owner = node.closest('[data-eotm-edit]')
+      const owner = node.closest(SECTION)
       if (owner) latest.current.onSelect?.({ ...targetOf(owner), item: node.dataset.eotmIn || owner.dataset.eotmItem || null, field: node.hasAttribute('data-eotm-text') ? node.dataset.eotmText : node.dataset.eotmRichtext })
-    }
-    const key = (e) => {
-      const { sel: s } = latest.current
-      if (!s) return
-      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
-      if (e.key === 'Escape') { setSel(s.part ? { section: s.section, part: null } : null); return }
-      const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
-      if (!step || !s.part) return
-      e.preventDefault()
-      const px = e.shiftKey ? 10 : 1
-      const start = partNow(s.part, s.section)
-      const width = s.section.getBoundingClientRect().width
-      const { drawnH, ...next } = dragPart(start, 'move', step[0] * px, step[1] * px, { width, snap: false }) // eslint-disable-line no-unused-vars
-      const free = freer(s.section)
-      write(s.section, (old) => setPart(free(old), s.part.dataset.eotmPart, next, { phone: phoneEdit(s.section) }))
     }
     addEventListener('pointerdown', down, true)
     addEventListener('click', click, true)
@@ -481,22 +410,28 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Follow the page: scrolling, resizing, and the page redrawing from each
-  // write. A selected part the page re-rendered is found again by its name.
+  // write. A pick the page re-rendered is found again by its name.
   useEffect(() => {
     if (!sel) return undefined
     let frame = 0
     const tick = () => {
       setSel((s) => {
         if (!s) return s
-        const again = s.section.dataset.eotmItem ? `[data-eotm-item="${s.section.dataset.eotmItem}"]` : `[data-eotm-edit="${s.section.dataset.eotmEdit}"]:not([data-eotm-item])`
-        const section = s.section.isConnected ? s.section : document.querySelector(again)
-        if (!section) return null
-        let part = s.part && (s.part.isConnected ? s.part : partsOf(section).find((p) => p.dataset.eotmPart === s.part.dataset.eotmPart))
-        if (pick.current && pick.current.section.dataset.eotmItem === section.dataset.eotmItem) {
+        let section = s.section
+        if (section && !section.isConnected) {
+          const again = section.dataset.eotmItem ? `[data-eotm-item="${section.dataset.eotmItem}"]` : `[data-eotm-edit="${section.dataset.eotmEdit}"]:not([data-eotm-item])`
+          section = document.querySelector(again)
+        }
+        let part = s.part && section && (s.part.isConnected ? s.part : partsOf(section).find((p) => p.dataset.eotmPart === s.part.dataset.eotmPart))
+        if (section && pick.current && pick.current.section.dataset.eotmItem === section.dataset.eotmItem) {
           const fresh = partsOf(section).find((p) => p.dataset.eotmPart === pick.current.name)
           if (fresh) { pick.current = null; part = fresh }
         }
-        return section === s.section && (part ?? null) === s.part ? s : { section, part: part ?? null }
+        let node = part || (s.node.isConnected ? s.node : null)
+        if (!node && s.node.dataset.eotmHolds) node = document.querySelector(`[data-eotm-holds="${CSS.escape(s.node.dataset.eotmHolds)}"]`)
+        if (!node && s.node === s.section) node = section
+        if (!node) return null
+        return node === s.node && section === s.section && (part ?? null) === s.part ? s : { node, section, part: part ?? null }
       })
       setFrame((n) => n + 1)
       frame = requestAnimationFrame(tick)
@@ -505,7 +440,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => cancelAnimationFrame(frame)
   }, [!!sel]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setTouched(null); setClassing(false) }, [sel?.part]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setClassing(false); setNaming(false); setOpen((o) => (o === 'controls' ? null : o)) }, [sel?.node]) // eslint-disable-line react-hooks/exhaustive-deps
   const setSnapTo = (on) => {
     try { localStorage.setItem(SNAP_KEY, on ? 'snap' : 'free') } catch { /* kept for this visit only */ }
     setSnap(on)
@@ -515,54 +450,54 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     setPrompt(null)
   }
 
-  const banner = prompt && (
+  const banner = prompt && tools && (
     <div className="eotm-arrange-prompt" role="status" style={uiScale > 1 ? { zoom: uiScale } : undefined}>
       <span>{prompt.text}</span>
       <button type="button" className="eotm-target-snap" onClick={dismissPrompt}>OK</button>
     </div>
   )
-  if (!sel) return <div className="eotm-target eotm-arrange">{banner}<p className="eotm-arrange-hint">{tools ? 'Arrange: tap a section to move, size or lay out its parts.' : 'Edit: tap anything on the page to open it in the editor.'}</p></div>
+  if (!sel) return <div className="eotm-target eotm-arrange">{banner}</div>
 
-  const { section, part } = sel
-  const s = section.getBoundingClientRect()
-  const free = isFree(section)
-  const phone = phoneEdit(section)
-  const desktopFree = section.dataset.eotmFrame === 'free'
-  const phoneMode = section.dataset.eotmPhone ?? 'stack'
-  const box = part ? rectOf(part) : s
+  const { node: here, section, part } = sel
+  const box = rectOf(here)
+  const s = section?.getBoundingClientRect()
+  const free = section ? isFree(section) : false
+  const phone = section ? phoneEdit(section) : false
+  const desktopFree = section?.dataset.eotmFrame === 'free'
+  const phoneMode = section?.dataset.eotmPhone ?? 'stack'
   const name = part?.dataset.eotmPart
-  // The toolbar sits above the selection, kept whole on the visible page: left
-  // of a pane docked on the right, and its own drawn width from the screen edge.
+  const isSec = !!section && here === section
+  // Where the page shows: left of a pane docked on the right, above one docked at the bottom.
   const sheet = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
   const room = sheet ? Math.min(innerWidth, sheet.getBoundingClientRect().left) : innerWidth
-  const barW = (barRef.current?.offsetWidth ?? 320) * uiScale
-  // Above the selection when it fits there, else below it, never over the
-  // pane: a toolbar drawn on top of what it acts on hides it (on a phone, wholly).
-  const barH = (barRef.current?.offsetHeight ?? 44) * uiScale
   const floor = sheet ? innerHeight : Math.min(innerHeight, document.querySelector('.eotm-sheet:not(.is-wide)')?.getBoundingClientRect().top ?? innerHeight)
-  const barTop = box.top - barH - 8 >= 8 ? box.top - barH - 8
-    : box.top + box.height + 8 + barH <= floor - 8 ? box.top + box.height + 8
-    : Math.max(8, Math.min(box.top - barH - 8, floor - barH - 8))
-  const barLeft = Math.max(8, Math.min(box.left, room - barW - 8))
-
-  const toFreeNow = () => write(section, freer(section))
-  const opacity = part ? Math.round((parseFloat(part.style.getPropertyValue(phone ? '--qo' : '--o')) || 1) * 100) : 100
-  const setPhone = (v) => write(section, (old) => ({ ...old, phone: v }))
-
-  // Layers: what is chosen, what holds it, what is inside it, and what is on its layer.
-  const here = part ?? section
-  const above = layerUp(here)
-  const inside = layers ? layerKids(here) : []
-  const onLayer = layers ? layerKids(above).slice(0, 40) : []
   // Not drawn over the editor pane: what is under it is hidden, not outlined through it.
   const clip = `inset(0px ${Math.max(0, innerWidth - room)}px ${Math.max(0, innerHeight - floor)}px 0px)`
 
-  // The part's class: the first of the site's or the owner's whose selector
-  // it (or what it wraps) is drawn with.
-  const matches = (el, sel) => { try { return !!el && (el.matches(sel) || !!el.firstElementChild?.matches(sel)) } catch { return false } }
-  const cls = classes.find((c) => c.base && matches(here, c.selector)) ?? classes.find((c) => matches(here, c.selector)) ?? null
-  // Every <class>: this part's size and fade, copied to each part of the same
-  // class in the page's Free sections (where a part keeps a size of its own).
+  // The panel: beside the pick, right of it when there is room before the
+  // pane, else left of it, else inside the screen's edge; level with its top,
+  // kept whole on screen. Its open card opens on the side away from the pick.
+  const barW = (barRef.current?.offsetWidth ?? 48) * uiScale
+  const barH = (barRef.current?.offsetHeight ?? 132) * uiScale
+  const rightOk = box.left + box.width + 10 + barW <= room - 8
+  const leftOk = box.left - 10 - barW >= 8
+  const side = rightOk || !leftOk ? 'right' : 'left'
+  const barLeft = rightOk ? box.left + box.width + 10 : leftOk ? box.left - 10 - barW : Math.max(8, room - barW - 8)
+  const barTop = Math.max(8, Math.min(box.top, floor - barH - 8))
+  const maxH = Math.max(120, (floor - 16) / uiScale)
+
+  const opacity = part ? Math.round((parseFloat(part.style.getPropertyValue(phone ? '--qo' : '--o')) || 1) * 100) : 100
+  const setPhone = (v) => write(section, (old) => ({ ...old, phone: v }))
+  const toFreeNow = () => write(section, freer(section))
+
+  // Layers: forward is what is on the pick (inside it), back is what holds it.
+  const fwd = open === 'layers' ? layerKids(here) : []
+  const back = layerUp(here)
+  const onLayer = open === 'layers' && !drag ? layerKids(back).filter((n) => n !== here).slice(0, 60) : []
+
+  // The part's class, for "Same for every": the first whose selector it is drawn with.
+  const matches = (el, q) => { try { return !!el && (el.matches(q) || !!el.firstElementChild?.matches(q)) } catch { return false } }
+  const cls = part ? classes.find((c) => c.base && matches(part, c.selector)) ?? classes.find((c) => matches(part, c.selector)) ?? null : null
   const saveForClass = () => {
     const n = partNow(part, section)
     const vals = { w: n.w, h: n.h ?? null, fs: n.fs ?? null, opacity: opacity === 100 ? null : opacity }
@@ -577,7 +512,6 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     }
     notify(count ? `Copied to ${count} more ${cls.label.toLowerCase()} on this page.` : `No other ${cls.label.toLowerCase()} in a Free section on this page.`)
   }
-  // New class: made from its name, then given to this element.
   const saveAsClass = async (label) => {
     try {
       const made = await addClass(label, canCarry(cls) ? cls.name : null)
@@ -587,10 +521,9 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     } catch (err) { notify(err.message) }
   }
 
-  // Elements: a section, a row (a glossary term) or a whole document (a
-  // library entry) holds them; a region of a document (its header, its
-  // button bar, data-eotm-frame-key) does not, as its regions share one.
-  const holdsElements = !section.dataset.eotmFrameKey
+  // Elements: a section, a row or a whole document holds them; a region of a
+  // document (its header, its button bar, data-eotm-frame-key) does not.
+  const holdsElements = !!section && !section.dataset.eotmFrameKey
   // Where a new element goes in a Free section: across the middle, in view.
   const spot = () => {
     const mid = Math.min(Math.max(innerHeight / 2, s.top), s.top + s.height) - s.top
@@ -627,14 +560,15 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
 
   const heightDrag = (e) => {
     e.preventDefault()
+    e.stopPropagation()
     e.currentTarget.setPointerCapture?.(e.pointerId)
     const startY = e.clientY
     const startH = (s.height * 100) / (s.width || 1)
-    const free = freer(section)
+    const freeIt = freer(section)
     setDrag({ kind: 'height' })
     const move = (ev) => {
       const h = Math.max(1, Math.min(1000, startH + ((ev.clientY - startY) * 100) / (s.width || 1)))
-      write(section, (old) => setHeight(free(old), h, { phone }))
+      write(section, (old) => setHeight(freeIt(old), h, { phone }))
     }
     const end = () => {
       setDrag(null)
@@ -649,7 +583,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
 
   // The section's width: its block's columns of 12 in the page's layout
   // document (found or started by layoutFor), written as the edge moves.
-  const block = !part && layoutFor ? blockOf(section) : null
+  const block = isSec && layoutFor ? blockOf(section) : null
   const grid = block?.parentElement
   const sizable = grid && getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length >= COLUMNS
   const widthDrag = (e) => {
@@ -680,180 +614,157 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     addEventListener('pointerup', end)
     addEventListener('pointercancel', end)
   }
-  const b = block?.getBoundingClientRect()
+
+  // Edit: open the pick in the pane; text types where it stands.
+  const edit = () => {
+    const t = targetFor(here)
+    const text = here.matches(TEXT) ? here : here.querySelectorAll(TEXT).length === 1 ? here.querySelector(TEXT) : null
+    if (text && onText && !text.isContentEditable) {
+      setSel(null)
+      setOpen(null)
+      startTyping(text, onText)
+      const owner = text.closest(SECTION)
+      if (owner) (onEdit ?? onSelect)?.({ ...targetOf(owner), item: text.dataset.eotmIn || owner.dataset.eotmItem || null, field: text.dataset.eotmText ?? text.dataset.eotmRichtext })
+      return
+    }
+    if (t) (onEdit ?? onSelect)?.(t)
+  }
+  const toggle = (k) => setOpen((o) => (o === k ? null : k))
+  const placing = (
+    <section className="eotm-arrange-card"><h4>Placing</h4>
+      <Seg label="Placing" value={snap ? 'snap' : 'free'} options={[['free', 'Free form'], ['snap', 'Snap to grid']]} onPick={(v) => setSnapTo(v === 'snap')} />
+    </section>
+  )
+
+  const handles = !tools || drag?.kind === 'width' || drag?.kind === 'height' ? null : part ? HANDLES.map((h) => {
+    const x = h.includes('e') ? box.left + box.width : box.left + box.width / 2
+    const y = h.includes('s') ? box.top + box.height : box.top + box.height / 2
+    return <button key={h} type="button" className={`eotm-arrange-handle is-${h}`} style={ui(uiScale, y, x)} aria-label={{ e: 'Drag to change the width', s: 'Drag to change the height', se: 'Drag to change both' }[h]}
+      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); startDrag(section, part, h, e) }} />
+  }) : isSec ? (
+    <>
+      <button type="button" className="eotm-arrange-handle is-s" style={ui(uiScale, s.top + s.height, s.left + s.width / 2)} aria-label="Drag to change the section’s height" onPointerDown={heightDrag} />
+      {block && sizable && <button type="button" className="eotm-arrange-handle is-e" style={ui(uiScale, Math.max(box.top, 0) + Math.min(box.height, innerHeight - Math.max(box.top, 0)) / 2, Math.min(block.getBoundingClientRect().right, room - 12))}
+        aria-label="Drag to change the section’s width" onPointerDown={widthDrag} />}
+    </>
+  ) : null
 
   return (
     <div className={`eotm-target eotm-arrange${drag ? ' is-dragging' : ''}`} style={{ clipPath: clip }}>
       {banner}
-      {drag && snap && (
+      {drag && snap && s && (
         <div className="eotm-target-grid" style={{ top: s.top, left: s.left, width: s.width, height: s.height }}>
           {Array.from({ length: COLUMNS - 1 }, (_, i) => <span key={i} style={{ left: `${((i + 1) * 100) / COLUMNS}%` }} />)}
         </div>
       )}
-      {/* The section, and when a part is chosen, the other parts dimly. */}
-      <div className={`eotm-target-box${part ? ' is-sizer' : ''}`} style={{ top: s.top, left: s.left, width: s.width, height: s.height }} />
-      {!layers && part && partsOf(section).filter((p) => p !== part).map((p, i) => {
-        const r = rectOf(p)
-        return <div key={i} className="eotm-arrange-ghost" style={{ top: r.top, left: r.left, width: r.width, height: r.height }} />
-      })}
-      {/* Layers: everything on this layer, outlined, each named with its class; a name picks it. */}
-      {layers && !drag && onLayer.map((n, i) => {
-        const r = rectOf(n)
-        const c = classes.find((k) => matches(n, k.selector))
-        return (
-          <div key={i} className={`eotm-arrange-ghost is-layer${n === here ? ' is-here' : ''}`} style={{ top: r.top, left: r.left, width: r.width, height: r.height }}>
-            {n !== here && (
-              <button type="button" className="eotm-layer-tab" onClick={() => choose(n)} title={`Pick ${layerName(n)}`}>
-                {layerName(n)}{c && <span className="eotm-chip is-class">{c.label}</span>}
-              </button>
-            )}
+      {onLayer.map((n, i) => { const r = rectOf(n); return <div key={i} className="eotm-arrange-ghost" style={{ top: r.top, left: r.left, width: r.width, height: r.height }} /> })}
+      <div className="eotm-arrange-sel" style={{ top: box.top, left: box.left, width: box.width, height: box.height }} />
+      {handles}
+      {!drag && (
+        <div ref={barRef} className={`eotm-arrange-panel is-${side}`} style={{ ...ui(uiScale, barTop, barLeft), maxHeight: maxH }}>
+          <div className="eotm-arrange-icons">
+            <Btn icon="layers" label="Layers" on={open === 'layers'} onClick={() => toggle('layers')} />
+            {tools && (part || isSec) && <Btn icon="controls" label="Controls" on={open === 'controls'} onClick={() => toggle('controls')} />}
+            <Btn icon="edit" label="Edit" onClick={edit} />
           </div>
-        )
-      })}
-      {part && (
-        <>
-          <div className="eotm-target-box eotm-arrange-sel" style={{ top: box.top, left: box.left, width: box.width, height: box.height }} />
-          {tools && HANDLES.map((h) => {
-            const x = h.includes('w') ? box.left : h.includes('e') ? box.left + box.width : box.left + box.width / 2
-            const y = h.includes('n') ? box.top : h.includes('s') ? box.top + box.height : box.top + box.height / 2
-            return (
-              <button key={h} type="button" className={`eotm-arrange-handle is-${h}`} style={ui(uiScale, y, x)}
-                aria-label={`Drag to resize from the ${h} ${h.length === 2 ? 'corner' : 'side'}`}
-                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); startDrag(section, part, h, e) }} />
-            )
-          })}
-        </>
-      )}
-      {tools && block && sizable && (
-        <button type="button" className="eotm-arrange-handle is-width" style={ui(uiScale, Math.max(b.top, 0) + Math.min(b.height, innerHeight - Math.max(b.top, 0)) / 2, Math.min(b.right, room - 12))}
-          aria-label="Drag to change the section’s width" title={`Section width: ${block.dataset.eotmSpan || COLUMNS} of 12 columns`} onPointerDown={widthDrag} />
-      )}
-      {tools && !part && (
-        <button type="button" className="eotm-arrange-handle is-height" style={ui(uiScale, s.top + s.height, s.left + s.width / 2)}
-          aria-label="Drag to change the section’s height" title="Section height" onPointerDown={heightDrag} />
-      )}
-      <div ref={barRef} className="eotm-arrange-bar" style={ui(uiScale, barTop, barLeft)}>
-        <PathLabel section={section} part={part} describe={describe} onPick={(s) => setSel(s)} />
-        {cls && <span className="eotm-chip is-class" title="Its class: the shared look it takes">{cls.label}</span>}
-        <button type="button" className={`eotm-target-snap${layers ? ' is-on' : ''}`} aria-pressed={layers} onClick={() => setLayers((o) => !o)}
-          title="Pick by layer: what holds this, or what is inside it">Layers {layers ? '▴' : '▾'}</button>
-        {layers && (
-          <div className="eotm-arrange-layers" role="group" aria-label="Layers">
-            <button type="button" className="eotm-target-snap" disabled={!above} onClick={() => above && choose(above)} title={above ? `Up to ${layerName(above)}` : 'Nothing holds this'}>▲ Layer up</button>
-            <button type="button" className="eotm-target-snap" disabled={!inside.length} onClick={() => inside[0] && choose(inside[0])} title={inside.length ? `In to what is inside (${inside.length})` : 'Nothing inside this to pick'}>▼ Layer down</button>
-            <span className="eotm-target-hint">Layer {depthOf(here) + 1} · {onLayer.length} here</span>
-            <InfoButton open={layerInfo} onToggle={() => setLayerInfo((o) => !o)} label="What layers are" />
-            <InfoPanel open={layerInfo} onClose={() => setLayerInfo(false)}>{LAYER_HELP}</InfoPanel>
-          </div>
-        )}
-        {/* Edit: what was tapped is chosen and opens in the editor; moving,
-            sizing and the layout tools are Arrange's alone. */}
-        {!tools && <span className="eotm-target-hint eotm-edit-hint">{onText ? 'Opens in the editor; double-tap text to type. Arrange moves it.' : 'Opens in the editor.'}</span>}
-        {tools && <div className="eotm-arrange-tools">
-        {part ? (
-          <>
-            <button type="button" className={`eotm-target-snap${controls ? ' is-on' : ''}`} aria-pressed={controls} onClick={() => setControls((o) => !o)}
-              title="Fade, front and back, fit, duplicate">Controls {controls ? '▴' : '▾'}</button>
-            {controls && <>
-            <label className="eotm-arrange-range">Fade
-              <input type="range" min="10" max="100" step="5" value={opacity}
-                onChange={(e) => write(section, (old) => setPart(old, name, { opacity: Number(e.target.value) === 100 ? null : Number(e.target.value) }, { phone }))} />
-            </label>
-            <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => restack(old, name, true, { phone }))} title="Bring to front">Front</button>
-            <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => restack(old, name, false, { phone }))} title="Send to back">Back</button>
-            <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => setPart(old, name, { h: null, fs: null }, { phone }))}
-              title="Let it take its text’s own size and height again">Fit</button>
-            {holdsElements && <button type="button" className="eotm-target-snap" onClick={duplicate} title="A copy beside it">Duplicate</button>}
-            {holdsElements && part.hasAttribute('data-eotm-element') && onSaveTemplate && (naming ? (
-              <form className="eotm-arrange-name" onSubmit={async (e) => {
-                e.preventDefault()
-                const tplName = e.currentTarget.elements.name.value.trim()
-                if (!tplName) return
-                try { await onSaveTemplate({ ...targetOf(section), id: name, name: tplName }); setNaming(false) } catch (err) { notify(err.message) }
-              }}>
-                <input name="name" className="eotm-input" placeholder="Template name" maxLength={60} autoFocus aria-label="Template name" />
-                <button className="eotm-target-snap">Save</button>
-              </form>
-            ) : <button type="button" className="eotm-target-snap" onClick={() => setNaming(true)} title="Keep it to add to any section">Save as template</button>)}
-            </>}
-            {touched === name && <div className="eotm-arrange-scope" role="group" aria-label="Save this change for">
-              <span className="eotm-arrange-scope-label">Save for</span>
-              <span className="eotm-target-snap is-on" title="Saved as you go">This element ✓</span>
-              {cls && part && <button type="button" className="eotm-target-snap" onClick={saveForClass} title={`Copy this size and fade to every ${cls.label.toLowerCase()} on this page`}>Every {cls.label}</button>}
-              {addClass && part.hasAttribute('data-eotm-element') && (classing ? (
-                <form className="eotm-arrange-name" onSubmit={(e) => { e.preventDefault(); const v = e.currentTarget.elements.cls.value.trim(); if (v) saveAsClass(v) }}>
-                  <input name="cls" className="eotm-input" placeholder="Class name" maxLength={40} autoFocus aria-label="New class name" />
-                  <button className="eotm-target-snap">Make</button>
-                </form>
-              ) : <button type="button" className="eotm-target-snap" onClick={() => setClassing(true)} title="Make a class from this element and give it to it">New class…</button>)}
-            </div>}
-          </>
-        ) : phone ? (
-          // On a phone: how the phone shows this section. Free is the phone's
-          // own arrangement, started from the stack as it is drawn now.
-          <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label="On a phone">
-            <button type="button" role="radio" aria-checked={phoneMode === 'stack'} className={phoneMode === 'stack' ? 'is-on' : ''}
-              title="Its parts stack in one column" onClick={() => setPhone('stack')}>Stack</button>
-            {desktopFree && (
-              <button type="button" role="radio" aria-checked={false} title="Show the desktop layout, scaled down whole"
-                onClick={() => setPhone('scale')}>Keep desktop</button>
-            )}
-            <button type="button" role="radio" aria-checked={phoneMode === 'free'} className={phoneMode === 'free' ? 'is-on' : ''}
-              title="Arrange it freely, for phones only" onClick={() => phoneMode !== 'free' && toFreeNow()}>Free</button>
-          </div>
-        ) : (
-          <>
-            <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label="Layout">
-              <button type="button" role="radio" aria-checked={!free} className={!free ? 'is-on' : ''}
-                onClick={() => free && write(section, (old) => ({ ...old, mode: 'flow' }))}>Flow</button>
-              <button type="button" role="radio" aria-checked={free} className={free ? 'is-on' : ''} onClick={() => !free && toFreeNow()}>Free</button>
+          {open === 'layers' && (
+            <div className="eotm-arrange-icons is-fly">
+              <Btn icon="up" label="Layer up: what is on this" disabled={!fwd.length} onClick={() => choose(fwd[0])} />
+              <Btn icon="down" label="Layer down: what holds this" disabled={!back} onClick={() => choose(back)} />
             </div>
-            <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label="On a phone">
-              <button type="button" role="radio" aria-checked={phoneMode === 'stack'} className={phoneMode === 'stack' ? 'is-on' : ''}
-                title="On a phone, its parts stack in one column" onClick={() => setPhone('stack')}>Phone: stack</button>
-              {free && (
-                <button type="button" role="radio" aria-checked={phoneMode === 'scale'} className={phoneMode === 'scale' ? 'is-on' : ''}
-                  title="On a phone, keep this layout, scaled down whole" onClick={() => setPhone('scale')}>Keep layout</button>
-              )}
-              {phoneMode === 'free' && (
-                <button type="button" role="radio" aria-checked className="is-on" title="Arranged on a phone, for phones only">Phone: own</button>
+          )}
+          {open === 'controls' && tools && (
+            <div className="eotm-arrange-fly" style={{ maxHeight: maxH }}>
+              {part ? (
+                <>
+                  <section className="eotm-arrange-card"><h4>Opacity</h4>
+                    <label className="eotm-arrange-range"><input type="range" min="10" max="100" step="5" value={opacity} aria-label="Opacity"
+                      onChange={(e) => write(section, (old) => setPart(old, name, { opacity: Number(e.target.value) === 100 ? null : Number(e.target.value) }, { phone }))} /><span>{opacity}%</span></label>
+                  </section>
+                  <section className="eotm-arrange-card"><h4>Order</h4>
+                    <div className="eotm-arrange-row">
+                      <Btn icon="front" label="Bring to front" onClick={() => write(section, (old) => restack(old, name, true, { phone }))} />
+                      <Btn icon="back" label="Send to back" onClick={() => write(section, (old) => restack(old, name, false, { phone }))} />
+                    </div>
+                  </section>
+                  {placing}
+                  <section className="eotm-arrange-card"><h4>More</h4>
+                    <div className="eotm-arrange-row">
+                      <button type="button" className="eotm-target-snap" onClick={() => write(section, (old) => setPart(old, name, { h: null, fs: null }, { phone }))}>Fit</button>
+                      {holdsElements && <button type="button" className="eotm-target-snap" onClick={duplicate}>Duplicate</button>}
+                      {holdsElements && part.hasAttribute('data-eotm-element') && onSaveTemplate && !naming && <button type="button" className="eotm-target-snap" onClick={() => setNaming(true)}>Save as template</button>}
+                      {cls && <button type="button" className="eotm-target-snap" onClick={saveForClass}>Same for every {cls.label.toLowerCase()}</button>}
+                      {addClass && part.hasAttribute('data-eotm-element') && !classing && <button type="button" className="eotm-target-snap" onClick={() => setClassing(true)}>New class…</button>}
+                    </div>
+                    {naming && (
+                      <form className="eotm-arrange-name" onSubmit={async (e) => {
+                        e.preventDefault()
+                        const tplName = e.currentTarget.elements.name.value.trim()
+                        if (!tplName) return
+                        try { await onSaveTemplate({ ...targetOf(section), id: name, name: tplName }); setNaming(false) } catch (err) { notify(err.message) }
+                      }}>
+                        <input name="name" className="eotm-input" placeholder="Template name" maxLength={60} autoFocus aria-label="Template name" />
+                        <button className="eotm-target-snap">Save</button>
+                      </form>
+                    )}
+                    {classing && (
+                      <form className="eotm-arrange-name" onSubmit={(e) => { e.preventDefault(); const v = e.currentTarget.elements.cls.value.trim(); if (v) saveAsClass(v) }}>
+                        <input name="cls" className="eotm-input" placeholder="Class name" maxLength={40} autoFocus aria-label="New class name" />
+                        <button className="eotm-target-snap">Make</button>
+                      </form>
+                    )}
+                  </section>
+                </>
+              ) : (
+                <>
+                  {phone ? (
+                    <section className="eotm-arrange-card"><h4>On a phone</h4>
+                      <Seg label="On a phone" value={phoneMode} onPick={(v) => (v === 'free' ? phoneMode !== 'free' && toFreeNow() : setPhone(v))}
+                        options={[['stack', 'Stack'], ...(desktopFree ? [['scale', 'Keep desktop']] : []), ['free', 'Free']]} />
+                    </section>
+                  ) : (
+                    <>
+                      <section className="eotm-arrange-card"><h4>Layout</h4>
+                        <Seg label="Layout" value={free ? 'free' : 'flow'} options={[['flow', 'Flow'], ['free', 'Free']]}
+                          onPick={(v) => (v === 'free' ? !free && toFreeNow() : free && write(section, (old) => ({ ...old, mode: 'flow' })))} />
+                      </section>
+                      <section className="eotm-arrange-card"><h4>On a phone</h4>
+                        <Seg label="On a phone" value={phoneMode} onPick={(v) => v !== 'free' && setPhone(v)}
+                          options={[['stack', 'Stack'], ...(free ? [['scale', 'Keep layout']] : []), ...(phoneMode === 'free' ? [['free', 'Own']] : [])]} />
+                      </section>
+                    </>
+                  )}
+                  {holdsElements && (
+                    <section className="eotm-arrange-card"><h4>Add</h4>
+                      <div className="eotm-arrange-row">
+                        <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('text', newId()))}>Text</button>
+                        {upload && (
+                          <label className="eotm-target-snap">Photo
+                            <input type="file" accept="image/*" hidden onChange={(e) => { addPhoto(e.target.files[0]); e.target.value = '' }} />
+                          </label>
+                        )}
+                        <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('button', newId()))}>Button</button>
+                        <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('box', newId()))}>Box</button>
+                        {onImport && !section.matches('[data-eotm-element="design"]') && (
+                          <button type="button" className="eotm-target-snap" onClick={() => onImport(targetOf(section))}>Canva PDF</button>
+                        )}
+                        {templates.length > 0 && (
+                          <select className="eotm-target-snap" value="" aria-label="Add from a template"
+                            onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) addElement(copyElement(t.element, newId())) }}>
+                            <option value="">Template…</option>
+                            {templates.map((t, i) => <option key={`${t.name}:${i}`} value={i}>{t.name}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    </section>
+                  )}
+                  {placing}
+                </>
               )}
             </div>
-          </>
-        )}
-        {!part && holdsElements && (
-          <div className="eotm-arrange-add" role="group" aria-label="Add to this section">
-            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('text', newId()))}>+ Text</button>
-            {upload && (
-              <label className="eotm-target-snap">+ Photo
-                <input type="file" accept="image/*" hidden onChange={(e) => { addPhoto(e.target.files[0]); e.target.value = '' }} />
-              </label>
-            )}
-            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('button', newId()))}>+ Button</button>
-            <button type="button" className="eotm-target-snap" onClick={() => addElement(newElement('box', newId()))}>+ Box</button>
-            {onImport && !section.matches('[data-eotm-element="design"]') && (
-              <button type="button" className="eotm-target-snap" onClick={() => onImport(targetOf(section))} title="Bring in a design made in Canva, from its PDF">+ Canva PDF</button>
-            )}
-            {templates.length > 0 && (
-              <select className="eotm-target-snap" value="" aria-label="Add from a template"
-                onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) addElement(copyElement(t.element, newId())) }}>
-                <option value="">+ From template…</option>
-                {templates.map((t, i) => <option key={`${t.name}:${i}`} value={i}>{t.name}</option>)}
-              </select>
-            )}
-          </div>
-        )}
-        <div className="eotm-seg eotm-arrange-seg" role="radiogroup" aria-label="Placing">
-          <button type="button" role="radio" aria-checked={!snap} className={!snap ? 'is-on' : ''} onClick={() => setSnapTo(false)}
-            title="Parts go exactly where you let go">Free form</button>
-          <button type="button" role="radio" aria-checked={snap} className={snap ? 'is-on' : ''} onClick={() => setSnapTo(true)}
-            title="Parts line up on 12 columns and an 8 px step">Snap to grid</button>
+          )}
         </div>
-        <InfoButton open={infoOpen} onToggle={() => setInfoOpen((o) => !o)} label="What these tools do" />
-        {!part && <span className="eotm-target-hint">{phone ? 'Phone layout: tap a part to move or size it' : 'Click a part to move or size it'}</span>}
-        </div>}
-        {tools && <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)}>{part ? PART_HELP : phone ? PHONE_SECTION_HELP : SECTION_HELP}</InfoPanel>}
-      </div>
+      )}
     </div>
   )
 }
