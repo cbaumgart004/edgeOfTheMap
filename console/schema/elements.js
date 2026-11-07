@@ -56,16 +56,19 @@ export function elementFields(kind, classOptions) {
 // name (".btn", not ".section h2"), and the owner's own.
 export function classOptions(schema) {
   const site = (schema?.classes ?? []).filter((c) => /^\.[\w-]+$/.test(c.selector?.trim() ?? '')).map((c) => ({ value: c.name, label: c.label }))
-  const own = (schema?.custom?.classes ?? []).map((c) => ({ value: c.name, label: c.label }))
+  const own = (schema?.custom?.classes ?? []).map((c) => ({ value: c.name, label: c.label, base: c.base ?? null }))
   return [...site, ...own]
 }
 
 // The CSS class an element's `class` stands for.
-export function classNameOf(schema, name) {
-  if (!name) return ''
+export function classNameOf(schema, name, depth = 0) {
+  if (!name || depth > 4) return ''
   const site = (schema?.classes ?? []).find((c) => c.name === name)
   if (site) return /^\.[\w-]+$/.test(site.selector.trim()) ? site.selector.trim().slice(1) : ''
-  return (schema?.custom?.classes ?? []).some((c) => c.name === name) ? `c-${name}` : ''
+  const own = (schema?.custom?.classes ?? []).find((c) => c.name === name)
+  if (!own) return ''
+  const base = own.base && own.base !== name ? classNameOf(schema, own.base, depth + 1) : ''
+  return base ? `${base} c-${name}` : `c-${name}`
 }
 
 export function newElement(kind, id, patch = {}) {

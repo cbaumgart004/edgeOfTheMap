@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { toUnits, toFree, setPart, setHeight, dragPart, pinchPart, restack, COLUMNS } from './arrange.js'
 import { newId } from '../schema/schema.js'
+import { canCarry } from '../schema/classes.js'
 import { newElement, copyElement, ELEMENT_LABELS } from '../schema/elements.js'
 import { prepareImage } from './images.js'
 import { TEXT, startTyping } from './Targets.jsx'
@@ -559,7 +560,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   // The part's class: the first of the site's or the owner's whose selector
   // it (or what it wraps) is drawn with.
   const matches = (el, sel) => { try { return !!el && (el.matches(sel) || !!el.firstElementChild?.matches(sel)) } catch { return false } }
-  const cls = classes.find((c) => matches(here, c.selector)) ?? null
+  const cls = classes.find((c) => c.base && matches(here, c.selector)) ?? classes.find((c) => matches(here, c.selector)) ?? null
   // Every <class>: this part's size and fade, copied to each part of the same
   // class in the page's Free sections (where a part keeps a size of its own).
   const saveForClass = () => {
@@ -579,7 +580,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   // New class: made from its name, then given to this element.
   const saveAsClass = async (label) => {
     try {
-      const made = await addClass(label)
+      const made = await addClass(label, canCarry(cls) ? cls.name : null)
       if (!made) return
       writeNow(section, '_elements', (old) => (Array.isArray(old) ? old.map((e) => (e?._id === name ? { ...e, class: made } : e)) : old))
       setClassing(false)

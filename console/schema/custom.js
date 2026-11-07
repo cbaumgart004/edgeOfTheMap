@@ -203,6 +203,14 @@ export function checkCustom(base, custom) {
     }
   }
   for (const c of custom.classes ?? []) if ((base.classes ?? []).some((x) => x.name === c?.name)) errors.push(`classes.${c.name}: already a class of the site`)
+  // A class made from another: from one of the site's plain classes, or one of
+  // the owner's listed before it (so there is no loop).
+  ;(custom.classes ?? []).forEach((c, i) => {
+    if (c?.base == null || typeof c.base !== 'string') return
+    const site = (base.classes ?? []).find((x) => x.name === c.base)
+    const own = (custom.classes ?? []).slice(0, i).some((x) => x?.name === c.base)
+    if (site ? !/^\.[\w-]+$/.test(site.selector?.trim() ?? '') : !own) errors.push(`classes.${c.name}: made from "${c.base}", not a class it can be made from`)
+  })
   if (custom.fields != null) {
     if (typeof custom.fields !== 'object' || Array.isArray(custom.fields)) errors.push('fields must be an object')
     else {

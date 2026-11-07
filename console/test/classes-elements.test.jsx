@@ -92,9 +92,62 @@ describe('Classes on the home list', () => {
     expect(into.selectedOptions[0].parentElement.label).toBe('Panels')
     expect(kind.value).toBe('button')
     expect(klass.value).toBe('btn')
-    await act(async () => byText(dialog, 'button', 'Add').click())
+    await act(async () => dialog.querySelector('.eotm-class-add .is-primary').click())
     const els = await settle(store, doc.id, (d) => d.blocks[0]._elements, (v) => v?.length)
     expect(els[0]).toMatchObject({ kind: 'button', class: 'btn' })
+  })
+})
+
+describe('A class’s card', () => {
+  it('draws one from its selector when none is on the page, adds into a card where its class sits, and makes a class from it', async () => {
+    const { store, doc, host } = await mount({ title: 'Home', blocks: [{ _id: 's1', _type: 'contentSection', layout: 'cardGrid', title: 'Offerings', cards: [{ _id: 'c1', title: 'Reiki' }, { _id: 'c2', title: 'Yoga' }] }, { _id: 's2', _type: 'contentSection', title: 'Hello' }] })
+    const page = document.createElement('main')
+    page.innerHTML = `<section data-eotm-edit="page:${doc.id}" data-eotm-item="s1"><div class="card" data-eotm-holds="c1"><a class="btn">Go</a></div><div class="card" data-eotm-holds="c2"></div></section>`
+      + `<section data-eotm-edit="page:${doc.id}" data-eotm-item="s2"></section>`
+    document.body.append(page)
+    await unfold(host, 'Classes')
+    await tick(400)
+    const site = byText(host, 'details.eotm-fold', 'Whole site')
+
+    // Section headings: none drawn with it here, so built from ".section h2".
+    await act(async () => byText(site, 'button.eotm-class-name', 'Section headings').click())
+    let card = host.querySelector('.eotm-class-card')
+    expect(card.querySelector('.eotm-class-sample').innerHTML).toBe('<div class="section"><h2>Section headings</h2></div>')
+    expect(byText(card, 'button', 'New class from this')).toBeUndefined()
+    await act(async () => byText(card, 'button', '✕').click())
+
+    // Buttons: the one on the page; Add one offers only where buttons are.
+    await act(async () => byText(site, 'button.eotm-class-name', 'Buttons').click())
+    card = host.querySelector('.eotm-class-card')
+    expect(card.querySelector('.eotm-class-sample').innerHTML).toBe('<a class="btn">Go</a>')
+    await act(async () => byText(card, 'button', '+ Add one').click())
+    await tick(20)
+    const [, into] = card.querySelectorAll('select')
+    expect([...into.options].map((o) => o.value)).toEqual(['s1', 'c1'])
+    expect(into.value).toBe('s1')
+    expect(into.options[1].parentElement.label).toBe('Offerings › Cards')
+    const only = card.querySelector('.eotm-check input')
+    await act(async () => only.click())
+    expect([...into.options].map((o) => o.value)).toEqual(['s1', 's2', 'c1', 'c2'])
+    await act(async () => { into.value = 'c2'; into.dispatchEvent(new Event('change', { bubbles: true })) })
+    await act(async () => card.querySelector('.eotm-class-add .is-primary').click())
+    const els = await settle(store, doc.id, (d) => d.blocks[0].cards[1]._elements, (v) => v?.length)
+    expect(els[0]).toMatchObject({ kind: 'button', class: 'btn' })
+  })
+
+  it('a class made from another carries both classes and nests under it', async () => {
+    const custom = { classes: [{ name: 'outline', label: 'Outline buttons', base: 'btn' }] }
+    const made = mergeCustom(shipped, custom)
+    const { classNameOf } = await import('../schema/elements.js')
+    expect(classNameOf(made, 'outline')).toBe('btn c-outline')
+    const { checkCustom } = await import('../schema/custom.js')
+    expect(checkCustom(shipped, { classes: [{ name: 'x', label: 'X', base: 'sectionHeading' }] }).join()).toContain('not a class it can be made from')
+    expect(checkCustom(shipped, custom)).toEqual([])
+    const { sampleFromSelector } = await import('../src/ClassTree.jsx')
+    const { classesOf, lineage } = await import('../schema/classes.js')
+    const list = classesOf(made)
+    expect(lineage(list, list.find((c) => c.name === 'outline')).map((c) => c.name)).toEqual(['btn', 'outline'])
+    expect(sampleFromSelector(lineage(list, list.find((c) => c.name === 'outline')), 'Outline')).toBe('<a class="btn c-outline">Outline</a>')
   })
 })
 

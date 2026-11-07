@@ -577,15 +577,17 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   }
   // "+ Add a class" in Classes: the owner's own class, kept with their types
   // (schema/classes.js); it gets a Style there and can be given to elements.
-  const addClass = async (label) => {
+  // `base`: made from that class (New class from this), so it starts as its look.
+  const addClass = async (label, madeFrom = null) => {
     const custom = schema.custom ?? {}
     const taken = new Set([...(schema.classes ?? []), ...(custom.classes ?? [])].map((c) => c.name))
     const base = customName(label).slice('custom'.length).replace(/^./, (c) => c.toLowerCase()) || 'class'
     let name = base
     for (let n = 2; taken.has(name); n++) name = `${base}${n}`
-    const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), { name, label }] })
+    const { schema: next } = await store.saveCustom({ ...custom, classes: [...(custom.classes ?? []), madeFrom ? { name, label, base: madeFrom } : { name, label }] })
     setSchema(next)
-    notify(`Added the class “${label}”. Give it a style here, then give it to any element.`)
+    const from = madeFrom && classesOf(schema).find((c) => c.name === madeFrom)
+    notify(from ? `Added “${label}”, made from ${from.label}: it looks the same until you change its style.` : `Added the class “${label}”. Give it a style here, then give it to any element.`)
     return name
   }
   // A design brought in from Canva (ImportDesign.jsx): its new classes added
