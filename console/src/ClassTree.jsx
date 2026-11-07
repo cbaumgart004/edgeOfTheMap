@@ -146,8 +146,10 @@ const pageTypes = (schema) => Object.entries(schema.types).filter(([, t]) => t.f
 // One of the class on the open page, copied without the editor's marks.
 function memberOf(cls, scan) {
   const all = [...scan.byEl.entries()].filter(([, cs]) => cs.some((c) => c.name === cls.name)).map(([el]) => el)
-  // The one whose own class is this (not one inside a member of it).
-  return all.find((el) => !all.some((o) => o !== el && o.contains(el))) ?? all[0] ?? null
+  // The one whose own class is this (not one inside a member of it), and of
+  // those one that takes no other class (a plain button, not the menu bar's).
+  const outer = all.filter((el) => !all.some((o) => o !== el && o.contains(el)))
+  return outer.find((el) => scan.byEl.get(el).length === 1) ?? outer[0] ?? all[0] ?? null
 }
 function cleanCopy(el) {
   const copy = el.cloneNode(true)
@@ -255,7 +257,9 @@ function targetsOf(doc, schema, scan, cls) {
       const el = onPage.get(b._id)
       const kind = schema.blocks?.[b._type]?.label ?? b._type
       const title = words(b)
-      out.push({ id: b._id, group: el ? pathAround(el, scan.byEl) || kind : 'Not on the open page', label: title ? `${kind}: ${title}` : kind, has: hasHere(el) })
+      const group = el ? pathAround(el, scan.byEl) || kind : 'Not on the open page'
+      // The group names the kind already: the label is then its title alone.
+      out.push({ id: b._id, group, label: title ? (group === kind ? title : `${kind}: ${title}`) : kind, has: hasHere(el) })
       // Its rows the site draws objects in, under the section's name.
       for (const [k, v] of Object.entries(b)) {
         if (!Array.isArray(v)) continue

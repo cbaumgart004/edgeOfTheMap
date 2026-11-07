@@ -361,7 +361,10 @@ no login.
   breach per six hours. Settings and alert state live in `PUBLISHED_BUCKET` under `monitor/`, never in
   Neon, so the check cannot wake a compute. The Neon key is the SSM SecureString `/eotm/neon-api-key`
   (`NEON_API_KEY_PARAM` overrides the name). Grants on the execution role: `cloudwatch:GetMetricData`,
-  `amplify:ListApps`, `ce:GetCostAndUsage`, and `s3:GetObject`/`s3:PutObject` on `monitor/*`. The
+  `amplify:ListApps`, `ce:GetCostAndUsage`, `s3:GetObject`/`s3:PutObject` on `monitor/*`, and
+  `s3:ListBucket` on the bucket. Without ListBucket S3 answers a missing key with AccessDenied, which
+  is how Usage failed to load on 2026-11-07 (verified from the page's error); the reader now takes
+  AccessDenied as missing and logs a warning, so the grant is still owed. The
   schedule runs as role `eotm-console-scheduler`, allowed `lambda:InvokeFunction` on this function.
   A missing grant shows as "Could not read" beside that figure; the rest still shows.
   **Unverified:** UptimeRobot API v2 against a real key; tested against a fake of its documented shape.

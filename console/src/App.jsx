@@ -793,7 +793,11 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
   else if (view.name === 'home') body = <Home schema={schema} store={store} notify={notify}
     openDoc={(doc, item = null, field = null) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), back: { name: 'home' } })}
-    addClass={addClass} onAddElement={({ element, ...t }) => resizeTarget({ ...t, field: '_elements', value: (old) => [...(Array.isArray(old) ? old : []), element] })}
+    addClass={addClass} onAddElement={async ({ element, ...t }) => {
+      await resizeTarget({ ...t, field: '_elements', value: (old) => [...(Array.isArray(old) ? old : []), element] })
+      // The pane opens at the new element: its row, and the Elements it is in.
+      if (element?._id) setView((v) => (v.name === 'edit' ? { ...v, focus: element._id, focusField: null, focusAt: Date.now() } : v))
+    }}
     onView={openView} onImages={() => setView({ name: 'images' })} onTypes={() => setView({ name: 'types' })} onTemplates={() => setView({ name: 'templates' })} onTool={(path) => { bridge.navigate(path); if (!wide) setSize('bar') }} />
   else if (view.name === 'images') body = (
     <Images schema={schema} store={store} bridge={bridge} notify={notify}

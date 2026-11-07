@@ -572,7 +572,7 @@ function renderUsage(r) {
     </div>
     <div><h3>API requests per hour, last 24 hours</h3>${t ? usageBars(t.api.hours, s.requestsPerHour) : gap(r.traffic)}</div>
     <div><h3>Site requests, 24 hours <span class="meta">(every file Amplify served: a page view is several)</span></h3>
-      ${t ? `<ul>${t.sites.map((x) => `<li><span>${esc(x.name)}</span><span>${esc(count(x.total))}</span></li>`).join('')}</ul>` : gap(r.traffic)}</div>
+      ${t ? `<ul>${t.sites.map((x) => `<li><span>${esc(x.name)} <span class="meta">${esc(x.appId)}</span></span><span>${esc(count(x.total))}</span></li>`).join('')}</ul>` : gap(r.traffic)}</div>
     <div><h3>Neon by project <span class="meta">(estimated at $${esc(r.rates.cuHour)}/CU-hour, $${esc(r.rates.gbMonth)}/GB-month${n ? `; period ends ${esc(new Date(n.end).toLocaleDateString())}` : ''})</span></h3>
       ${n ? `<ul>${n.projects.map((p) => `<li><span>${esc(p.name)}</span><span>${esc(p.cuHours)} CU-h · ${esc(p.storageGb)} GB · ${esc(money(p.cost))}</span></li>`).join('')}</ul>` : gap(r.neon)}</div>
     <div><h3>AWS by service, month to date <span class="meta">${a ? `(Cost Explorer, as of ${esc(when(a.at))})` : ''}</span></h3>

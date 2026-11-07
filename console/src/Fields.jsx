@@ -489,6 +489,9 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
   // so the pane shows only what the pick is about.
   const focused = () => items.find((x) => x._id === ctx.focus || holds(x, ctx.focus))
   const [open, setOpen] = useState(() => new Set(focused() ? [focused()._id] : []))
+  // Also when the focused row arrives after the focus (an element just added
+  // to a card opens its card and Elements once the write lands).
+  const hitId = focused()?._id
   useEffect(() => {
     const hit = focused()
     if (!hit) return
@@ -497,7 +500,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
     // Scroll only at the row itself; a row holding it opens and the list
     // inside it scrolls.
     if (hit._id === ctx.focus) requestAnimationFrame(() => document.querySelector(`.eotm-root [data-eotm-item="${ctx.focus}"]`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }))
-  }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ctx.focus, ctx.focusAt, hitId]) // eslint-disable-line react-hooks/exhaustive-deps
   // Opening a row selects it: the trail above follows, and a section on the
   // page is brought into view and outlined, so the pane and page agree. The
   // rows beside it fold, so what is open is the one thing being worked on.
@@ -551,7 +554,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
   // its heading until opened, unless what was picked on the page is in it.
   const nested = path.includes('[')
   const [shown, setShown] = useState(() => !nested || !!focused())
-  useEffect(() => { if (nested && focused()) setShown(true) }, [ctx.focus, ctx.focusAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (nested && focused()) setShown(true) }, [ctx.focus, ctx.focusAt, hitId]) // eslint-disable-line react-hooks/exhaustive-deps
   const heading = (
     <>
       <span className="eotm-fold-label">{label}</span>

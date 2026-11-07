@@ -153,6 +153,12 @@ const usage = process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.PUBLISHED_BUCK
           return JSON.parse(await res.Body.transformToString())
         } catch (err) {
           if (err.name === 'NoSuchKey') return null
+          // Without s3:ListBucket, S3 answers a missing key with AccessDenied.
+          // Read as missing so Usage still loads; the first save writes it.
+          if (err.name === 'AccessDenied') {
+            console.warn(`[usage] ${key}: access denied, read as missing (grant s3:ListBucket on ${process.env.PUBLISHED_BUCKET})`)
+            return null
+          }
           throw err
         }
       },
