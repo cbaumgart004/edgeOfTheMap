@@ -228,13 +228,20 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const [, setFrame] = useState(0)
   const [snap, setSnap] = useState(readSnap)
   const [drag, setDrag] = useState(null) // { kind } while dragging
-  const [prompt, setPrompt] = useState(() => { const p = promptFor(); return p && !seen(p.key) ? p : null })
+  // What Arrange does, across the top until closed or something is picked;
+  // once a visit. A phone or upright tablet adds what its screen arranges.
+  const [intro, setIntro] = useState(() => tools && !seen('intro'))
+  const [note, setNote] = useState(promptFor)
   // The screen can turn or the page change width while arranging.
   useEffect(() => {
-    const on = () => { const p = promptFor(); setPrompt(p && !seen(p.key) ? p : null) }
+    const on = () => setNote(promptFor())
     addEventListener('resize', on)
     return () => removeEventListener('resize', on)
   }, [])
+  const closeIntro = () => {
+    try { sessionStorage.setItem(`${PROMPT_KEY}:intro`, '1') } catch { /* shown again next time */ }
+    setIntro(false)
+  }
   const latest = useRef({})
   latest.current = { sel, snap, onChange, onSelect, onText, tools, open }
 
@@ -323,6 +330,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   }
   const choose = (n, from = null) => {
     if (!n) return
+    closeIntro()
     setSel(selFor(n))
     const t = targetFor(n, from)
     if (t) latest.current.onSelect?.(t)
@@ -440,20 +448,42 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     return () => cancelAnimationFrame(frame)
   }, [!!sel]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The page says what moves: the move cursor over parts while arranging
+  // (console.css), the picked part dragged rather than scrolled by a finger,
+  // and the drag's own cursor while one runs.
+  useEffect(() => {
+    const html = document.documentElement
+    html.classList.toggle('eotm-arrange-tools', !!tools)
+    return () => html.classList.remove('eotm-arrange-tools')
+  }, [tools])
+  useEffect(() => {
+    const p = sel?.part
+    if (!p) return undefined
+    p.setAttribute('data-eotm-picked', '')
+    return () => p.removeAttribute('data-eotm-picked')
+  }, [sel?.part])
+  useEffect(() => {
+    const html = document.documentElement
+    if (drag) html.dataset.eotmDragging = drag.kind
+    else delete html.dataset.eotmDragging
+    return () => { delete html.dataset.eotmDragging }
+  }, [drag?.kind]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setClassing(false); setNaming(false); setOpen((o) => (o === 'controls' ? null : o)) }, [sel?.node]) // eslint-disable-line react-hooks/exhaustive-deps
   const setSnapTo = (on) => {
     try { localStorage.setItem(SNAP_KEY, on ? 'snap' : 'free') } catch { /* kept for this visit only */ }
     setSnap(on)
   }
-  const dismissPrompt = () => {
-    try { sessionStorage.setItem(`${PROMPT_KEY}:${prompt.key}`, '1') } catch { /* asked again next time */ }
-    setPrompt(null)
+  // Centered on the page beside a pane docked on the right, not under it.
+  const introLeft = () => {
+    const pane = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
+    return (pane ? Math.min(innerWidth, pane.getBoundingClientRect().left) : innerWidth) / 2
   }
-
-  const banner = prompt && tools && (
-    <div className="eotm-arrange-prompt" role="status" style={uiScale > 1 ? { zoom: uiScale } : undefined}>
-      <span>{prompt.text}</span>
-      <button type="button" className="eotm-target-snap" onClick={dismissPrompt}>OK</button>
+  const tap = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click'
+  const banner = intro && tools && (
+    <div className="eotm-arrange-prompt" role="status" style={{ ...ui(uiScale, 12, introLeft()), maxWidth: Math.min(560, introLeft() * 2 - 24) / uiScale }}>
+      <p><b>Mode: Arrange.</b> {tap} anything to drag or resize it. Change layers up or down with <Icon d={ICONS.layers} />. For more controls, {tap.toLowerCase()} <Icon d={ICONS.controls} />. For detailed editing, {tap.toLowerCase()} <Icon d={ICONS.edit} /> Edit.</p>
+      {note && <p>{note.text}</p>}
+      <button type="button" className="eotm-arrange-prompt-x" aria-label="Close" onClick={closeIntro}>✕</button>
     </div>
   )
   if (!sel) return <div className="eotm-target eotm-arrange">{banner}</div>

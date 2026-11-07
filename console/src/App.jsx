@@ -532,7 +532,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
         ...MODES.map(([, label, help]) => [label, help]),
         ['Publish', 'Your changes show on this page as you make them; Publish puts them on the live site.'],
       ]}</Info>
-      {!wide && clickMode !== 'view' && size !== 'bar' && <p className={`eotm-modehint is-${clickMode}`}>{MODES.find(([m]) => m === clickMode)[2]}</p>}
+      {!wide && clickMode === 'edit' && size !== 'bar' && <p className={`eotm-modehint is-${clickMode}`}>{MODES.find(([m]) => m === clickMode)[2]}</p>}
       {/* Edits show on the page as they are made; Publish makes them live.
           Minimised to the bar, Publish stays beside the title. */}
       {size === 'bar' ? user && publishButton : (

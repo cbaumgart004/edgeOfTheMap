@@ -479,12 +479,26 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 .eotm-arrange-range { display: flex; align-items: center; gap: 8px; }
 .eotm-arrange-range input { flex: 1; min-width: 0; }
 .eotm-arrange-range span { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
-.eotm-arrange-prompt { position: fixed; left: 50%; transform: translateX(-50%); pointer-events: auto; padding: 8px 14px;
-  border-radius: 999px; background: var(--eotm-ink); color: var(--eotm-bg); font: 500 13px var(--eotm-font); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
-.eotm-arrange-prompt { top: 56px; display: flex; gap: 10px; align-items: center; width: max-content; max-width: calc(100vw - 24px); border-radius: 14px; }
-/* The parts of a Free section are dragged, not scrolled, while arranging. */
-html.eotm-arranging [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; cursor: move; user-select: none; }
+/* What Arrange does, across the top of the page until closed or a pick is made. */
+.eotm-arrange-prompt { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); pointer-events: auto; display: flex; gap: 8px; align-items: flex-start;
+  width: max-content; max-width: min(560px, calc(100vw - 24px)); padding: 10px 34px 10px 14px; border-radius: 12px; background: var(--eotm-ink); color: var(--eotm-bg);
+  font: 500 13px/1.45 var(--eotm-font); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+.eotm-arrange-prompt p { margin: 0; }
+.eotm-arrange-prompt p + p { margin-top: 4px; opacity: 0.8; }
+.eotm-arrange-prompt svg { vertical-align: -4px; width: 16px; height: 16px; }
+.eotm-arrange-prompt-x { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+  color: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.eotm-arrange-prompt-x:hover { background: color-mix(in srgb, var(--eotm-bg) 18%, transparent); }
+/* Anything that moves says so: the move cursor over every part. The picked part
+   is dragged, not scrolled, by a finger; the rest of the page still scrolls. */
 html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: default; }
+html.eotm-arrange-tools [data-eotm-part], html.eotm-arrange-tools [data-eotm-part] * { cursor: move; }
+html.eotm-arrange-tools [data-eotm-picked], html.eotm-arrange-tools [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; user-select: none; -webkit-user-select: none; }
+/* While a drag runs, its cursor holds wherever the pointer goes. */
+html[data-eotm-dragging='move'], html[data-eotm-dragging='move'] * { cursor: grabbing !important; }
+html[data-eotm-dragging='e'], html[data-eotm-dragging='e'] *, html[data-eotm-dragging='width'], html[data-eotm-dragging='width'] * { cursor: ew-resize !important; }
+html[data-eotm-dragging='s'], html[data-eotm-dragging='s'] *, html[data-eotm-dragging='height'], html[data-eotm-dragging='height'] * { cursor: ns-resize !important; }
+html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-resize !important; }
 
 /* View / Edit / Arrange: what a click on the page does (App.jsx). */
 .eotm-modes { flex: 0 0 auto; }
