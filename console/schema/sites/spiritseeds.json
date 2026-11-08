@@ -175,6 +175,12 @@
         { "name": "date", "kind": "date", "label": "Date", "required": true, "help": "Shown from today on, on the events page and in the banner; once its date passes it is no longer shown." },
         { "name": "startTime", "kind": "text", "label": "Start time", "help": "As it should read, e.g. 6:30 PM." },
         { "name": "endTime", "kind": "text", "label": "End time" },
+        { "name": "moreDates", "kind": "list", "label": "More dates", "itemLabel": "date",
+          "help": "The same event again on other days. Its card lists every date still to come and stays up until the last one passes; the banner shows the next one. Times left blank use the ones above.",
+          "fields": [
+            { "name": "date", "kind": "date", "label": "Date", "required": true },
+            { "name": "startTime", "kind": "text", "label": "Start time", "help": "Blank: the start time above." },
+            { "name": "endTime", "kind": "text", "label": "End time", "help": "Blank: the end time above." } ] },
         { "name": "location", "kind": "text", "label": "Where", "help": "The place, then its address, e.g. CURA Yoga Center, 2955 Valmont Rd, Boulder." },
         { "name": "icon", "kind": "select", "label": "Icon", "default": "sound", "help": "Shown on the card when there is no photo.", "options": [{ "value": "sound", "label": "Singing bowl" }, { "value": "lotus", "label": "Lotus" }, { "value": "moon", "label": "Moon" }, { "value": "sun", "label": "Sun" }, { "value": "music", "label": "Music" }, { "value": "calendar", "label": "Calendar" }] },
         { "name": "cost", "kind": "text", "label": "Cost", "help": "As it should read, e.g. $50 early bird until December 6, $54 after." },

@@ -52,7 +52,7 @@ export function httpStore({ apiBase, site, getToken }) {
     // The owner's own types (schema/custom.js); answers { schema } merged.
     saveCustom: (custom) => call('PUT', '/custom-schema', { custom }),
     async upload(blob, meta = {}) {
-      const { uploadUrl, src } = await call('POST', '/uploads', { contentType: blob.type, bytes: blob.size })
+      const { uploadUrl, src } = await call('POST', '/uploads', { contentType: blob.type, bytes: blob.size, name: meta.name })
       const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'content-type': blob.type }, body: blob })
       if (!put.ok) throw new StoreError(put.status, 'The photo did not upload.')
       await call('POST', '/media', libraryEntry(src, blob, meta)).catch((e) => console.warn('[media] not added to the library:', e.message))

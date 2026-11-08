@@ -586,7 +586,12 @@ ${pushed}`, page: body.page })
         if (!(body.bytes > 0 && body.bytes <= (video ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES))) {
           return json(413, { error: video ? 'Video is too large (200 MB at most).' : 'Photo is too large (3 MB at most). Upload it through the editor, which shrinks it first.' }, headers)
         }
-        const key = `${own ? 'pageAssets' : `sites/${site.slug}/uploads`}/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
+        // The file's own name, made safe for an address, then 8 random characters so two
+        // uploads of "IMG_0001" never collide: pageAssets/2026-11/sitar-evening-3f9a1c2b.webp.
+        const stem = String(body.name ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+        const tail = globalThis.crypto.randomUUID().replaceAll('-', '').slice(0, 8)
+        const key = `${own ? 'pageAssets' : `sites/${site.slug}/uploads`}/${new Date().toISOString().slice(0, 7)}/${stem ? `${stem}-${tail}` : globalThis.crypto.randomUUID()}.${ext}`
         const uploadUrl = await deps.presign({ bucket, key, contentType: body.contentType, bytes: body.bytes })
         return json(200, { uploadUrl, key, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
       }

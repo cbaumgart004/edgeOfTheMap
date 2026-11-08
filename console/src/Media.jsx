@@ -128,6 +128,11 @@ export default function Media({ store, notify }) {
         )}
       </div>
 
+      {(here || unused) && (
+        <button type="button" className="eotm-btn eotm-media-back" onClick={() => { if (unused) setUnused(false); else setHere(parentOf(here)) }}>
+          ← Back to {unused || !parentOf(here) ? 'All media' : leaf(parentOf(here))}
+        </button>
+      )}
       <nav className="eotm-media-crumbs" aria-label="Folder">
         <button type="button" className={here || unused ? '' : 'is-on'} onClick={() => { setHere(''); setUnused(false) }}>All media</button>
         {crumbs.map((c) => <React.Fragment key={c}><span aria-hidden="true">/</span><button type="button" className={c === here ? 'is-on' : ''} onClick={() => setHere(c)}>{leaf(c)}</button></React.Fragment>)}

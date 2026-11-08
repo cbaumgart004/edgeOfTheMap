@@ -132,8 +132,17 @@ export function startTyping(node, onText) {
   node.addEventListener('keydown', onKey)
 }
 
+// What a click selected: the piece itself (the text, button, photo or field
+// clicked), so the page shows which one the pane is editing, not just its section.
+const PIECE = `${TEXT}, ${CONTROL}, img, video, [data-eotm-field], [data-eotm-in], [data-eotm-item]`
+function pieceAt(t, owner) {
+  const p = t.closest(PIECE)
+  return p && owner.contains(p) ? p : owner
+}
+
 export default function Targets({ onOpen, onResize, onText }) {
   const [el, setEl] = useState(null)
+  const [sel, setSel] = useState(null) // the piece last clicked, outlined until the next click or Escape
   const [, setFrame] = useState(0)
   const [drag, setDrag] = useState(null) // { node, value, parent }
   const [snap, setSnap] = useState(readSnap)
@@ -157,6 +166,7 @@ export default function Targets({ onOpen, onResize, onText }) {
       if (dragging.current || !(t instanceof Element) || t.closest('.eotm-root')) return
       const owner = t.closest(MARK)
       if (!owner) return
+      setSel(pieceAt(t, owner))
       const { onOpen: open, onText: typed } = latest.current
       const node = typed ? t.closest(TEXT) : null
       if (node && node.closest(MARK) === owner) {
@@ -185,10 +195,13 @@ export default function Targets({ onOpen, onResize, onText }) {
       const at = fieldAt(t, owner)
       open({ ...targetOf(owner), item: at.item || targetOf(owner).item, field: at.field })
     }
+    const key = (e) => { if (e.key === 'Escape' && !document.activeElement?.isContentEditable) setSel(null) }
     document.addEventListener('pointerover', find, true)
     document.addEventListener('pointerdown', find, true)
     document.addEventListener('click', click, true)
+    document.addEventListener('keydown', key)
     return () => {
+      document.removeEventListener('keydown', key)
       document.removeEventListener('pointerover', find, true)
       document.removeEventListener('pointerdown', find, true)
       document.removeEventListener('click', click, true)
@@ -198,20 +211,28 @@ export default function Targets({ onOpen, onResize, onText }) {
   // Redraw every frame while something is outlined, so the boxes follow
   // scrolling, resizing and the page re-rendering under a drag.
   useEffect(() => {
-    if (!el) return undefined
+    if (!el && !sel) return undefined
     let frame = 0
     const tick = () => {
-      if (!el.isConnected) { setEl(null); return }
+      if (el && !el.isConnected) setEl(null)
+      if (sel && !sel.isConnected) setSel(null)
       setFrame((n) => n + 1)
       frame = requestAnimationFrame(tick)
     }
     tick()
     return () => cancelAnimationFrame(frame)
-  }, [el])
+  }, [el, sel])
 
-  if (!el) return null
+  const picked = sel?.isConnected ? sel.getBoundingClientRect() : null
+  const chosen = picked && picked.bottom > 0 && picked.top < innerHeight && (
+    <>
+      <div className="eotm-target-box is-selected" style={{ top: picked.top - 3, left: picked.left - 3, width: picked.width + 6, height: picked.height + 6 }} />
+      <span className="eotm-target-chosen" style={{ top: Math.max(picked.top - 26, 4), left: Math.max(picked.left - 3, 4) }}>Selected</span>
+    </>
+  )
+  if (!el) return chosen ? <div className="eotm-target">{chosen}</div> : null
   const rect = el.getBoundingClientRect()
-  if (rect.bottom < 0 || rect.top > innerHeight) return null
+  if (rect.bottom < 0 || rect.top > innerHeight) return chosen ? <div className="eotm-target">{chosen}</div> : null
   const label = el.dataset.eotmLabel
   const top = Math.max(rect.top, 8) + 8
   const sizers = sizersIn(el)
@@ -258,6 +279,7 @@ export default function Targets({ onOpen, onResize, onText }) {
 
   return (
     <div className="eotm-target">
+      {chosen}
       {grid && (
         <div className="eotm-target-grid" style={{ top: grid.top, left: grid.left, width: grid.width, height: grid.height }}>
           {Array.from({ length: 11 }, (_, i) => <span key={i} style={{ left: `${((i + 1) * 100) / 12}%` }} />)}

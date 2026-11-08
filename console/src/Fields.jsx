@@ -302,9 +302,12 @@ function PhotoLook({ value, onChange }) {
 // photo address already used in this site's documents that the library does
 // not hold (uploaded before it existed), for reusing one without uploading it again.
 // -> [{ src, name, folder }]; folder null for one found only on a page.
-async function sitePhotos(ctx) {
+async function sitePhotos(ctx, video = false) {
   let kept = []
-  try { kept = ((await ctx.store.media?.list())?.items ?? []).filter((i) => !i.contentType || i.contentType.startsWith('image/')) } catch { /* no library: pages only */ }
+  try {
+    kept = ((await ctx.store.media?.list())?.items ?? [])
+      .filter((i) => !i.contentType || i.contentType.startsWith('image/') || (video && i.contentType.startsWith('video/')))
+  } catch { /* no library: pages only */ }
   const srcs = new Set()
   const walk = (v) => {
     if (Array.isArray(v)) return v.forEach(walk)
@@ -317,7 +320,7 @@ async function sitePhotos(ctx) {
   }
   walk(ctx.docData)
   const have = new Set(kept.map((i) => i.src))
-  return [...kept.map(({ src, name, folder }) => ({ src, name, folder })),
+  return [...kept.map(({ src, name, folder, contentType }) => ({ src, name, folder, video: Boolean(contentType?.startsWith('video/')) })),
     ...[...srcs].filter((s) => !have.has(s) && !/\.(mp4|webm|mov)(\?|$)/i.test(s)).map((src) => ({ src, name: '', folder: null }))]
 }
 
@@ -380,12 +383,71 @@ function UploadInto({ ctx, value, onChange }) {
   )
 }
 
+// The library to choose from, by folder. `many` (a slideshow) keeps it open
+// so several can be added in turn; otherwise a pick closes it.
+function LibraryPicker({ ctx, video = false, current = [], onPick, onClose, many = false }) {
+  const [library, setLibrary] = useState([])
+  const [folder, setFolder] = useState('*') // '*' every photo; '' top of the library; null on pages only
+  useEffect(() => { let on = true; sitePhotos(ctx, video).then((l) => { if (on) setLibrary(l) }); return () => { on = false } }, [ctx, video])
+  const folders = [...new Set(library.map((p) => p.folder).filter(Boolean))].sort()
+  return (
+    <div className="eotm-library">
+      {library.some((p) => p.folder != null) && (
+        <select className="eotm-input" aria-label="Folder" value={folder ?? '~pages'} onChange={(e) => setFolder(e.target.value === '~pages' ? null : e.target.value)}>
+          <option value="*">Every {video ? 'file' : 'photo'}</option>
+          <option value="">Media (top)</option>
+          {folders.map((f) => <option key={f} value={f}>{f.replaceAll('/', ' / ')}</option>)}
+          {library.some((p) => p.folder === null) && <option value={'~pages'}>On pages, not in Media</option>}
+        </select>
+      )}
+      {library.length ? library.filter((p) => folder === '*' || p.folder === folder).map((p) => (
+        <button key={p.src} type="button" className={`eotm-thumb${current.includes(p.src) ? ' is-on' : ''}`} aria-label={p.name ? `Use ${p.name}` : 'Use this one'} title={p.name || undefined}
+          onClick={() => { onPick(p); if (!many) onClose() }}>
+          {p.video ? <video src={p.src} muted preload="metadata" /> : <img src={p.src} alt="" loading="lazy" />}
+        </button>)) : <p className="eotm-help">Nothing in Media yet.</p>}
+      {many && <button type="button" className="eotm-btn is-quiet" onClick={onClose}>Done</button>}
+      <input className="eotm-input" placeholder="Or paste a photo address: https://… or /uploads/…"
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          const src = e.currentTarget.value.trim()
+          if (/^(https?:\/\/|\/(?!\/))/i.test(src)) { onPick({ src }); if (many) e.currentTarget.value = ''; else onClose() }
+          else ctx.notify('A photo address starts with https:// or /')
+        }} />
+    </div>
+  )
+}
+
+// The name a file has in Media, editable here: shown under a photo just
+// uploaded, so it is named as it goes in. Renaming keeps the file's address,
+// so no page using it breaks.
+function NameInLibrary({ ctx, src }) {
+  const [item, setItem] = useState(null)
+  const [name, setName] = useState('')
+  useEffect(() => {
+    let on = true
+    ctx.store?.media?.list().then((l) => { const i = l.items.find((x) => x.src === src); if (on && i) { setItem(i); setName(i.name) } }).catch(() => {})
+    return () => { on = false }
+  }, [ctx, src])
+  if (!item) return null
+  const save = async () => {
+    const n = name.trim()
+    if (!n || n === item.name) return setName(item.name)
+    try { setItem(await ctx.store.media.update(item.id, { name: n })) } catch (e) { ctx.notify(e.message); setName(item.name) }
+  }
+  return (
+    <label className="eotm-label eotm-file-name">File name in Media
+      <input className="eotm-input" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} onBlur={save}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } if (e.key === 'Escape') { setName(item.name); e.currentTarget.blur() } }} />
+    </label>
+  )
+}
+
 function ImageField({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(false)
   const [into, setIntoState] = useState(uploadInto)
   const setInto = (f) => { uploadInto = f; setIntoState(f) }
-  const [library, setLibrary] = useState(null) // null closed, [] loading or empty
-  const [folder, setFolder] = useState('*') // '*' every photo; '' top of the library; null on pages only
+  const [library, setLibrary] = useState(false)
   // The file just uploaded, kept so "Sharper" can send it again at full size
   // without the owner picking it a second time. Gone on reload, by design.
   const [last, setLast] = useState(null) // { file, src, limit }
@@ -401,11 +463,6 @@ function ImageField({ id, field, value, onChange, ctx }) {
       if (limit === 'full') ctx.notify('Uploaded at full quality. The file is larger, so the page loads a little slower.')
     } catch (e) { ctx.notify(e.message) } finally { setBusy(false) }
   }
-  const openLibrary = async () => {
-    if (library) return setLibrary(null)
-    setLibrary([])
-    setLibrary(await sitePhotos(ctx))
-  }
   return (
     <div className="eotm-image">
       {value?.src && <img src={value.src} alt="" style={{
@@ -415,7 +472,7 @@ function ImageField({ id, field, value, onChange, ctx }) {
           {busy ? 'Uploading…' : value?.src ? 'Replace photo' : 'Add photo'}
           <input id={id} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files[0]); e.target.value = '' }} />
         </label>
-        <button type="button" className="eotm-btn is-quiet" aria-expanded={!!library} onClick={openLibrary}>Site photos</button>
+        <button type="button" className="eotm-btn is-quiet" aria-expanded={library} onClick={() => setLibrary(!library)}>Site photos</button>
         {value?.src && <RemoveButton label="Remove image" text="Remove" onConfirm={() => onChange(null)} />}
         {last && last.src === value?.src && last.limit !== 'full' && (
           <button type="button" className="eotm-btn is-quiet" disabled={busy} onClick={() => pick(last.file, 'full')}
@@ -424,30 +481,10 @@ function ImageField({ id, field, value, onChange, ctx }) {
       </div>
       <UploadInto ctx={ctx} value={into} onChange={setInto} />
       {library && (
-        <div className="eotm-library">
-          {library.some((p) => p.folder) && (
-            <select className="eotm-input" aria-label="Folder" value={folder ?? '~pages'} onChange={(e) => setFolder(e.target.value === '~pages' ? null : e.target.value)}>
-              <option value="*">Every photo</option>
-              <option value="">Media (top)</option>
-              {[...new Set(library.map((p) => p.folder).filter(Boolean))].sort().map((f) => <option key={f} value={f}>{f.replaceAll('/', ' / ')}</option>)}
-              {library.some((p) => p.folder === null) && <option value={'~pages'}>On pages, not in Media</option>}
-            </select>
-          )}
-          {library.length ? library.filter((p) => folder === '*' || p.folder === folder).map(({ src, name }) => (
-            <button key={src} type="button" className={`eotm-thumb${value?.src === src ? ' is-on' : ''}`} aria-label={name ? `Use ${name}` : 'Use this photo'} title={name || undefined}
-              onClick={() => { onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' }); setLibrary(null) }}>
-              <img src={src} alt="" loading="lazy" />
-            </button>)) : <p className="eotm-help">No photos on the site yet.</p>}
-          <input className="eotm-input" placeholder="Or paste a photo address: https://… or /uploads/…"
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              e.preventDefault()
-              const src = e.currentTarget.value.trim()
-              if (/^(https?:\/\/|\/(?!\/))/i.test(src)) { onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' }); setLibrary(null) }
-              else ctx.notify('A photo address starts with https:// or /')
-            }} />
-        </div>
+        <LibraryPicker ctx={ctx} current={value?.src ? [value.src] : []} onClose={() => setLibrary(false)}
+          onPick={({ src }) => onChange({ ...(value ?? {}), src, alt: value?.alt ?? '' })} />
       )}
+      {value?.src && last?.src === value.src && <NameInLibrary ctx={ctx} src={value.src} />}
       {value?.src && <AltText value={value.alt} onChange={(alt) => onChange({ ...value, alt })} />}
       {value?.src && <PhotoLook value={value} onChange={onChange} />}
     </div>
@@ -471,9 +508,9 @@ function AltText({ value, video, onChange }) {
 // A clip goes up as recorded (photos are shrunk first, images.js): a browser
 // cannot re-encode video cheaply. Stored as { src, kind: 'video', alt }.
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
-async function uploadVideo(file, ctx) {
+async function uploadVideo(file, ctx, folder) {
   if (!VIDEO_TYPES.includes(file.type)) throw new Error('Videos must be MP4, WebM or MOV.')
-  const src = await ctx.upload(file, { name: nameFromFile(file.name) })
+  const src = await ctx.upload(file, { name: nameFromFile(file.name), folder })
   return { src, kind: 'video', alt: '' }
 }
 
@@ -481,6 +518,16 @@ async function uploadVideo(file, ctx) {
 function Photos({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(0)
   const indexes = field.indexes ?? null
+  const [into, setIntoState] = useState(uploadInto)
+  const setInto = (f) => { uploadInto = f; setIntoState(f) }
+  const [library, setLibrary] = useState(false)
+  const [fresh, setFresh] = useState(() => new Set()) // uploaded here this visit: named as they go in
+  // Picked from Media: a clip by its kind, Light/Dark suggested like an upload.
+  const fromLibrary = (p) => {
+    const item = { src: p.src, alt: '', ...(p.video ? { kind: 'video' } : {}) }
+    if (indexes) item.index = indexes.find((ix) => !value.some((x) => x.index === ix)) ?? indexes[0]
+    onChange([...value, item])
+  }
   const add = async (files) => {
     const list = [...files]
     setBusy(list.length)
@@ -488,8 +535,9 @@ function Photos({ id, field, value, onChange, ctx }) {
     for (const file of list) {
       try {
         const photo = field.video && file.type.startsWith('video/')
-          ? await uploadVideo(file, ctx)
-          : await uploadPhoto(file, ctx, field.wide ? 'wide' : 'standard')
+          ? await uploadVideo(file, ctx, into)
+          : await uploadPhoto(file, ctx, field.wide ? 'wide' : 'standard', into)
+        setFresh((s) => new Set(s).add(photo.src))
         // Suggest the index a pair still lacks: Light first, then Dark.
         if (indexes) photo.index = indexes.find((ix) => !next.some((p) => p.index === ix)) ?? indexes[0]
         next = [...next, photo]
@@ -521,6 +569,7 @@ function Photos({ id, field, value, onChange, ctx }) {
                   ))}
                 </div>
               )}
+              {fresh.has(p.src) && <NameInLibrary ctx={ctx} src={p.src} />}
               <AltText value={p.alt} video={p.kind === 'video'} onChange={(alt) => set(i, { alt })} />
               <div className="eotm-row">
                 <button type="button" className="eotm-icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move earlier">↑</button>
@@ -531,10 +580,15 @@ function Photos({ id, field, value, onChange, ctx }) {
           </li>
         ))}
       </ul>
-      <label className="eotm-btn">
-        {busy ? `Uploading ${busy}…` : field.video ? 'Add photos or videos' : 'Add photos'}
-        <input id={id} type="file" accept={field.video ? 'image/*,video/mp4,video/webm,video/quicktime' : 'image/*'} multiple hidden onChange={(e) => { add(e.target.files); e.target.value = '' }} />
-      </label>
+      <div className="eotm-row">
+        <label className="eotm-btn">
+          {busy ? `Uploading ${busy}…` : field.video ? 'Add photos or videos' : 'Add photos'}
+          <input id={id} type="file" accept={field.video ? 'image/*,video/mp4,video/webm,video/quicktime' : 'image/*'} multiple hidden onChange={(e) => { add(e.target.files); e.target.value = '' }} />
+        </label>
+        <button type="button" className="eotm-btn is-quiet" aria-expanded={library} onClick={() => setLibrary(!library)}>From Media</button>
+      </div>
+      <UploadInto ctx={ctx} value={into} onChange={setInto} />
+      {library && <LibraryPicker ctx={ctx} video={field.video} many current={value.map((p) => p.src)} onPick={fromLibrary} onClose={() => setLibrary(false)} />}
     </div>
   )
 }

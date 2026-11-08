@@ -278,6 +278,9 @@ describe('console API', () => {
     const { call } = setup()
     const ok = await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })
     expect(ok.json.src).toMatch(/^https:\/\/media\.example\/pageAssets\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/)
+    // Named: the bucket key reads as the file's name, with 8 characters so two never collide.
+    const named = await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000, name: 'Sitar Évening!' } })
+    expect(named.json.src).toMatch(/^https:\/\/media\.example\/pageAssets\/\d{4}-\d{2}\/sitar-evening-[0-9a-f]{8}\.webp$/)
     expect((await call('POST', `${base}/uploads`, { body: { contentType: 'text/html', bytes: 10 } })).statusCode).toBe(415)
   })
 
