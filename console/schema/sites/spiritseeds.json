@@ -49,6 +49,16 @@
   },
   "types": {
     "settings": {
+      "sections": [
+        {"label": "Site name and logo", "fields": ["siteTitle", "tagline", "logo", "headerImage", "contactEmail"]},
+        {"label": "Look and fonts", "fields": ["theme", "uiStyle", "headingFont", "subheadingFont", "bodyFont", "textSize", "phonePadding"]},
+        {"label": "Menu bar", "fields": ["navCtaLabel", "navCtaUrl", "navConnect"]},
+        {"label": "Buttons under the menu bar", "fields": ["actionButtons", "actionBarLook", "actionButtonsPerRow", "servicesStrip"]},
+        {"label": "Announcement banner", "fields": ["promoOn", "promoSlides", "promoTransition", "promoFade", "promoSeconds", "promoUntil"]},
+        {"label": "Footer", "fields": ["connectLabel", "footerConnect", "footerCardTitle", "newsletterLabel", "newsletterFormId", "reviewUrl", "reviewLabel", "valuesFooter", "footerTitle", "footerValues"]},
+        {"label": "Reels", "fields": ["reelsTitle", "instagramReels", "facebookReels"]},
+        {"label": "Connect page and social links", "fields": ["connectTitle", "connectIntro", "connectPortrait", "connectBackground", "showFacebook", "facebookUrl", "showInstagram", "instagramUrl", "socials"]}
+      ],
       "label": "Site settings",
       "plural": "Site settings",
       "singleton": true,

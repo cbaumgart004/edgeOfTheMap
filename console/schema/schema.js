@@ -135,6 +135,9 @@ export function checkSchema(schema) {
   // Where a type is listed in the editor's menu: with the content, or under Design.
   for (const [n, t] of Object.entries(types)) {
     if ('group' in t && !['content', 'design'].includes(t.group)) errors.push(`types.${n}: group is content or design`)
+    // Sections: headings the editor folds a type's top-level fields under,
+    // closed until opened. Editor only; the document's data stays flat.
+    if ('sections' in t && !(Array.isArray(t.sections) && t.sections.every((x) => x?.label && Array.isArray(x.fields) && x.fields.every((f) => (t.fields ?? []).some((g) => g.name === f))))) errors.push(`types.${n}.sections: each needs a label and fields naming this type's fields`)
     // Overrides: a list field whose rows are named by the element they change.
     if ('overrides' in t && (t.fields ?? []).find((f) => f.name === t.overrides)?.kind !== 'list') errors.push(`types.${n}.overrides: names a list field`)
     // Views: one document shown as several cards, each with some of its fields.

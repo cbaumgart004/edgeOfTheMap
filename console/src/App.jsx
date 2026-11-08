@@ -1471,6 +1471,17 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
           </details>
           <FieldList fields={type.fields.filter((f) => f.kind === 'blocks')} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />
         </>
+      ) : type.sections?.length ? (
+        // A long settings form: each heading folds its fields, all closed, so
+        // the list is one screen of headings (schema `sections`; data stays flat).
+        [...type.sections, { label: 'More', fields: type.fields.map((f) => f.name).filter((n) => !type.sections.some((x) => x.fields.includes(n))) }]
+          .filter((x) => x.fields.length)
+          .map((x) => (
+            <details key={x.label} className="eotm-group is-fold eotm-section-fold">
+              <summary>{x.label}</summary>
+              <FieldList fields={type.fields.filter((f) => x.fields.includes(f.name))} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />
+            </details>
+          ))
       ) : <FieldList fields={type.fields} value={doc.data} onChange={change} ctx={ctx} at={`types.${doc.type}`} />}
       {/* The document's own elements (a library entry's), added in Arrange. */}
       {!only && doc.data?._elements?.length > 0 && (
