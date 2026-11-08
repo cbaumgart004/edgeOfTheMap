@@ -364,17 +364,19 @@ export function createHandler(deps) {
         return json(200, docs, { ...headers, 'cache-control': 'public, max-age=30, stale-while-revalidate=300' })
       }
 
-      // A page view from the loader's beacon (api/traffic.js). Only from one of
+      // A page view or outbound link click from the loader's beacon (api/traffic.js). Only from one of
       // the site's own addresses, which the origin check above has confirmed.
       // Never fails the page: a problem is logged and the view goes uncounted.
-      if (method === 'POST' && rest === '/hit') {
+      if (method === 'POST' && (rest === '/hit' || rest === '/click')) {
         if (origin) {
           try {
             const h = event.headers ?? {}
             const ip = String(h['x-forwarded-for'] ?? '').split(',')[0].trim() || event.requestContext?.http?.sourceIp || 'unknown'
-            await traffic.record(site, parseBody(event), { ip, userAgent: h['user-agent'] ?? event.requestContext?.http?.userAgent })
+            const who = { ip, userAgent: h['user-agent'] ?? event.requestContext?.http?.userAgent }
+            if (rest === '/click') await traffic.recordClick(site, parseBody(event), who)
+            else await traffic.record(site, parseBody(event), who)
           } catch (err) {
-            console.warn('[console-api] page view not counted', err?.message)
+            console.warn(`[console-api] ${rest === '/click' ? 'link click' : 'page view'} not counted`, err?.message)
           }
         }
         return { statusCode: 204, headers: { ...headers, 'cache-control': 'no-store' }, body: '' }

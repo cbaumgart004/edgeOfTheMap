@@ -55,7 +55,7 @@ function setup({ member = true, operator = false, site = SITE, media, monitors, 
         if (sql.includes('FROM sites')) return { rows: [site] }
         if (sql.includes('FROM site_members')) return { rows: member ? [{ role: 'owner' }] : [] }
         if (sql.includes('FROM operators')) return { rows: operator ? [{}] : [] }
-        if (sql.includes('FROM traffic_hits')) return { rows: [] }
+        if (sql.includes('FROM traffic_hits') || sql.includes('FROM traffic_clicks')) return { rows: [] }
         throw new Error(sql)
       },
     },

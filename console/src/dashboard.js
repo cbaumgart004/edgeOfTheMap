@@ -800,10 +800,13 @@ async function loadTraffic(box, days = Number(box.dataset.days) || 30) {
     body.innerHTML = `<div class="periods" role="group" aria-label="Period">${[7, 30, 90].map((d) => `<button type="button" class="link${d === days ? ' is-on' : ''}" data-days="${d}" aria-pressed="${d === days}">${d} days</button>`).join('')}</div>
       <div class="figures"><div><strong>${num(t.visitors)}</strong><span class="meta">visitors</span></div><div><strong>${num(t.views)}</strong><span class="meta">page views</span></div></div>
       <svg class="traffic-chart" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="Page views and visitors per day, last ${days} days">${bars}</svg>
-      <p class="meta legend"><span class="key views"></span>page views <span class="key visitors"></span>visitors · counted without cookies; your own visits while signed in are left out</p>
+      <p class="meta legend"><span class="key views"></span>page views <span class="key visitors"></span>visitors · counted without cookies; visits and clicks from any browser that has signed in here are left out</p>
       ${list('Top pages', t.pages, 'path', 'No visits yet.')}
       ${list('Came from', t.referrers, 'referrer', 'No other sites yet: visitors typed the address or used a bookmark.')}
-      ${list('Devices', t.devices, 'device', 'No visits yet.')}`
+      ${list('Devices', t.devices, 'device', 'No visits yet.')}
+      <h3>Booking and outside links</h3><ul>${(t.clicks ?? []).length
+        ? t.clicks.map((c) => `<li><span>${esc(c.label || c.target)}<br><span class="meta">${esc(c.target)}</span></span><span class="meta">${num(c.clicks)} click${c.clicks === 1 ? '' : 's'}, ${num(c.visitors)} visitor${c.visitors === 1 ? '' : 's'}</span></li>`).join('')
+        : '<li class="meta">No clicks yet.</li>'}</ul>`
   } catch (err) {
     body.innerHTML = `<p class="meta">Could not load this: ${esc(err.message)}</p>`
   }

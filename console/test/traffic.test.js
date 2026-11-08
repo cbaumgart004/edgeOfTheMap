@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { createTraffic, referrerOf, cleanPath, deviceOf } from '../api/traffic.js'
+import { createTraffic, referrerOf, cleanPath, deviceOf, targetOf } from '../api/traffic.js'
 
 // A control project that keeps salts and hits in arrays and answers the report
 // queries from them, enough to check what traffic.js counts.
 function world(day = '2026-10-12T15:00:00Z') {
   const salts = new Map()
   const hits = []
+  const clicks = []
   const control = {
     async query(sql, p = []) {
       if (sql.startsWith('SELECT salt')) return { rows: salts.has(p[0]) ? [{ salt: salts.get(p[0]) }] : [] }
@@ -15,6 +16,16 @@ function world(day = '2026-10-12T15:00:00Z') {
         const [site_id, d, path, referrer, device, visitor] = p
         hits.push({ site_id, day: d, path, referrer, device, visitor })
         return { rows: [] }
+      }
+      if (sql.startsWith('INSERT INTO traffic_clicks')) {
+        const [site_id, d, path, target, label, visitor] = p
+        clicks.push({ site_id, day: d, path, target, label, visitor })
+        return { rows: [] }
+      }
+      if (sql.includes('FROM traffic_clicks')) {
+        const mineC = clicks.filter((c) => c.site_id === p[0] && c.day >= p[1])
+        return { rows: [...new Set(mineC.map((c) => c.target))].map((target) => { const g = mineC.filter((c) => c.target === target)
+          return { target, label: g[0].label, clicks: g.length, visitors: new Set(g.map((c) => c.visitor)).size } }).sort((a, b) => b.clicks - a.clicks) }
       }
       const mine = hits.filter((h) => h.site_id === p[0] && h.day >= p[1])
       const count = (key) => Object.entries(mine.reduce((m, h) => (h[key] == null ? m : { ...m, [h[key]]: (m[h[key]] ?? 0) + 1 }), {}))
@@ -29,7 +40,7 @@ function world(day = '2026-10-12T15:00:00Z') {
       throw new Error(`unexpected SQL: ${sql}`)
     },
   }
-  return { traffic: createTraffic({ control, now: () => new Date(day) }), hits, salts }
+  return { traffic: createTraffic({ control, now: () => new Date(day) }), hits, clicks, salts }
 }
 const site = { id: 's-1', slug: 'storyshaped', allowed_origins: ['https://storyshapedstudios.com', 'https://preview.storyshapedstudios.com'] }
 const chrome = 'Mozilla/5.0 (Windows NT 10.0) Chrome/130'
@@ -70,5 +81,26 @@ describe('traffic', () => {
     expect(cleanPath('/library/#top')).toBe('/library')
     expect(cleanPath('javascript:alert(1)')).toBe('/')
     expect([deviceOf(375), deviceOf(800), deviceOf(1440), deviceOf(undefined)]).toEqual(['phone', 'tablet', 'desktop', 'desktop'])
+  })
+
+  it('counts clicks on booking and outside links by where they went', async () => {
+    const { traffic, clicks } = world()
+    const ot = 'https://spiritseedswellnessmelissacarey.offeringtree.com/offerings/book?offering=abc&utm=x'
+    await traffic.recordClick(site, { path: '/services/', target: ot, label: '  Massage:\n Book ' }, { ip: '1.2.3.4', userAgent: chrome })
+    await traffic.recordClick(site, { path: '/services', target: ot, label: 'Massage: Book' }, { ip: '1.2.3.4', userAgent: chrome })
+    await traffic.recordClick(site, { path: '/', target: 'mailto:m@example.com?subject=Hi', label: 'Email' }, { ip: '5.6.7.8', userAgent: chrome })
+    expect(await traffic.recordClick(site, { path: '/', target: 'javascript:alert(1)' }, { ip: '5.6.7.8', userAgent: chrome })).toBe(false)
+    expect(await traffic.recordClick(site, { path: '/', target: ot }, { ip: '9.9.9.9', userAgent: 'Googlebot/2.1' })).toBe(false)
+    expect(clicks.map((c) => c.label)).toEqual(['Massage: Book', 'Massage: Book', 'Email'])
+    const r = await traffic.report(site, 7)
+    expect(r.clicks[0]).toEqual({ target: 'spiritseedswellnessmelissacarey.offeringtree.com/offerings/book?offering=abc', label: 'Massage: Book', clicks: 2, visitors: 1 })
+    expect(r.clicks[1].target).toBe('mailto:m@example.com')
+  })
+
+  it('reads a link target', () => {
+    expect(targetOf('https://www.curayogacenter.com/schedule/')).toBe('curayogacenter.com/schedule')
+    expect(targetOf('tel:+15551234')).toBe('tel:+15551234')
+    expect(targetOf('ftp://x')).toBe(null)
+    expect(targetOf('nonsense')).toBe(null)
   })
 })

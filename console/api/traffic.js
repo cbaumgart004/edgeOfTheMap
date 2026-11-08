@@ -35,6 +35,22 @@ export function cleanPath(raw) {
   return p.startsWith('/') ? p.replace(/(.)\/+$/, '$1') : '/'
 }
 
+// Where an outbound link went, short enough to group on: host and path for a
+// web address (a booking page's ?offering= is kept, it names the offering),
+// the scheme and address for mail and phone links.
+export function targetOf(raw) {
+  const t = String(raw ?? '').trim()
+  if (/^(mailto|tel):/i.test(t)) return t.split('?')[0].slice(0, 200)
+  try {
+    const u = new URL(t)
+    if (!/^https?:$/.test(u.protocol)) return null
+    const offering = u.searchParams.get('offering')
+    return (u.host.replace(/^www\./, '') + u.pathname.replace(/\/+$/, '') + (offering ? `?offering=${offering}` : '')).slice(0, 300)
+  } catch {
+    return null
+  }
+}
+
 export function createTraffic({ control, now = () => new Date() }) {
   const q = (sql, params) => control.query(sql, params)
   const salts = new Map() // day -> salt, per warm container
@@ -58,9 +74,24 @@ export function createTraffic({ control, now = () => new Date() }) {
   async function record(site, { path, referrer, width }, { ip, userAgent }) {
     if (!userAgent || BOTS.test(userAgent)) return false
     const day = now().toISOString().slice(0, 10)
-    const visitor = createHash('sha256').update(await saltFor(day)).update(`${site.slug}|${ip}|${userAgent}`).digest('hex').slice(0, 16)
+    const visitor = await visitorOf(site, day, { ip, userAgent })
     await q(`INSERT INTO traffic_hits (site_id, day, path, referrer, device, visitor) VALUES ($1, $2, $3, $4, $5, $6)`,
       [site.id, day, cleanPath(path), referrerOf(referrer, site.allowed_origins), deviceOf(width), visitor])
+    return true
+  }
+
+  async function visitorOf(site, day, { ip, userAgent }) {
+    return createHash('sha256').update(await saltFor(day)).update(`${site.slug}|${ip}|${userAgent}`).digest('hex').slice(0, 16)
+  }
+
+  // One click on a link out of the site. Returns false when not counted.
+  async function recordClick(site, { path, target, label }, who) {
+    if (!who.userAgent || BOTS.test(who.userAgent)) return false
+    const to = targetOf(target)
+    if (!to) return false
+    const day = now().toISOString().slice(0, 10)
+    await q(`INSERT INTO traffic_clicks (site_id, day, path, target, label, visitor) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [site.id, day, cleanPath(path), to, String(label ?? '').replace(/\s+/g, ' ').trim().slice(0, 160) || null, await visitorOf(site, day, who)])
     return true
   }
 
@@ -70,13 +101,15 @@ export function createTraffic({ control, now = () => new Date() }) {
     const since = new Date(now().getTime() - (n - 1) * 86_400_000).toISOString().slice(0, 10)
     const args = [site.id, since]
     const where = 'site_id = $1 AND day >= $2'
-    const [daily, pages, referrers, devices] = await Promise.all([
+    const [daily, pages, referrers, devices, clicks] = await Promise.all([
       q(`SELECT day::text AS day, count(*)::int AS views, count(DISTINCT visitor)::int AS visitors
          FROM traffic_hits WHERE ${where} GROUP BY day ORDER BY day`, args),
       q(`SELECT path, count(*)::int AS views FROM traffic_hits WHERE ${where} GROUP BY path ORDER BY views DESC, path LIMIT 10`, args),
       q(`SELECT referrer, count(*)::int AS views FROM traffic_hits WHERE ${where} AND referrer IS NOT NULL
          GROUP BY referrer ORDER BY views DESC, referrer LIMIT 10`, args),
       q(`SELECT device, count(*)::int AS views FROM traffic_hits WHERE ${where} GROUP BY device ORDER BY views DESC`, args),
+      q(`SELECT target, max(label) AS label, count(*)::int AS clicks, count(DISTINCT visitor)::int AS visitors
+         FROM traffic_clicks WHERE ${where} GROUP BY target ORDER BY clicks DESC, target LIMIT 20`, args),
     ])
     // Every day in the range, a quiet one as zero, so the chart has no gaps.
     const byDay = new Map(daily.rows.map((r) => [r.day, r]))
@@ -92,8 +125,9 @@ export function createTraffic({ control, now = () => new Date() }) {
       pages: pages.rows,
       referrers: referrers.rows,
       devices: devices.rows,
+      clicks: clicks.rows,
     }
   }
 
-  return { record, report }
+  return { record, recordClick, report }
 }

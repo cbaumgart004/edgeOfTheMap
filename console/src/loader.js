@@ -211,9 +211,20 @@ addEventListener('keydown', (e) => {
 // Visitors (api/traffic.js): one beacon per page view, including a client
 // router's pushState, with nothing kept in the browser. The owner's own visits
 // (signed in, or editing) are not counted, nor the demo's.
+// A browser that has ever been signed in to this site is a member's (the
+// owner's phone, the keeper's laptop): it stays uncounted after signing out.
+const OWNER = () => `eotm:owner:${cfg.site}`
+function ownDevice() {
+  try {
+    if (signedIn()) localStorage.setItem(OWNER(), '1')
+    return localStorage.getItem(OWNER()) === '1'
+  } catch { return signedIn() }
+}
+const uncounted = () => cfg.local || !cfg.site || ownDevice() || bridge.editing || !navigator.sendBeacon
+
 let lastPath = null
 function pageView() {
-  if (cfg.local || !cfg.site || signedIn() || bridge.editing || !navigator.sendBeacon) return
+  if (uncounted()) return
   if (location.pathname === lastPath) return
   const first = lastPath === null
   lastPath = location.pathname
@@ -223,6 +234,25 @@ function pageView() {
     }))
   } catch { /* never in the visitor's way */ }
 }
+
+// Clicks on links that leave the site (booking pages, class schedules, mail
+// and phone), with the link's words and the heading it sat under, so the admin
+// page can say which Book button was used. Same exclusions as page views.
+addEventListener('click', (e) => {
+  const a = e.target?.closest?.('a[href]')
+  if (!a || e.target.closest('.eotm-root') || uncounted()) return
+  let out = /^(mailto|tel):/i.test(a.getAttribute('href'))
+  if (!out) { try { const u = new URL(a.href); out = /^https?:$/.test(u.protocol) && u.host !== location.host } catch { /* not a link */ } }
+  if (!out) return
+  const box = a.closest('article, li, section, .card, [data-eotm-item]')
+  const heading = box?.querySelector('h1, h2, h3, h4')?.textContent?.trim()
+  const words = (a.textContent || a.getAttribute('aria-label') || '').trim()
+  try {
+    navigator.sendBeacon(`${cfg.apiBase}/api/sites/${cfg.site}/click`, JSON.stringify({
+      path: location.pathname, target: a.href, label: heading && heading !== words ? `${heading}: ${words}` : words,
+    }))
+  } catch { /* never in the visitor's way */ }
+}, { capture: true })
 
 // Search and sharing (schema.js, SEO_FIELD): each published page's title,
 // description, share image and noindex, fetched once per visit and put in the
