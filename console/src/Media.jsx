@@ -15,6 +15,9 @@ import { RemoveButton } from './Fields.jsx'
 //   A file: renamed, moved to a folder, its address copied, or deleted. Its
 //   address never changes, so a page using it keeps it; deleting one a page
 //   still uses is refused, naming the page.
+//   Unused: a file on no page is marked "Not on the site" (one only in an
+//   unpublished draft, "Only in a draft"), and the "Not on the site" button
+//   lists just those, from every folder, to clear out.
 
 const AT_ONCE = 3
 const VIDEO = ['video/mp4', 'video/webm', 'video/quicktime']
@@ -32,6 +35,7 @@ export default function Media({ store, notify }) {
   const [picked, setPicked] = useState(() => new Set())
   const [over, setOver] = useState(false)
   const [naming, setNaming] = useState(null) // { from: null (new) or a folder path, value }
+  const [unused, setUnused] = useState(false) // only files on no page, from every folder
   const input = useRef(null)
 
   const load = useCallback(async () => {
@@ -74,7 +78,8 @@ export default function Media({ store, notify }) {
     load()
   }
 
-  const items = useMemo(() => (lib?.items ?? []).filter((i) => i.folder === here), [lib, here])
+  const items = useMemo(() => (lib?.items ?? []).filter((i) => (unused ? i.use === 'none' : i.folder === here)), [lib, here, unused])
+  const unusedCount = (lib?.items ?? []).filter((i) => i.use === 'none').length
   const subfolders = useMemo(() => (lib?.folders ?? []).filter((f) => parentOf(f) === here), [lib, here])
   const counts = useMemo(() => {
     const c = {}
@@ -117,10 +122,14 @@ export default function Media({ store, notify }) {
           onChange={(e) => { upload(e.target.files); e.target.value = '' }} />
         <button type="button" className="eotm-btn" onClick={() => setNaming({ from: null, value: '' })}>New folder</button>
         <span className="eotm-class-count">{lib.items.length} files · {size(lib.bytes) || '0 KB'}</span>
+        {(unusedCount > 0 || unused) && (
+          <button type="button" className={`eotm-btn is-quiet${unused ? ' is-on' : ''}`} aria-pressed={unused} onClick={() => { setUnused(!unused); setPicked(new Set()) }}
+            title="Files on no page of the site, draft or live. Safe to delete.">Not on the site ({unusedCount})</button>
+        )}
       </div>
 
       <nav className="eotm-media-crumbs" aria-label="Folder">
-        <button type="button" className={here ? '' : 'is-on'} onClick={() => setHere('')}>All media</button>
+        <button type="button" className={here || unused ? '' : 'is-on'} onClick={() => { setHere(''); setUnused(false) }}>All media</button>
         {crumbs.map((c) => <React.Fragment key={c}><span aria-hidden="true">/</span><button type="button" className={c === here ? 'is-on' : ''} onClick={() => setHere(c)}>{leaf(c)}</button></React.Fragment>)}
       </nav>
 
@@ -146,7 +155,7 @@ export default function Media({ store, notify }) {
         </ul>
       )}
 
-      {subfolders.length > 0 && (
+      {!unused && subfolders.length > 0 && (
         <ul className="eotm-media-folders">
           {subfolders.map((f) => (
             <li key={f}>
@@ -177,7 +186,7 @@ export default function Media({ store, notify }) {
               onRemove={() => removeMany([i.id])} notify={notify} />
           ))}
         </ul>
-      ) : <p className="eotm-empty">{here ? 'Nothing in this folder yet. Drop photos here to add them.' : 'Nothing here yet. Drop photos here to add them.'}</p>}
+      ) : <p className="eotm-empty">{unused ? 'Every file is on a page.' : here ? 'Nothing in this folder yet. Drop photos here to add them.' : 'Nothing here yet. Drop photos here to add them.'}</p>}
     </div>
   )
 }
@@ -209,6 +218,8 @@ function MediaItem({ item, folders, picked, onPick, onRename, onMove, onRemove, 
       <input className="eotm-input eotm-media-name" aria-label="Name" value={name} maxLength={120}
         onChange={(e) => setName(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { setName(item.name); e.currentTarget.blur() } }} />
       <span className="eotm-class-count">{[item.width && `${item.width}×${item.height}`, size(item.bytes)].filter(Boolean).join(' · ')}</span>
+      {item.use === 'none' && <span className="eotm-media-use is-none" title="On no page, draft or live. Safe to delete.">Not on the site</span>}
+      {item.use === 'draft' && <span className="eotm-media-use" title="Only in edits not yet published.">Only in a draft</span>}
       <div className="eotm-row">
         <MoveTo folders={folders} here={item.folder} onMove={onMove} />
         <button type="button" className="eotm-icon" aria-label="Copy address" title="Copy address" onClick={copy}>⧉</button>

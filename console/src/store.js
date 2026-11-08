@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createMemoryRepo } from '../core/repo-memory.js'
-import { createMedia, createMemoryMediaRepo, usesIn } from '../core/media.js'
+import { createMedia, createMemoryMediaRepo, usesIn, usageIn } from '../core/media.js'
 import { sanitizeDocumentData } from './richtext.js'
 import { checkCustom, mergeCustom } from '../schema/custom.js'
 
@@ -92,6 +92,7 @@ export function localStore({ schema: base, key = `eotm:local:${base.site}` }) {
       persist: (v) => { try { localStorage.setItem(mediaKey, JSON.stringify(v)) } catch { /* private mode or full: memory only */ } },
     }),
     uses: async (src) => usesIn((await Promise.all(Object.keys(current.types).map((t) => repo.list(t)))).flat(), src),
+    usage: async () => usageIn((await Promise.all(Object.keys(current.types).map((t) => repo.list(t)))).flat()),
   })
   const wrap = (fn) => async (...args) => {
     try {

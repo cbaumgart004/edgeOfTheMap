@@ -274,10 +274,10 @@ describe('console API', () => {
     expect((await get('preview.spiritseedswellness.com')).body).toBe('User-agent: *\nDisallow: /\n')
   })
 
-  it('signs an upload into the site bucket and refuses other file types', async () => {
+  it('signs an upload into the site bucket, under pageAssets/, and refuses other file types', async () => {
     const { call } = setup()
     const ok = await call('POST', `${base}/uploads`, { body: { contentType: 'image/webp', bytes: 20000 } })
-    expect(ok.json.src).toMatch(/^https:\/\/media\.example\/uploads\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/)
+    expect(ok.json.src).toMatch(/^https:\/\/media\.example\/pageAssets\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/)
     expect((await call('POST', `${base}/uploads`, { body: { contentType: 'text/html', bytes: 10 } })).statusCode).toBe(415)
   })
 

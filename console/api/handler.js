@@ -9,7 +9,7 @@
 
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
-import { createPgMediaRepo, pgUses } from './media-pg.js'
+import { createPgMediaRepo, pgUses, pgUsage } from './media-pg.js'
 import { createMedia } from '../core/media.js'
 import { checkSchema, defaultData, withSeo, publishedPages, TRAINING_CRAWLERS } from '../schema/schema.js'
 import { createManage } from './manage.js'
@@ -574,7 +574,8 @@ ${pushed}`, page: body.page })
       if (method === 'POST' && rest === '/documents') return json(201, await svc.create(body, user), headers)
 
       if (method === 'POST' && rest === '/uploads') {
-        // The shared bucket, each site in its own folder, unless the site has a bucket of its own.
+        // The shared bucket, each site in its own folder (sites/<slug>/uploads/), unless the
+        // site has a bucket of its own: there every file goes under pageAssets/.
         const own = Boolean(site.media_bucket)
         const bucket = own ? site.media_bucket : deps.media?.bucket
         const baseUrl = own ? site.media_base_url : deps.media?.baseUrl
@@ -585,7 +586,7 @@ ${pushed}`, page: body.page })
         if (!(body.bytes > 0 && body.bytes <= (video ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES))) {
           return json(413, { error: video ? 'Video is too large (200 MB at most).' : 'Photo is too large (3 MB at most). Upload it through the editor, which shrinks it first.' }, headers)
         }
-        const key = `${own ? '' : `sites/${site.slug}/`}uploads/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
+        const key = `${own ? 'pageAssets' : `sites/${site.slug}/uploads`}/${new Date().toISOString().slice(0, 7)}/${globalThis.crypto.randomUUID()}.${ext}`
         const uploadUrl = await deps.presign({ bucket, key, contentType: body.contentType, bytes: body.bytes })
         return json(200, { uploadUrl, key, src: `${baseUrl.replace(/\/$/, '')}/${key}` }, headers)
       }
@@ -593,15 +594,16 @@ ${pushed}`, page: body.page })
       // The media library (core/media.js): what was uploaded, named and in folders.
       if (rest === '/media' || rest.startsWith('/media/')) {
         const db = await deps.siteDb(site)
-        const media = createMedia({ repo: createPgMediaRepo(db), uses: (src) => pgUses(db, src) })
+        const media = createMedia({ repo: createPgMediaRepo(db), uses: (src) => pgUses(db, src), usage: () => pgUsage(db) })
         const own = Boolean(site.media_bucket)
         const bucket = own ? site.media_bucket : deps.media?.bucket
         const baseUrl = String((own ? site.media_base_url : deps.media?.baseUrl) ?? '').replace(/\/$/, '')
         if (method === 'GET' && rest === '/media') return json(200, await media.list(), headers)
         if (method === 'POST' && rest === '/media') {
           // Only this site's own uploads: an address elsewhere is not its file to keep or delete.
-          const prefix = `${baseUrl}/${own ? '' : `sites/${site.slug}/`}uploads/`
-          if (!baseUrl || !String(body.src ?? '').startsWith(prefix)) throw new ServiceError(400, 'Only files uploaded to this site go in its library.')
+          // An own bucket keeps them under pageAssets/ (uploads/ before 1.29).
+          const prefixes = own ? [`${baseUrl}/pageAssets/`, `${baseUrl}/uploads/`] : [`${baseUrl}/sites/${site.slug}/uploads/`]
+          if (!baseUrl || !prefixes.some((p) => String(body.src ?? '').startsWith(p))) throw new ServiceError(400, 'Only files uploaded to this site go in its library.')
           const key = String(body.src).slice(baseUrl.length + 1)
           return json(201, await media.add({ ...body, key }, user), headers)
         }

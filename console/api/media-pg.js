@@ -57,6 +57,14 @@ export function createPgMediaRepo(db) {
   }
 }
 
+// Every document's live data and draft data as text, for marking which files
+// the site shows (core/media.js, list).
+export async function pgUsage(db) {
+  const { rows } = await db.query(
+    `SELECT coalesce(string_agg(published_data::text, ' '), '') AS live, coalesce(string_agg(data::text, ' '), '') AS draft FROM documents`)
+  return { live: rows[0]?.live ?? '', draft: rows[0]?.draft ?? '' }
+}
+
 // Documents whose draft or live data names `src`.
 export async function pgUses(db, src) {
   const { rows } = await db.query(

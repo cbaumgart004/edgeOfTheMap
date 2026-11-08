@@ -16,6 +16,9 @@
 //   listFolders() -> [path]; insertFolder(path); removeFolder(path)
 //   renameFolder(from, to): the folder, its subfolders and every file in them
 // uses(src) -> [{ id, type, slug, title }] documents whose draft or live data names src
+// usage() -> { live, draft }: every document's live and draft data as text (optional).
+//   With it, list() marks each file `use`: 'live' (the site shows it), 'draft'
+//   (only in unpublished edits) or 'none' (on no page, so safe to delete).
 
 import { ServiceError } from './service.js'
 import { newId } from '../schema/schema.js'
@@ -48,9 +51,10 @@ const inFolder = (folder, path) => folder === path || folder.startsWith(`${path}
 const ancestors = (path) => path.split('/').map((_, i, all) => all.slice(0, i + 1).join('/'))
 const num = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : null)
 
-export function createMedia({ repo, uses, now = () => new Date().toISOString() }) {
+export function createMedia({ repo, uses, usage, now = () => new Date().toISOString() }) {
   async function list() {
-    const [items, named] = await Promise.all([repo.listItems(), repo.listFolders()])
+    const [items, named, text] = await Promise.all([repo.listItems(), repo.listFolders(), usage?.()])
+    if (text) for (const i of items) i.use = text.live.includes(i.src) ? 'live' : text.draft.includes(i.src) ? 'draft' : 'none'
     const folders = new Set()
     for (const p of [...named, ...items.map((i) => i.folder)]) if (p) ancestors(p).forEach((a) => folders.add(a))
     const bytes = items.reduce((n, i) => n + (i.bytes ?? 0), 0)
@@ -154,6 +158,11 @@ export function createMemoryMediaRepo({ load = () => null, persist = () => {} } 
       commit()
     },
   }
+}
+
+// usage() from a list of documents (local mode).
+export function usageIn(docs) {
+  return { live: docs.map((d) => JSON.stringify(d.publishedData ?? null)).join(' '), draft: docs.map((d) => JSON.stringify(d.data ?? null)).join(' ') }
 }
 
 // Documents naming `src` in their draft or live data, from a list of them.

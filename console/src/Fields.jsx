@@ -321,8 +321,69 @@ async function sitePhotos(ctx) {
     ...[...srcs].filter((s) => !have.has(s) && !/\.(mp4|webm|mov)(\?|$)/i.test(s)).map((src) => ({ src, name: '', folder: null }))]
 }
 
+// The library folder a photo field uploads into. One choice for every field,
+// so a run of uploads (on a phone, one field after another) lands together.
+let uploadInto = ''
+// The library's folders, fetched once for every photo field on the screen.
+const folderLists = new WeakMap()
+function libraryFolders(store, fresh = false) {
+  const kept = folderLists.get(store)
+  if (kept && !fresh && Date.now() - kept.at < 30000) return kept.list
+  const list = store.media.list().then((l) => l.folders ?? []).catch(() => [])
+  folderLists.set(store, { at: Date.now(), list })
+  return list
+}
+
+// "Into: <folder>" under Add photo, with New folder… to make one on the spot.
+function UploadInto({ ctx, value, onChange }) {
+  const [folders, setFolders] = useState(null)
+  const [naming, setNaming] = useState(null)
+  const store = ctx.store
+  useEffect(() => {
+    if (!store?.media) return undefined
+    let on = true
+    libraryFolders(store).then((f) => { if (on) setFolders(f) })
+    return () => { on = false }
+  }, [store])
+  if (!store?.media) return null
+  const make = async () => {
+    const name = (naming ?? '').trim()
+    if (!name) return setNaming(null)
+    if (name.includes('/')) return ctx.notify('A folder name cannot hold "/".')
+    try {
+      const path = await store.media.addFolder(name)
+      setFolders(await libraryFolders(store, true))
+      onChange(path)
+      setNaming(null)
+    } catch (e) { ctx.notify(e.message) }
+  }
+  if (naming != null) {
+    return (
+      <div className="eotm-into">
+        <input className="eotm-input" autoFocus aria-label="New folder name" maxLength={60} placeholder="Folder name" value={naming}
+          onChange={(e) => setNaming(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); make() } if (e.key === 'Escape') setNaming(null) }} />
+        <button type="button" className="eotm-btn is-primary" onClick={make}>Make folder</button>
+        <button type="button" className="eotm-btn is-quiet" onClick={() => setNaming(null)}>Cancel</button>
+      </div>
+    )
+  }
+  const list = [...new Set([...(folders ?? []), ...(value ? [value] : [])])].sort()
+  return (
+    <div className="eotm-into">
+      <select className="eotm-input" aria-label="Upload into folder" value={value}
+        onChange={(e) => (e.target.value === '~new' ? setNaming('') : onChange(e.target.value))}>
+        <option value="">Into: Media (top)</option>
+        {list.map((f) => <option key={f} value={f}>Into: {f.replaceAll('/', ' / ')}</option>)}
+        <option value="~new">New folder…</option>
+      </select>
+    </div>
+  )
+}
+
 function ImageField({ id, field, value, onChange, ctx }) {
   const [busy, setBusy] = useState(false)
+  const [into, setIntoState] = useState(uploadInto)
+  const setInto = (f) => { uploadInto = f; setIntoState(f) }
   const [library, setLibrary] = useState(null) // null closed, [] loading or empty
   const [folder, setFolder] = useState('*') // '*' every photo; '' top of the library; null on pages only
   // The file just uploaded, kept so "Sharper" can send it again at full size
@@ -333,7 +394,7 @@ function ImageField({ id, field, value, onChange, ctx }) {
     if (!file) return
     setBusy(true)
     try {
-      const photo = await uploadPhoto(file, ctx, limit)
+      const photo = await uploadPhoto(file, ctx, limit, into)
       // Keep what the owner set on the photo (alt text, turn, fade) when only the file changes.
       onChange(limit === 'full' && value ? { ...value, ...photo, alt: value.alt ?? '' } : photo)
       setLast({ file, src: photo.src, limit })
@@ -361,6 +422,7 @@ function ImageField({ id, field, value, onChange, ctx }) {
             title="Uploads this photo again at up to 3200 px. Use it when the preview looks soft.">Sharper (larger file)</button>
         )}
       </div>
+      <UploadInto ctx={ctx} value={into} onChange={setInto} />
       {library && (
         <div className="eotm-library">
           {library.some((p) => p.folder) && (

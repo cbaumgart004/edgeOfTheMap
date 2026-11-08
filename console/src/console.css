@@ -702,6 +702,10 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 .eotm-root .eotm-media-check { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; background: rgba(255,255,255,.85); color: #000; border: 1px solid rgba(0,0,0,.3); }
 .eotm-root .eotm-media-item.is-picked .eotm-media-check { background: var(--eotm-accent); color: #fff; }
 .eotm-root .eotm-media-name { font-size: 13px; min-width: 0; }
+.eotm-root .eotm-media-use { justify-self: start; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--eotm-line); color: var(--eotm-ink); }
+.eotm-root .eotm-media-use.is-none { border-color: #b3261e; color: #b3261e; }
+.eotm-root .eotm-into { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.eotm-root .eotm-into select, .eotm-root .eotm-into .eotm-input { flex: 1 1 160px; min-width: 0; margin-top: 0; }
 .eotm-root .eotm-media-move { min-width: 0; flex: 1; font-size: 13px; }
 .eotm-root .eotm-media-bulk { position: sticky; top: 0; z-index: 1; padding: 8px; border-radius: 8px; background: var(--eotm-surface); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 

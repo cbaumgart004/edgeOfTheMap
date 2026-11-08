@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createMedia, createMemoryMediaRepo, cleanFolder, nameFromFile, usesIn } from '../core/media.js'
+import { createMedia, createMemoryMediaRepo, cleanFolder, nameFromFile, usesIn, usageIn } from '../core/media.js'
 
 const make = (used = []) => createMedia({ repo: createMemoryMediaRepo(), uses: async (src) => used.filter((u) => u.src === src) })
 
@@ -51,6 +51,14 @@ describe('media library', () => {
     await expect(m.removeFolder('Gatherings')).rejects.toMatchObject({ status: 409 })
     await m.removeFolder('Gatherings/Empty')
     expect((await m.list()).folders).not.toContain('Gatherings/Empty')
+  })
+
+  it('marks each file live, draft only, or on no page when given usage', async () => {
+    const docs = [{ data: { a: 's1', b: 's2' }, publishedData: { a: 's1' } }]
+    const m = createMedia({ repo: createMemoryMediaRepo(), uses: async () => [], usage: async () => usageIn(docs) })
+    for (const src of ['s1', 's2', 's3']) await m.add({ src, name: src })
+    expect(Object.fromEntries((await m.list()).items.map((i) => [i.src, i.use]))).toEqual({ s1: 'live', s2: 'draft', s3: 'none' })
+    expect((await make().list()).items).toEqual([])
   })
 
   it('finds uses in draft or live data', () => {
