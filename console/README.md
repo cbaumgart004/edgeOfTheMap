@@ -26,7 +26,13 @@ real site and sees each change on it as they type. Decisions: StoryShaped's
   as recorded (200 MB at most). Files are renamed and moved in the record only, so a page's address
   never changes. Deleting one a page uses is refused, naming the page; a folder is deleted once empty.
   Every upload from any field lands in the library under its file name, and "Site photos" in a photo
-  field lists the library by folder, then photos found on pages that predate it.
+  field lists the library by folder, then photos found on pages that predate it. From 1.29.0 a photo
+  field's "Into:" picker (`src/Fields.jsx`, `UploadInto`) chooses the folder an upload lands in, one
+  choice shared by every field, and "New folder…" makes one on the spot. The library marks each file
+  `use`: `live`, `draft` (only in an unpublished draft) or `none` (on no page), by matching its address
+  against every document's text (`pgUsage`, or `usageIn` in local mode); "Not on the site (N)" lists
+  the `none` files from every folder. A file the site's code loads directly, not through content, reads
+  as `none` too.
 - **Live preview on the page.** Every keystroke is pushed to the page through `window.EOTM`; the page
   re-renders from the draft before anything is saved. Autosave follows 800 ms after the last change.
   Draft and live are separate: nothing reaches visitors until Publish.
@@ -430,14 +436,15 @@ no login.
   missing, not denied). Unset, public reads query Neon as before.
 - **Photos:** one shared bucket, `MEDIA_BUCKET`, served through one CloudFront distribution at
   `MEDIA_BASE_URL`; each site uploads under `sites/<slug>/` (`api/handler.js`, `/uploads`). A site
-  whose `media_bucket` is set uses that instead, with no prefix. The bucket's CORS rule allows `PUT`
+  whose `media_bucket` is set uses that instead, under `pageAssets/<yyyy-mm>/` (`uploads/` before
+  1.29.0). The bucket's CORS rule allows `PUT`
   from any origin (`*`): the presigned URL is the permission, and CORS cannot restrict a non-browser
   client anyway, so a new site needs no CORS change. The editor scales photos to a 1600 px long
   edge, at most 600 KB; a `wide` field 2560 px, 1.2 MB; "Sharper" 3200 px, 2.5 MB (`src/images.js`,
   `LIMITS`; SCHEMA.md, `image`). `/uploads` refuses a photo over 3 MB (`MAX_UPLOAD_BYTES`), since
   nothing the editor sends is larger. The library is the site project's `media` and `media_folders`
   tables (site migration `002_media.sql`, `api/media-pg.js`); `POST /media` takes only addresses under
-  the site's own `uploads/`. Deleting a file deletes its object through `removeObject`, which needs
+  the site's own upload prefix (`pageAssets/` or `uploads/` in an own bucket). Deleting a file deletes its object through `removeObject`, which needs
   `s3:DeleteObject` on the photo buckets (**not granted yet, unverified**); without it the record goes,
   the object stays, a warning is logged, and the file is listed in control table `orphan_files`
   (migration `011`). Manage shows them under Usage, "Files left in storage": Remove retries the
