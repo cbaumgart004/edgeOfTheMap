@@ -558,6 +558,10 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 /* The one Publish, beside the click modes; its dialog lists what goes live. */
 .eotm-head > .eotm-publish { margin-inline-start: auto; }
 .eotm-publish-dialog .eotm-dev-list { max-height: 40vh; overflow: auto; }
+.eotm-review-title { margin: 0 0 6px; font-size: 18px; }
+.eotm-review-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--eotm-line); }
+.eotm-review-row > div:first-child { flex: 1 1 14rem; min-width: 0; }
+.eotm-review-row .eotm-row { flex: 0 0 auto; gap: 6px; }
 
 /* A photo with no description yet (Fields.jsx, AltText). */
 .eotm-input.is-needed {

@@ -55,9 +55,12 @@ describe('console in a page', () => {
     expect(saved.data.title).toBe('Full moon sound bath')
     expect(saved.version).toBe(2)
 
-    // Publishing is refused until the required fields are filled.
-    await act(async () => byText(host, 'button', 'Publish').click())
+    // Review changes lists it; its Publish is refused until the required fields are filled.
+    await act(async () => byText(host, 'button', 'Review changes').click())
     await tick(10)
+    const row = host.querySelector('.eotm-review-row')
+    expect(row.textContent).toContain('Full moon sound bath')
+    expect(byText(row, 'button', 'Publish').disabled).toBe(true)
     expect((await store.list('event'))[0].status).toBe('draft')
     expect(host.textContent).toMatch(/required/)
   })

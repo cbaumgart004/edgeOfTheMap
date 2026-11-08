@@ -27,7 +27,7 @@ async function mount(store, props = {}) {
   return host
 }
 
-it('asks Save, Discard or Cancel before the dashboard link leaves unpublished changes, Save first', async () => {
+it('asks Save, Review changes, Discard all or Cancel before the dashboard link leaves unpublished changes, Save first', async () => {
   localStorage.clear()
   phone = false
   const store = localStore({ schema })
@@ -41,7 +41,7 @@ it('asks Save, Discard or Cancel before the dashboard link leaves unpublished ch
   expect(click.defaultPrevented).toBe(true)
   const dialog = host.querySelector('[role="alertdialog"]')
   expect(dialog).toBeTruthy()
-  expect([...dialog.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Save', 'Discard', 'Cancel'])
+  expect([...dialog.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Save', 'Review changes', 'Discard all', 'Cancel'])
   expect(document.activeElement.textContent).toBe('Save')
   await act(async () => [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Cancel').click())
   expect(host.querySelector('[role="alertdialog"]')).toBeNull()
