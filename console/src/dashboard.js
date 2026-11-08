@@ -9,6 +9,14 @@ import { mountRunes, mountSigils } from './runes.js'
 
 const auth = neonAuth({ base: '/_edit/auth' })
 const $ = (sel) => document.querySelector(sel)
+// A login's one name (neon_auth "user".name, "First Last" from sign-up) as its
+// first name and the rest, for the First and Last columns.
+const splitName = (name) => {
+  const n = String(name ?? '').trim().replace(/\s+/g, ' ')
+  const i = n.indexOf(' ')
+  return i < 0 ? [n, ''] : [n.slice(0, i), n.slice(i + 1)]
+}
+const nameCells = (name) => splitName(name).map((p, i) => `<span class="m-${i ? 'last' : 'first'}">${esc(p || (i ? '' : '—'))}</span>`).join('')
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
 // Straight to the management page: take its wide layout before the first paint,
@@ -332,9 +340,9 @@ async function loadManage({ quiet = false, parts: given = null } = {}) {
         <div><button type="submit">Save</button></div>
       </form>
       ${s.members.length ? `<ul class="members">
-        <li class="member is-head" aria-hidden="true"><span>Name</span><span>Username (email)</span><span>Role</span><span></span></li>
+        <li class="member is-head" aria-hidden="true"><span>First name</span><span>Last name</span><span>Username (email)</span><span>Role</span><span></span></li>
         ${s.members.map((m) => `<li class="member">
-          <span class="m-name">${esc(m.name || '—')}</span>
+          ${nameCells(m.name)}
           <span class="m-email">${esc(m.email ?? m.user_id)}</span>
           <select data-role="${esc(m.user_id)}" aria-label="Role for ${esc(m.email ?? m.user_id)}">${['owner', 'editor'].map((r) => `<option value="${r}"${r === m.role ? ' selected' : ''}>${r === 'owner' ? 'Owner' : 'Editor'}</option>`).join('')}</select>
           <button type="button" class="link" data-remove="${esc(m.user_id)}">Remove</button>
@@ -351,7 +359,8 @@ async function loadManage({ quiet = false, parts: given = null } = {}) {
   for (const slug of openDetails) document.querySelector(`[data-slug="${CSS.escape(slug)}"] details.company`)?.setAttribute('open', '')
   $('#mu-site').innerHTML = '<option value="">No site yet</option>' + state.sites.map((s) => `<option value="${esc(s.slug)}">${esc(s.name)}</option>`).join('')
   $('#m-ops').innerHTML = state.operators.map((o) => `<li>${esc(o.email ?? o.user_id)}</li>`).join('')
-  $('#m-logins').innerHTML = state.logins.map((l) => `<li><span>${esc(l.email)}${l.name ? ` · ${esc(l.name)}` : ''}</span></li>`).join('')
+  $('#m-logins').innerHTML = (state.logins.length ? '<li class="member login is-head" aria-hidden="true"><span>First name</span><span>Last name</span><span>Username (email)</span></li>' : '')
+    + state.logins.map((l) => `<li class="member login">${nameCells(l.name)}<span class="m-email">${esc(l.email)}</span></li>`).join('')
   show('manage')
   // Requests are one part of the page: failing to load them (say, a migration
   // not yet run) must not hide the sites, versions and logins above.
