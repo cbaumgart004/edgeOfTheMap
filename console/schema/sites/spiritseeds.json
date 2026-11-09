@@ -286,6 +286,8 @@
         { "name": "count", "kind": "number", "label": "How many events", "integer": true, "min": 1, "max": 24, "help": "Blank: every event from today on, soonest first. Each comes from Events." },
         { "name": "emptyText", "kind": "text", "label": "With no events coming up", "default": "New events are on their way. Check back soon." },
         { "name": "showHomeButton", "kind": "boolean", "label": "Show Home button on each card", "default": true },
+        { "name": "cardLayout", "kind": "select", "label": "Cards on a computer", "default": "grid", "help": "Side by side: each card is the width of a card on any other page, its picture across the top and shown whole.", "options": [{ "value": "grid", "label": "Side by side, like cards on other pages" }, { "value": "row", "label": "One wide row each, a small picture beside the words" }] },
+        { "name": "phonePicture", "kind": "select", "label": "Picture on a phone", "default": "full", "options": [{ "value": "full", "label": "The width of the card" }, { "value": "small", "label": "Small" }] },
         { "name": "spacing", "kind": "select", "label": "Vertical spacing", "default": "normal", "options": [{ "value": "compact", "label": "Compact" }, { "value": "normal", "label": "Normal" }, { "value": "airy", "label": "Airy" }] }
       ]
     },
