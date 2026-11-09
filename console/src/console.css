@@ -498,6 +498,9 @@ form.eotm-add-field { display: grid; gap: 8px; justify-self: stretch; }
 /* Anything that moves says so: the move cursor over every part. The picked part
    is dragged, not scrolled, by a finger; the rest of the page still scrolls. */
 html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: default; }
+/* The docked panel's room (App.jsx, Sheet): the page lays out beside it.
+   Fixed bars are the site's to move, by right: var(--eotm-pane, 0px). */
+html.eotm-pane-docked { margin-right: var(--eotm-pane, 0px); }
 html.eotm-arrange-tools [data-eotm-part], html.eotm-arrange-tools [data-eotm-part] * { cursor: move; }
 html.eotm-arrange-tools [data-eotm-picked], html.eotm-arrange-tools [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; user-select: none; -webkit-user-select: none; }
 /* While a drag runs, its cursor holds wherever the pointer goes. */

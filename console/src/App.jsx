@@ -365,7 +365,27 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   }
   const floating = bar && pos
   const loose = !bar && panelPos
-  const height = !bar && panelH ? { height: clampH(panelH), ...(wide && !loose && panelTop != null ? { top: panelTop } : null) } : null
+  // Docked right, the panel takes its width from the page rather than lying
+  // over it: <html> gets eotm-pane-docked and --eotm-pane (its width), the page
+  // narrows by that much, and a site's fixed bars stop at it by reading the
+  // variable. Over the page, it hid the right of every section, and Arrange
+  // picked parts it then covered. Moved, minimised or closed, the page is whole.
+  const reserve = wide && !bar && !loose
+  useEffect(() => {
+    if (!reserve || !sheet.current) return undefined
+    const root = document.documentElement
+    const fit = () => { if (sheet.current) root.style.setProperty('--eotm-pane', `${Math.round(sheet.current.getBoundingClientRect().width)}px`) }
+    fit()
+    root.classList.add('eotm-pane-docked')
+    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null
+    watch?.observe(sheet.current)
+    return () => {
+      watch?.disconnect()
+      root.classList.remove('eotm-pane-docked')
+      root.style.removeProperty('--eotm-pane')
+    }
+  }, [reserve])
+  const height =!bar && panelH ? { height: clampH(panelH), ...(wide && !loose && panelTop != null ? { top: panelTop } : null) } : null
   const tabTop = tabY ?? pos?.y
   if (bar && !wide && tuck) return (
     <button type="button" className={`eotm-tab is-${tuck}`}

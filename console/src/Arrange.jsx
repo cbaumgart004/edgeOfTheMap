@@ -325,14 +325,26 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
     const card = at.closest(HOLDS)
     const f = at.closest('[data-eotm-field], [data-eotm-text], [data-eotm-richtext]')
     const item = (row && marked.contains(row) ? row.dataset.eotmIn : null) ?? (card && marked.contains(card) ? card.dataset.eotmHolds : null)
-    const field = f && marked.contains(f) ? (f.dataset.eotmField ?? f.dataset.eotmText ?? f.dataset.eotmRichtext ?? null) : null
+    // A field named for another document (data-eotm-from, below) is not this one's.
+    const field = f && marked.contains(f) && !f.hasAttribute('data-eotm-from') ? (f.dataset.eotmField ?? f.dataset.eotmText ?? f.dataset.eotmRichtext ?? null) : null
     return { ...targetOf(marked), ...(item ? { item } : {}), field }
+  }
+  // A part whose words live in another document than the one keeping its
+  // place says so: data-eotm-from="<type>:<key>" (data-eotm-from-item, its row
+  // there) beside its data-eotm-field. Arrange picks it in the place's document,
+  // which is the one Arrange writes; Edit, and a pick in Edit mode, open where
+  // the words are.
+  const sourceFor = (n) => {
+    const src = n.closest('[data-eotm-from]')
+    if (!src || !n.closest(SECTION)?.contains(src)) return null
+    const [type, ...rest] = src.dataset.eotmFrom.split(':')
+    return { type, key: rest.join(':'), item: src.dataset.eotmFromItem || null, field: src.dataset.eotmField || null }
   }
   const choose = (n, from = null) => {
     if (!n) return
     closeIntro()
     setSel(selFor(n))
-    const t = targetFor(n, from)
+    const t = (!latest.current.tools && sourceFor(from && n.contains(from) ? from : n)) || targetFor(n, from)
     if (t) latest.current.onSelect?.(t)
   }
 
@@ -657,7 +669,8 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
       if (owner) (onEdit ?? onSelect)?.({ ...targetOf(owner), item: text.dataset.eotmIn || owner.dataset.eotmItem || null, field: text.dataset.eotmText ?? text.dataset.eotmRichtext })
       return
     }
-    if (t) (onEdit ?? onSelect)?.(t)
+    const src = sourceFor(here)
+    if (src || t) (onEdit ?? onSelect)?.(src ?? t)
   }
   const toggle = (k) => setOpen((o) => (o === k ? null : k))
   const placing = (
