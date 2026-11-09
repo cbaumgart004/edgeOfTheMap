@@ -44,7 +44,9 @@ const keys = (phone) => (phone ? { parts: 'phoneParts', height: 'phoneHeight' } 
 // section was Free before and kept the part's place; its height as it stands.
 // `measured` is { name: { x, y, w, h } } from the page. On a phone it is the
 // phone's own arrangement that starts, from the parts as the phone stacks them.
-export function toFree(old, measured, height, { phone = false } = {}) {
+// `scale`: the site can zoom this section down, so a desktop arrangement starts
+// out scaling smoothly to smaller screens unless a choice was already made.
+export function toFree(old, measured, height, { phone = false, scale = false } = {}) {
   const k = keys(phone)
   const parts = {}
   for (const [name, m] of Object.entries(measured)) {
@@ -54,7 +56,7 @@ export function toFree(old, measured, height, { phone = false } = {}) {
     parts[name] = kept ?? clampPart({ x: m.x, y: m.y, w: m.w })
   }
   return {
-    ...old, ...(phone ? { phone: 'free' } : { mode: 'free' }),
+    ...old, ...(phone ? { phone: 'free' } : { mode: 'free', ...(scale && !old?.phone ? { phone: 'scale' } : {}) }),
     [k.height]: old?.[k.height] ?? round(clamp(height, 1, 1000)), [k.parts]: { ...old?.[k.parts], ...parts },
   }
 }

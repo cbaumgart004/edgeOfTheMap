@@ -501,6 +501,7 @@ html.eotm-arranging a, html.eotm-arranging button:not(.eotm-root *) { cursor: de
 /* The docked panel's room (App.jsx, Sheet): the page lays out beside it.
    Fixed bars are the site's to move, by right: var(--eotm-pane, 0px). */
 html.eotm-pane-docked { margin-right: var(--eotm-pane, 0px); }
+.eotm-sheet.is-hidden { display: none; }
 html.eotm-arrange-tools [data-eotm-part], html.eotm-arrange-tools [data-eotm-part] * { cursor: move; }
 html.eotm-arrange-tools [data-eotm-picked], html.eotm-arrange-tools [data-eotm-frame='free'] [data-eotm-part] { touch-action: none; user-select: none; -webkit-user-select: none; }
 /* While a drag runs, its cursor holds wherever the pointer goes. */

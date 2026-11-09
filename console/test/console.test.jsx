@@ -155,11 +155,11 @@ describe('console in a page', () => {
     await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Arrange').click())
     expect(line()).toContain('Mode: Arrange')
     await act(async () => host.querySelector('[aria-label="Close editor"]').click())
-    expect(host.querySelector('.eotm-sheet')).toBe(null)
+    expect(host.querySelector('.eotm-sheet.is-hidden')).not.toBe(null) // mounted, so the open document takes Arrange's writes
     expect(closed).toBe(0)
     expect(host.querySelector('.eotm-arrange')).not.toBe(null)
     await act(async () => [...host.querySelectorAll('.eotm-modeline button')].find((b) => b.textContent === 'Open editor').click())
-    expect(host.querySelector('.eotm-sheet')).not.toBe(null)
+    expect(host.querySelector('.eotm-sheet.is-hidden')).toBe(null)
     await act(async () => root.unmount())
   })
 
@@ -295,7 +295,7 @@ describe('console in a page', () => {
     await tick()
     await act(async () => host.querySelector('.eotm-title').click())
     await act(async () => host.querySelector('button[aria-label="Tuck the editor to the right edge"]').click())
-    expect(host.querySelector('.eotm-sheet')).toBeNull()
+    expect(host.querySelector('.eotm-sheet:not(.is-hidden)')).toBeNull()
     const tab = host.querySelector('button.eotm-tab.is-right')
     expect(tab).toBeTruthy()
     expect(localStorage.getItem('eotm:bar-tuck')).toBe('right')

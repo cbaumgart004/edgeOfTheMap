@@ -204,7 +204,7 @@ const HandIcon = () => (
   </svg>
 )
 
-function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) {
+function Sheet({ size, setSize, peek, setPeek, header, children, style, wide, hidden = false }) {
   const drag = useRef(null)
   const sheet = useRef(null)
   const bar = size === 'bar'
@@ -370,7 +370,7 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   // narrows by that much, and a site's fixed bars stop at it by reading the
   // variable. Over the page, it hid the right of every section, and Arrange
   // picked parts it then covered. Moved, minimised or closed, the page is whole.
-  const reserve = wide && !bar && !loose
+  const reserve = wide && !bar && !loose && !hidden
   useEffect(() => {
     if (!reserve || !sheet.current) return undefined
     const root = document.documentElement
@@ -387,7 +387,10 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   }, [reserve])
   const height =!bar && panelH ? { height: clampH(panelH), ...(wide && !loose && panelTop != null ? { top: panelTop } : null) } : null
   const tabTop = tabY ?? pos?.y
-  if (bar && !wide && tuck) return (
+  // Minimised, tucked or hidden, the pane's contents stay mounted out of sight:
+  // the open document is what takes Arrange's writes.
+  const tucked = bar && !wide && !!tuck
+  const tab = tucked && !hidden && (
     <button type="button" className={`eotm-tab is-${tuck}`}
       style={{ ...style, ...(tabTop != null ? { top: clampTabY(tabTop, 88), bottom: 'auto' } : null) }}
       aria-label="Show the editor" title="Drag up or down to move; tap to show the editor"
@@ -400,7 +403,9 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
   // The whole bar drags (not its buttons); open, the grip and the header.
   const dragOn = { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp }
   return (
-    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}${loose ? ' is-loose' : ''}${height ? ' is-sized' : ''}`}
+    <>
+    {tab}
+    <section ref={sheet} className={`eotm-sheet is-${size}${wide ? ' is-wide' : ''}${peek ? ' is-peek' : ''}${floating ? ' is-floating' : ''}${loose ? ' is-loose' : ''}${height ? ' is-sized' : ''}${hidden || tucked ? ' is-hidden' : ''}`}
       style={{ ...(floating ? { ...style, left: pos.x, top: pos.y } : loose ? { ...style, left: panelPos.x, top: panelPos.y } : style), ...height }} aria-label="Site editor"
       {...dragOn}
       onClickCapture={(e) => { if (dragged.current) { dragged.current = false; e.preventDefault(); e.stopPropagation() } }}>
@@ -417,8 +422,9 @@ function Sheet({ size, setSize, peek, setPeek, header, children, style, wide }) 
         {bar && !wide && <button type="button" className="eotm-tuck" aria-label="Tuck the editor to the right edge" title="Tuck to the right" onClick={() => setTuck('right')}>›</button>}
       </div>
       {header}
-      {!bar && <div className="eotm-scroll">{children}</div>}
+      <div className="eotm-scroll" style={bar ? { display: 'none' } : undefined}>{children}</div>
     </section>
+    </>
   )
 }
 
@@ -442,7 +448,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   // the page they opened, then choose to change it.
   const [clickMode, setClickMode] = useState('view')
   // ✕ in Arrange hides the pane and keeps arranging, so the page can be moved
-  // and sized with nothing over it; the Mode line at the bottom brings it back.
+  // and sized with nothing over it; Edit or the Mode line at the bottom brings
+  // it back. It stays mounted, hidden: the open document takes Arrange's writes.
   const [hidden, setHidden] = useState(false)
   const pickMode = (m) => { setClickMode(m); setPeek(false); if (m === 'arrange' && !wide) setSize('bar'); if (m !== 'arrange') setHidden(false) }
   const [overlay, setOverlay] = useState(null) // where on-page handles render, outside the sheet
@@ -766,7 +773,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     queueWrite({ key, item, field, value, imageIndex: null })
     if (opening.current === key) return
     opening.current = key
-    await openTarget({ type, key, item })
+    await openTarget({ type, key, item, keepPane: true })
     opening.current = null
   }
   const resizeTarget = async ({ type, key, item, field, value, imageIndex = null }) => {
@@ -776,7 +783,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     queueWrite({ key, item, field, value, imageIndex })
     if (opening.current === key) return
     opening.current = key
-    await openTarget({ type, key, item })
+    await openTarget({ type, key, item, keepPane: true })
     opening.current = null
   }
 
@@ -836,7 +843,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
   return (
     <>
     <div className="eotm-root" data-eotm-mode={mode} style={rootStyle}>
-      {!hidden && <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={docked}>
+      <Sheet size={size} setSize={setSize} peek={peek} setPeek={setPeek} header={header} style={style} wide={docked} hidden={hidden}>
         {body}
         {user && view.name === 'home' && !leaving && (
           <p className="eotm-who">
@@ -845,7 +852,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           </p>
         )}
         {user && <ToDeveloper schema={schema} store={store} notify={notify} onCount={setUnpublished} refreshKey={`${view.saveState === 'saved' ? view.title : view.name}:${published}:${publishing}`} />}
-      </Sheet>}
+      </Sheet>
       {toast && <div className="eotm-toast" role="status">{toast}</div>}
     </div>
     {/* The on-page outlines and handles sit over the page in its own

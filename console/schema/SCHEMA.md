@@ -167,7 +167,7 @@ Any section, row or document may carry `_layout`, declared by no field and check
 (`schema/schema.js`): `{ "mode": "flow" | "free", "height", "parts": { "<part>": { "x", "y", "w", "h"?,
 "z"?, "opacity"? } } }`. `x` and `w` are % of the element's width, `y`, `h` and `height` % of its width
 too, so the arrangement scales with the page; a part with no `h` grows to fit; `fs` is its text size, %
-of the site's own. Below 820px a Free section stacks, ordered by `y` then `x`, or with `"phone": "scale"`
+of the site's own. Below 820px a Free section stacks, ordered by `y` then `x`, or with `"phone": "scale"` (Scale smoothly, what Arrange sets on a new desktop arrangement where the site marks the section `data-eotm-scales`; the site applies it below 1280px)
 keeps its desktop arrangement, drawn at desktop width and scaled down whole, or with `"phone": "free"` takes
 its own phone arrangement, `phoneParts` and `phoneHeight` (same shape), made in Arrange on a phone. A phone
 arrangement works whether or not `mode` is free. The site marks phone-placed parts `data-eotm-qplaced` and

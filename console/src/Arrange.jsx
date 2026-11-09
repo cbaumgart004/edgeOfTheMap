@@ -63,6 +63,8 @@ const isSection = (el) => el && (el.hasAttribute('data-eotm-frame') || partsOf(e
 // the section shows the desktop layout scaled down there (then it is that
 // one, in the same units).
 const phoneEdit = (section) => matchMedia(PHONE).matches && section?.dataset.eotmPhone !== 'scale'
+// A section the site can draw at desktop width and zoom down whole (ScaleBox).
+const canScale = (section) => !!section?.hasAttribute('data-eotm-scales')
 const isFree = (section) => (phoneEdit(section) ? section?.dataset.eotmPhone === 'free' : section?.dataset.eotmFrame === 'free')
 // Where the arrangement is kept: _layout, or _layout_<key> for one of several
 // regions of one document (data-eotm-frame-key: a site's header, its button bar).
@@ -98,7 +100,7 @@ function freer(section) {
     if (!measured[n] && (r.width || r.height)) measured[n] = toUnits(r, s)
   }
   const height = (s.height * 100) / (s.width || 1)
-  return (old) => ((phone ? old?.phone === 'free' : old?.mode === 'free') ? old : toFree(old, measured, height, { phone }))
+  return (old) => ((phone ? old?.phone === 'free' : old?.mode === 'free') ? old : toFree(old, measured, height, { phone, scale: canScale(section) }))
 }
 
 // A part's box. A group (data-eotm-group) is no box of its own while it
@@ -487,7 +489,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   }
   // Centered on the page beside a pane docked on the right, not under it.
   const introLeft = () => {
-    const pane = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
+    const pane = document.querySelector('.eotm-sheet.is-wide:not(.is-bar):not(.is-hidden)')
     return (pane ? Math.min(innerWidth, pane.getBoundingClientRect().left) : innerWidth) / 2
   }
   const tap = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click'
@@ -510,9 +512,9 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const name = part?.dataset.eotmPart
   const isSec = !!section && here === section
   // Where the page shows: left of a pane docked on the right, above one docked at the bottom.
-  const sheet = document.querySelector('.eotm-sheet.is-wide:not(.is-bar)')
+  const sheet = document.querySelector('.eotm-sheet.is-wide:not(.is-bar):not(.is-hidden)')
   const room = sheet ? Math.min(innerWidth, sheet.getBoundingClientRect().left) : innerWidth
-  const floor = sheet ? innerHeight : Math.min(innerHeight, document.querySelector('.eotm-sheet:not(.is-wide)')?.getBoundingClientRect().top ?? innerHeight)
+  const floor = sheet ? innerHeight : Math.min(innerHeight, document.querySelector('.eotm-sheet:not(.is-wide):not(.is-hidden)')?.getBoundingClientRect().top ?? innerHeight)
   // Not drawn over the editor pane: what is under it is hidden, not outlined through it.
   const clip = `inset(0px ${Math.max(0, innerWidth - room)}px ${Math.max(0, innerHeight - floor)}px 0px)`
 
@@ -763,7 +765,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
                   {phone ? (
                     <section className="eotm-arrange-card"><h4>On a phone</h4>
                       <Seg label="On a phone" value={phoneMode} onPick={(v) => (v === 'free' ? phoneMode !== 'free' && toFreeNow() : setPhone(v))}
-                        options={[['stack', 'Stack'], ...(desktopFree ? [['scale', 'Keep desktop']] : []), ['free', 'Free']]} />
+                        options={[...(desktopFree && canScale(section) ? [['scale', 'Scale smoothly']] : []), ['stack', 'Stack'], ['free', 'Free']]} />
                     </section>
                   ) : (
                     <>
@@ -771,9 +773,9 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
                         <Seg label="Layout" value={free ? 'free' : 'flow'} options={[['flow', 'Flow'], ['free', 'Free']]}
                           onPick={(v) => (v === 'free' ? !free && toFreeNow() : free && write(section, (old) => ({ ...old, mode: 'flow' })))} />
                       </section>
-                      <section className="eotm-arrange-card"><h4>On a phone</h4>
-                        <Seg label="On a phone" value={phoneMode} onPick={(v) => v !== 'free' && setPhone(v)}
-                          options={[['stack', 'Stack'], ...(free ? [['scale', 'Keep layout']] : []), ...(phoneMode === 'free' ? [['free', 'Own']] : [])]} />
+                      <section className="eotm-arrange-card"><h4>On smaller screens</h4>
+                        <Seg label="On smaller screens" value={phoneMode} onPick={(v) => v !== 'free' && setPhone(v)}
+                          options={[...(free && canScale(section) ? [['scale', 'Scale smoothly']] : []), ['stack', 'Stack on a phone'], ...(phoneMode === 'free' ? [['free', 'Own']] : [])]} />
                       </section>
                     </>
                   )}

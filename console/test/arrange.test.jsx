@@ -14,6 +14,14 @@ const schema = JSON.parse(readFileSync('schema/sites/storyshaped.json', 'utf8'))
 const S = { left: 100, top: 50, width: 1000, height: 400 }
 
 describe('Arrange arithmetic', () => {
+  it('starts a desktop arrangement scaling smoothly where the site can, and keeps a choice already made', () => {
+    const m = { heading: { x: 5, y: 5, w: 50, h: 9 } }
+    expect(toFree({}, m, 40, { scale: true }).phone).toBe('scale')
+    expect(toFree({}, m, 40).phone).toBeUndefined()
+    expect(toFree({ phone: 'stack' }, m, 40, { scale: true }).phone).toBe('stack')
+    expect(toFree({}, m, 40, { phone: true, scale: true }).phone).toBe('free')
+  })
+
   it('turns a box on the page into units of the section’s width, across and down', () => {
     expect(toUnits({ left: 200, top: 150, width: 500, height: 80 }, S)).toEqual({ x: 10, y: 10, w: 50, h: 8 })
   })
