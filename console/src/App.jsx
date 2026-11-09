@@ -870,6 +870,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
           templates={schema.custom?.elementTemplates ?? []} onSaveTemplate={saveElementFromPage} layoutFor={layoutFor}
           onSelect={(t) => openTarget({ ...t, keepPane: clickMode === 'arrange' })} onEdit={(t) => openTarget({ ...t, keepPane: false })} onText={textTarget}
           tools={clickMode === 'arrange'} classes={classesOf(schema)} addClass={addClass}
+          onClass={async (field) => { try { const [doc] = await store.list(CLASS_TYPE); openDoc(doc ?? (await store.create({ type: CLASS_TYPE, data: {} })), null, field) } catch (e) { notify(e.message) } }}
           onImport={(target) => { setView({ name: 'import', target, back: view }); setPeek(false); if (size === 'bar') setSize('half') }} />, overlay)}
     </div>
     </>

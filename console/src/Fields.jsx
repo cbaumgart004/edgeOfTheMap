@@ -143,7 +143,7 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     case 'color':
       return wrap(<Color id={id} value={value} onChange={onChange} />)
     case 'style':
-      return wrap(<StyleField id={id} value={value} onChange={onChange} ctx={ctx} words={String(owner?.text ?? owner?.label ?? '').slice(0, 60)} />, { block: true })
+      return wrap(<StyleField id={id} value={value} onChange={onChange} ctx={ctx} image={field.image} words={String(owner?.text ?? owner?.label ?? '').slice(0, 60)} />, { block: true })
     case 'layout':
       return wrap(<Layout id={id} value={value} onChange={onChange} ctx={ctx} />, { block: true })
     case 'richtext':
@@ -1021,7 +1021,7 @@ function FamilyField({ id, value, onChange, schema, sample }) {
   )
 }
 
-function StyleField({ id, value, onChange, ctx, words = '' }) {
+function StyleField({ id, value, onChange, ctx, image = false, words = '' }) {
   const v = value ?? {}
   const set = (k, x) => {
     const next = { ...v, [k]: x }
@@ -1067,6 +1067,12 @@ function StyleField({ id, value, onChange, ctx, words = '' }) {
       <FamilyField id={`${id}-family`} value={v.family} onChange={(x) => set('family', x)} schema={ctx.schema} sample={words} />
       {colour('color', 'Text colour')}
       {colour('background', 'Background')}
+      {image && (
+        <div className="eotm-style-part">
+          <span className="eotm-label">Background picture</span>
+          <ImageField id={`${id}-image`} field={{ name: 'image', kind: 'image', label: 'Background picture' }} value={v.image ?? null} onChange={(x) => set('image', x)} ctx={ctx} />
+        </div>
+      )}
       <label className="eotm-label eotm-range">
         Width <output>{v.width ? `${v.width}%` : 'site’s own'}</output>
         <input type="range" min="10" max="100" step="5" value={v.width ?? 100}

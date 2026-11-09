@@ -28,7 +28,7 @@ describe('banner slides schema', () => {
   it('refuses a when naming no field beside it, and fill naming no row field', () => {
     const bad = structuredClone(schema)
     const f = bad.types.settings.fields.find((x) => x.name === 'promoSlides')
-    f.fields[3].when = { field: 'nope', is: 'card' }
+    f.fields.find((x) => x.name === 'text').when = { field: 'nope', is: 'card' }
     f.fill.set = { missing: 1 }
     const errs = checkSchema(bad).join('\n')
     expect(errs).toMatch(/promoSlides\.text: when needs/)

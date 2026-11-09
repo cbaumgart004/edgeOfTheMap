@@ -33,7 +33,7 @@ export function withClasses(schema, custom) {
       [CLASS_TYPE]: {
         label: 'Classes', plural: 'Classes', singleton: true, group: 'design',
         help: 'Each class is a look used across the site: change one here and every element with it changes.',
-        fields: list.map((c) => ({ name: c.name, kind: 'style', label: c.label, help: c.custom ? `Your class: give an element the class “${c.label}” to use it.` : `Every element drawn as ${c.label.toLowerCase()} on the site.` })),
+        fields: list.map((c) => ({ name: c.name, kind: 'style', label: c.label, ...(c.image ? { image: true } : {}), help: c.custom ? `Your class: give an element the class “${c.label}” to use it.` : `Every element drawn as ${c.label.toLowerCase()} on the site.` })),
       },
     },
   }

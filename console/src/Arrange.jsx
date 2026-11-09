@@ -199,6 +199,7 @@ const Icon = ({ d }) => (
   </svg>
 )
 const ICONS = {
+  image: ['M3 5h18v14H3Z', 'm3 16 5-5 4 4 3-3 6 6', 'M15.5 9h.01'],
   layers: ['M12 3 2 8l10 5 10-5-10-5Z', 'm2 13 10 5 10-5', 'm2 17.5 10 5 10-5'],
   controls: ['M4 6h10', 'M18 6h2', 'M4 12h4', 'M12 12h8', 'M4 18h12', 'M20 18h0', 'M16 4v4', 'M10 10v4', 'M18 16v4'],
   edit: ['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'],
@@ -219,7 +220,7 @@ function Seg({ label, value, options, onPick }) {
   )
 }
 
-export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onEdit = null, onText = null, onImport = null, tools = true, classes = [], addClass = null }) {
+export default function Arrange({ onChange, uiScale = 1, upload, notify = () => {}, templates = [], onSaveTemplate, layoutFor = null, onSelect, onEdit = null, onClass = null, onText = null, onImport = null, tools = true, classes = [], addClass = null }) {
   // Which of the panel's buttons is open: 'layers', 'controls' or none.
   const [open, setOpen] = useState(null)
   const [classing, setClassing] = useState(false)
@@ -538,6 +539,9 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
   const fwd = open === 'layers' ? layerKids(here) : []
   const back = layerUp(here)
   const onLayer = open === 'layers' && !drag ? layerKids(back).filter((n) => n !== here).slice(0, 60) : []
+  // The picture behind the pick: painted by CSS, so it is no element to pick. It
+  // is a class of the schema (`image: true`), and Layers opens that class.
+  const backdrop = open === 'layers' && onClass ? classes.find((c) => c.image && c.selector.split(',').some((q) => here.closest(q.replace(/::?(before|after)/, '').trim()))) : null
 
   // The part's class, for "Same for every": the first whose selector it is drawn with.
   const matches = (el, q) => { try { return !!el && (el.matches(q) || !!el.firstElementChild?.matches(q)) } catch { return false } }
@@ -716,6 +720,7 @@ export default function Arrange({ onChange, uiScale = 1, upload, notify = () => 
             <div className="eotm-arrange-icons is-fly">
               <Btn icon="up" label="Layer up: what is on this" disabled={!fwd.length} onClick={() => choose(fwd[0])} />
               <Btn icon="down" label="Layer down: what holds this" disabled={!back} onClick={() => choose(back)} />
+              {backdrop && <Btn icon="image" label="Background: the picture behind this" onClick={() => onClass(backdrop.name)} />}
             </div>
           )}
           {open === 'controls' && tools && (

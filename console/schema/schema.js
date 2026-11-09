@@ -41,7 +41,7 @@ export const STYLE = {
   align: ['left', 'center', 'right'],
   weight: ['normal', 'bold'],
 }
-const STYLE_KEYS = ['size', 'font', 'family', 'align', 'weight', 'color', 'background', 'width']
+const STYLE_KEYS = ['image', 'size', 'font', 'family', 'align', 'weight', 'color', 'background', 'width']
 // A font by name (`family`): the site's, or one Google Fonts serves.
 export const FAMILY = /^[A-Za-z0-9][A-Za-z0-9 ]{0,59}$/
 
@@ -493,6 +493,7 @@ function checkValue(field, value, at, schema, errors, opts) {
         if (!STYLE_KEYS.includes(k)) errors.push(`${at}.${k}: not a style`)
         else if (STYLE[k] && !STYLE[k].includes(v)) errors.push(`${at}.${k}: "${v}" is not an option`)
         else if ((k === 'color' || k === 'background') && !named.includes(v) && !/^#[0-9a-f]{6}$/i.test(v)) errors.push(`${at}.${k}: a site colour or #rrggbb`)
+        else if (k === 'image' && !(typeof v === 'object' && typeof v.src === 'string')) errors.push(`${at}.image: a picture`)
         else if (k === 'width' && !(Number.isInteger(v) && v >= 10 && v <= 100)) errors.push(`${at}.width: 10 to 100`)
         else if (k === 'family' && !(typeof v === 'string' && FAMILY.test(v))) errors.push(`${at}.family: a font's name, letters, digits and spaces`)
       }
