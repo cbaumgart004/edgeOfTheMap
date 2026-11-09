@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach } from 'vitest'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { readFileSync } from 'node:fs'
@@ -80,6 +80,12 @@ const saved = async (store, id, has) => {
 }
 const rect = (el, r) => { el.getBoundingClientRect = () => ({ ...r, right: r.left + r.width, bottom: r.top + r.height, x: r.left, y: r.top }) }
 
+// Every root is unmounted when its test ends: the editor stays mounted while the
+// pane is closed, so one left behind renders after jsdom has gone and fails the run.
+const roots = []
+const mount = (host) => { const root = createRoot(host); roots.push(root); return root }
+afterEach(async () => { await act(async () => roots.splice(0).forEach((root) => root.unmount())) })
+
 describe('Arrange on the page', () => {
   it('makes a section Free from where its parts are drawn, then moves a part', async () => {
     localStorage.clear()
@@ -96,7 +102,7 @@ describe('Arrange on the page', () => {
 
     const host = document.createElement('div')
     document.body.append(host)
-    await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await act(async () => mount(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
     await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
     await act(async () => section.querySelector('[data-eotm-part="heading"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
@@ -147,7 +153,7 @@ describe('Arrange on the page', () => {
     rect(page.querySelector('[data-eotm-part="items"]'), { left: 100, top: 200, width: 1000, height: 200 })
     const host = document.createElement('div')
     document.body.append(host)
-    await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
+    await act(async () => mount(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
     await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
     const heading = section.querySelector('[data-eotm-part="heading"]')
