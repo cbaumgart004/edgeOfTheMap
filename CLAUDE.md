@@ -16,6 +16,11 @@ These hold across all three repos. The Edge of the Map console is the editor for
   is not finished. If a change cannot make something reachable, say so in the same reply. Content shown
   on one document but owned by another (an event on a banner slide) carries `data-eotm-from` so Edit
   opens the owner.
+- **The reach audit gates production.** `console/scripts/reach-audit.mjs` (Edge of the Map) builds the
+  site, reads every page at three widths and compares what is painted to the schema. A gap not listed in
+  `console/scripts/reach-baseline/<site>.json` stops the production push (`reach-hook.sh`, installed per
+  machine by `reach-install.sh`). The list only shrinks: closing a gap runs `--update`; a new gap gets
+  fixed. Never add one to the list to get a release out, and never push with `--no-verify`.
 - **Desktop edits reach every resolution.** A layout set on desktop applies to tablet and phone
   unless those modes have their own layout. Review a layout change at all three widths.
 - **Layout across modes.** When a layout change is saved and the user has not set all three modes

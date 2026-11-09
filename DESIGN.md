@@ -1,6 +1,8 @@
 # Edge of the Map — Design Map
 
 > **Rule: everything is reachable in the editor, no exceptions.** Every element and setting on these sites, at any time, can be read and edited through the Edge of the Map console, including anything drawn only by CSS. A look with no field or class in `console/schema/sites/<site>.json` is a defect. Full text: `CLAUDE.md`, Editor rules.
+>
+> **The reach audit enforces it.** `console/scripts/reach-audit.mjs` measures content, looks, spacing, dead classes and orphan marks against the schema, ratcheted by `console/scripts/reach-baseline/<site>.json`. It runs before a production push through `reach-hook.sh`.
 
 A marketing site for **Edge of the Map LLC**, a one-person, three-craft brand:
 **The Keeper** (web, systems, hosting), **The Storyteller** (audiobook narration and

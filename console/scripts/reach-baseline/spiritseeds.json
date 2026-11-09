@@ -1,0 +1,31 @@
+{
+ "owners": {
+  "spacing|aside.promo": "promoPadding"
+ },
+ "gaps": [
+  "content|a.btn.footer-links__btn",
+  "content|a.btn.footer-links__btn>svg",
+  "content|p.ai-notice",
+  "look|a.card-thumb>img",
+  "look|a.social-icons__link>svg",
+  "look|aside.promo",
+  "look|button.account-button",
+  "look|button.slideshow__arrow.slideshow__arrow--next",
+  "look|button.slideshow__arrow.slideshow__arrow--prev",
+  "look|div.hamburger",
+  "look|div.hamburger>span",
+  "look|input.newsletter__input",
+  "look|span._blossom",
+  "look|span.status-badge",
+  "spacing|div.action-bar.action-bar--per-row-2",
+  "spacing|div.card",
+  "spacing|footer.section.connect-card",
+  "spacing|footer.section.footer",
+  "spacing|main.connect.first-section",
+  "spacing|nav._navbar",
+  "spacing|nav.footer-home",
+  "spacing|section.section.section--splash",
+  "spacing|section.section.section--split",
+  "spacing|section.section.section--stack"
+ ]
+}
