@@ -1,5 +1,7 @@
 # Edge of the Map — Design Map
 
+> **Rule: everything is reachable in the editor, no exceptions.** Every element and setting on these sites, at any time, can be read and edited through the Edge of the Map console, including anything drawn only by CSS. A look with no field or class in `console/schema/sites/<site>.json` is a defect. Full text: `CLAUDE.md` on the `console` branch, Editor rules.
+
 A marketing site for **Edge of the Map LLC**, a one-person, three-craft brand:
 **The Keeper** (web, systems, hosting), **The Storyteller** (audiobook narration and
 voice), and **The Wright** (woodworking). One home page, plus `/keeper` and
