@@ -121,20 +121,18 @@ export default function ManageList({ schema, store, type, notify, open, ctxBase,
   }, [shown, schema]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
-  const searching = q.trim() !== ''
+  // A search opens every group it leaves, unless it leaves too many to draw.
+  const searching = q.trim() !== '' && shown.length <= 60
   const noneLabel = (g) => `No ${(fieldOf(g)?.label ?? g).toLowerCase()}`
   const card = (d) => (
     <Card key={d.id} d={d} schema={schema} manage={manage} picked={picked.has(d.id)} onPick={() => toggle(d.id)} onOpen={() => open(d)}
       quick={quick} store={store} notify={notify} ctxBase={ctxBase} onSaved={replace} bySku={bySku} setCount={setCount} />
   )
   const branch = (nodes, depth, at) => (depth >= groupBy.length ? <ul className="eotm-manage-cards">{nodes.map(card)}</ul> : nodes.map((n) => (
-    <details key={`${at}/${n.key}`} className={`eotm-fold eotm-manage-group is-depth-${depth}`} open={searching || undefined}>
-      <summary>
-        <span className="eotm-fold-label" title={n.key}>{n.key ? (depth > 0 ? n.key.split(' < ').slice(-2).join(' › ') : n.key) : noneLabel(groupBy[depth])}</span>
-        <span className="eotm-class-count">{n.count}</span>
-      </summary>
-      {branch(n.items, depth + 1, `${at}/${n.key}`)}
-    </details>
+    <Group key={`${at}/${n.key}`} depth={depth} searching={searching} count={n.count} title={n.key}
+      label={n.key ? (depth > 0 ? n.key.split(' < ').slice(-2).join(' › ') : n.key) : noneLabel(groupBy[depth])}>
+      {() => branch(n.items, depth + 1, `${at}/${n.key}`)}
+    </Group>
   )))
 
   const pickedDocs = (docs ?? []).filter((d) => picked.has(d.id))
@@ -196,6 +194,23 @@ export default function ManageList({ schema, store, type, notify, open, ctxBase,
       {bulk && <BulkEdit schema={schema} type={type} docs={pickedDocs} store={store} notify={notify} ctxBase={ctxBase}
         onDone={(saved) => { saved.forEach(replace); setBulk(false) }} onCancel={() => setBulk(false)} />}
     </div>
+  )
+}
+
+// A Section or Category heading. Its cards are built only while it is open: a
+// shop of hundreds, each card with its Quick edit, is too much to keep drawn.
+function Group({ depth, searching, count, title, label, children }) {
+  const [isOpen, setOpen] = useState(false)
+  const shown = isOpen || searching
+  return (
+    <details className={`eotm-fold eotm-manage-group is-depth-${depth}`} open={shown || undefined}
+      onToggle={(e) => { if (!searching) setOpen(e.currentTarget.open) }}>
+      <summary>
+        <span className="eotm-fold-label" title={title}>{label}</span>
+        <span className="eotm-class-count">{count}</span>
+      </summary>
+      {shown && children()}
+    </details>
   )
 }
 

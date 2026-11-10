@@ -543,7 +543,7 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 /* The whole edge sizes the panel, so its mark runs the whole width, not a
    short grip in one place. */
 .eotm-resize::after { content: ''; position: absolute; left: 8px; right: 8px; top: 5px; height: 4px; border-radius: 2px;
-  background: var(--eotm-muted); opacity: 0.25; transition: opacity 120ms; }
+  background: var(--eotm-muted); opacity: 0.5; transition: opacity 120ms; }
 .eotm-resize:hover::after, .eotm-resize:active::after { opacity: 0.9; }
 .eotm-sheet.is-sized { transition: none; }
 .eotm-sheet.is-wide.is-sized:not(.is-loose) { border-bottom: 1px solid var(--eotm-line); border-radius: 0 0 0 12px; }
@@ -743,12 +743,12 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 
 /* A type's manager (Manage.jsx): search with Quick edit and Filter beside it,
    headings by group, photo cards, and the selection's bar along the bottom. */
-.eotm-root .eotm-manage { display: grid; gap: 8px; padding-bottom: 56px; }
+.eotm-root .eotm-manage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding-bottom: 56px; }
 .eotm-root .eotm-manage-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; align-items: center; padding: 6px 0; background: var(--eotm-surface); }
 .eotm-root .eotm-manage-bar .eotm-input { flex: 1; min-width: 0; }
 .eotm-root .eotm-manage-filters { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); }
-.eotm-root .eotm-manage-count { justify-content: space-between; align-items: center; }
-.eotm-root .eotm-manage-group > summary .eotm-fold-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eotm-root .eotm-manage-count { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+.eotm-root .eotm-manage-group > summary .eotm-fold-label { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .eotm-root .eotm-manage-group.is-depth-1 { margin-left: 10px; }
 .eotm-root .eotm-manage-cards { display: grid; gap: 6px; padding: 4px 0 8px; }
 .eotm-root .eotm-manage-card { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-surface); }
