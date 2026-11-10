@@ -202,6 +202,13 @@ Each document is one row in the site's own Neon project (`api/migrations/site`):
 version is rejected with the current document, so two tabs cannot silently overwrite each other
 (platform plan §3.4). Publishing copies the draft; a published row is what visitors see.
 
+**Release** (1.37.1+): `"release": { "types": ["page", ...] }` names the types that **Review
+changes**, Publish all, Discard all and the leave prompt cover. Left out, every type is covered. A type
+not named is published one document at a time, from the Publish button on its own editor bar. Use it
+for a type that is not a page of the site, such as a Listing: its drafts are not site changes waiting
+to go live, and hundreds of imported ones would otherwise fill the review and stop the leave prompt
+ever clearing.
+
 ## Changing a schema
 
 Adding an optional field is safe: old documents simply lack it. Renaming a field, changing its kind or

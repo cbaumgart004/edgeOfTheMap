@@ -212,6 +212,17 @@ describe('publish', () => {
     expect((await s.list('page')).find((d) => d.id === page.id).status).toBe('published')
     expect(await s.pending()).toEqual([])
   })
+
+  it('leaves a type outside release.types out of Review changes', async () => {
+    expect(storyshaped.release.types).not.toContain('listing')
+    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const listing = await s.create({ type: 'listing', data: { title: 'A vase' } })
+    const page = await s.create({ type: 'page', data: { title: 'Policies' } })
+    expect((await s.pending()).map((d) => d.id)).toEqual([page.id])
+    expect((await s.discardAll()).kept.map((d) => d.id)).toEqual([page.id])
+    expect((await s.get(listing.id)).status).toBe('draft')
+    expect(checkSchema({ ...storyshaped, release: { types: ['nope'] } }).join()).toMatch(/release\.types/)
+  })
 })
 
 describe('discarding unpublished changes', () => {

@@ -139,6 +139,11 @@ export function checkSchema(schema) {
     } else if (channels.has(c.name)) errors.push(`channels.${c.name}: listed twice`)
     else channels.add(c.name)
   }
+  // What Review changes covers (1.37.1+): { types: [type names] }; left out, all.
+  if (schema.release != null) {
+    const rt = schema.release?.types
+    if (!Array.isArray(rt) || rt.some((n) => !types[n])) errors.push('release.types: a list of type names from this schema')
+  }
   // The site's named colours for style fields: [{ value, label, css }].
   for (const c of schema.styleColors ?? []) {
     if (!c?.value || !NAME.test(c.value) || !c.label || typeof c.css !== 'string') errors.push('styleColors: each needs a plain value, a label and its css')

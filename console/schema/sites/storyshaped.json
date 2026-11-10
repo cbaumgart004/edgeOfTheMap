@@ -4,6 +4,7 @@
     { "name": "etsy", "label": "Etsy", "short": "Et", "color": "#f1641e" },
     { "name": "ebay", "label": "eBay", "short": "eB", "color": "#0064d2" }
   ],
+  "release": { "types": ["libraryArticle", "page", "pageLayout", "referencePage", "theme", "siteSettings", "menu", "imagePair"] },
   "sitemap": { "aliases": { "/home": "/" } },
   "robots": { "blockTraining": true },
   "structuredData": { "libraryArticle": { "type": "Article", "author": "Whitney Granger", "citations": "sources", "parent": { "name": "Library", "path": "/library" } } },

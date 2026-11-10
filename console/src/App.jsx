@@ -35,6 +35,13 @@ function imageWidthIn(html, index, pct) {
 
 const SAVE_DELAY = 800 // ms after the last change (platform plan §3.4)
 const STATUS_TEXT = { draft: 'Draft', published: 'Live', changed: 'Live, edited' }
+const STATUS_TITLE = {
+  draft: 'Saved, never published. Edits save by themselves; Publish makes it live.',
+  published: 'Live: what is saved is what is published.',
+  changed: 'Live, with saved edits not published yet. Discard goes back to what is live.',
+}
+// Whether Review changes covers a type (schema release.types; left out, all).
+const inRelease = (schema, type) => !schema.release?.types || schema.release.types.includes(type)
 
 // ---------------------------------------------------------------- brand
 
@@ -1219,7 +1226,7 @@ function DocList({ schema, store, type, open, notify, nested = false }) {
                     <strong>{titleOf(schema, d)}</strong>
                     <span className={`eotm-chip is-${d.status}`}>{STATUS_TEXT[d.status]}{changed && d.status === 'changed' ? ` · ${changed}` : ''}</span>
                   </button>
-                  <button type="button" className="eotm-icon" aria-label={`Duplicate ${titleOf(schema, d)}`} onClick={() => duplicate(d)}>⧉</button>
+                  <button type="button" className="eotm-icon" aria-label={`Duplicate ${titleOf(schema, d)}`} title="Make a copy" onClick={() => duplicate(d)}>⧉</button>
                 </div>
                 {unfolded.has(d.id) && (
                   <ul className="eotm-sections">
@@ -1448,10 +1455,16 @@ function Editor({ schema, store, bridge, id, ctxBase, notify, onState, onGone, o
         </div>
       )}
       <div className="eotm-status">
-        <span className={`eotm-chip is-${doc.status}`}>{STATUS_TEXT[doc.status]}</span>
+        <span className={`eotm-chip is-${doc.status}`} title={STATUS_TITLE[doc.status]}>{STATUS_TEXT[doc.status]}</span>
         <div className="eotm-row">
           <button type="button" className="eotm-btn is-quiet" disabled={!canUndo} onClick={undo} title="Undo (Ctrl+Z)">Undo</button>
           <button type="button" className="eotm-btn is-quiet" onClick={saveNow} title="Save now (it also saves by itself as you go)">Save</button>
+          {/* A type outside release.types is not in Review changes, so it publishes here. */}
+          {!inRelease(schema, doc.type) && doc.status !== 'published' && (
+            <button type="button" className="eotm-btn is-primary" disabled={draftErrors.length > 0}
+              title={draftErrors.length ? 'Fix what is named here first' : `Publish this ${type.label.toLowerCase()}`}
+              onClick={() => act((d) => store.publish(id, d.version), `${type.label} published.`)}>Publish</button>
+          )}
           {doc.status === 'changed' && <DiscardButton onConfirm={() => act((d) => store.discard(id, d.version), 'Back to what is live.')} />}
           {doc.status !== 'draft' && <button type="button" className="eotm-btn is-quiet" onClick={() => act((d) => store.unpublish(id, d.version), 'Taken off the site.')}>Unpublish</button>}
         </div>
