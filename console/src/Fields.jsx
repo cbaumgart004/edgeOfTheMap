@@ -103,8 +103,46 @@ function RemoveAdded({ onConfirm }) {
   )
 }
 
+// The badge of each channel that needs this field (`requiredBy`, the schema's
+// `channels`): "needed for Etsy", say. A marker only; `required` is what
+// publishing enforces.
+function Needs({ field, schema }) {
+  const channels = (field.requiredBy ?? []).map((n) => schema?.channels?.find((c) => c.name === n)).filter(Boolean)
+  if (!channels.length) return null
+  return (
+    <span className="eotm-needs">
+      {channels.map((c) => (
+        <span key={c.name} className="eotm-needs-badge" style={c.color ? { '--eotm-needs': c.color } : undefined}
+          title={`Needed for ${c.label}`} aria-label={`Needed for ${c.label}`}>{c.short}</span>
+      ))}
+    </span>
+  )
+}
+
+// `optionsUrl`: the choices the site answers, [{ value, label }], read once per
+// address while the editor is open. null until they arrive or when they fail.
+const remoteOptions = new Map()
+function useRemoteOptions(url) {
+  const [list, setList] = useState(() => (url && Array.isArray(remoteOptions.get(url)) ? remoteOptions.get(url) : null))
+  useEffect(() => {
+    if (!url) return undefined
+    let live = true
+    if (!remoteOptions.has(url)) {
+      remoteOptions.set(url, fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
+        .then((d) => (Array.isArray(d) ? d.filter((o) => typeof o?.value === 'string').map((o) => ({ value: o.value, label: String(o.label ?? o.value) })) : Promise.reject(new Error('not a list'))))
+        .then((d) => (d.length ? d : Promise.reject(new Error('empty'))))
+        .then((d) => { remoteOptions.set(url, d); return d }, (e) => { console.warn(`[fields] choices from ${url} unavailable:`, e.message); remoteOptions.delete(url); return null }))
+    }
+    Promise.resolve(remoteOptions.get(url)).then((d) => { if (live) setList(d) })
+    return () => { live = false }
+  }, [url])
+  return list
+}
+
 function Field({ field, value, onChange, ctx, path, at, owner = null }) {
   const id = useId()
+  const remote = useRemoteOptions(field.optionsUrl)
+  const needs = <Needs field={field} schema={ctx.schema} />
   const error = ctx.errors?.find((e) => e.startsWith(`${path}:`))?.slice(path.length + 2)
   const label = field.label ?? field.name
   const remove = field.added && at && ctx.removeField
@@ -113,6 +151,7 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     <div className={`eotm-field${error ? ' has-error' : ''}${block ? ' is-block' : ''}`} data-eotm-field={field.name}>
       <div className="eotm-label-row">
         <label htmlFor={id} className="eotm-label">{label}{field.required && <span aria-hidden="true"> *</span>}</label>
+        {needs}
         {field.help && <Info label={`About ${label}`}>{field.help}</Info>}
       </div>
       {control}
@@ -127,10 +166,12 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
       // say at once when the typed name matches none of them.
       const names = field.suggest ? suggestionsFor(ctx.schema, ctx.docData, field.suggest) : null
       const unmatched = names && value?.trim() && !names.some((n) => n.toLowerCase() === value.trim().toLowerCase())
+      // optionsUrl: the site's choices, suggested as she types (a long list, e.g. Etsy's categories).
+      const offered = names ?? remote?.map((o) => o.value) ?? null
       return wrap(<>
-        <input id={id} className="eotm-input" value={value ?? ''} maxLength={field.maxLength} list={names ? `${id}-list` : undefined}
+        <input id={id} className="eotm-input" value={value ?? ''} maxLength={field.maxLength} list={offered ? `${id}-list` : undefined}
           onChange={(e) => onChange(e.target.value)} />
-        {names && <datalist id={`${id}-list`}>{names.map((n) => <option key={n} value={n} />)}</datalist>}
+        {offered && <datalist id={`${id}-list`}>{offered.map((n) => <option key={n} value={n} />)}</datalist>}
         {unmatched && !error && <p className="eotm-error" role="status">No {ctx.schema.blocks[field.suggest.block]?.label ?? 'section'} called “{value.trim()}” on this page yet.</p>}
       </>)
     }
@@ -173,6 +214,7 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
         <div className="eotm-field eotm-check" data-eotm-field={field.name}>
           <input id={id} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
           <label htmlFor={id}>{label}</label>
+          {needs}
           {field.help && <Info label={`About ${label}`}>{field.help}</Info>}
           {remove}
         </div>)
@@ -181,7 +223,11 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     case 'datetime':
       return wrap(<DateTime id={id} value={value} onChange={onChange} />)
     case 'select': {
-      const options = optionsOf(ctx.schema, field)
+      // optionsUrl: the site's choices once they arrive, keeping a saved value
+      // the site no longer offers so opening the document never changes it.
+      const options = remote
+        ? [...remote, ...(value && !remote.some((o) => o.value === value) ? [{ value, label: `${value} (not offered now)` }] : [])]
+        : optionsOf(ctx.schema, field)
       const picked = options.find((o) => o.value === value)
       return wrap(<>
         <select id={id} className="eotm-input" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
@@ -215,17 +261,17 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
       // heading, closed unless `open: true`, so each level opens one at a time.
       if (field.collapsible || path.includes('[')) return (
         <details className="eotm-group is-fold" open={field.open} data-eotm-field={field.name}>
-          <summary>{label}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</summary>
+          <summary>{label}{needs}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</summary>
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </details>)
       return (
         <fieldset className="eotm-group" data-eotm-field={field.name}>
-          <legend>{label}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</legend>
+          <legend>{label}{needs}{field.help && <Info label={`About ${label}`}>{field.help}</Info>}</legend>
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </fieldset>)
     case 'list':
       return (
-        <Repeater label={label} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path}
+        <Repeater label={label} needs={needs} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path}
           itemTitle={(item, i) => (field.itemLabel && item[field.itemLabel]) || `${field.itemLabel ?? 'Item'} ${i + 1}`}
           fieldsFor={() => field.fields} atFor={() => at && `${at}.${field.name}`} fill={field.fill ? field : null}
           add={field.presets?.length
@@ -639,7 +685,7 @@ function FillPicker({ field, ctx, label, onPick }) {
   )
 }
 
-function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemParts = null, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs, fill = null }) {
+function Repeater({ label, needs = null, help, items, onChange, ctx, path, itemTitle, itemParts = null, fieldsFor, atFor = () => null, add, sections, saveTemplate: saveAs, fill = null }) {
   // Save as template: a section's by default (ctx.saveTemplate); an element's when given.
   const saveTemplate = saveAs ?? (sections ? ctx.saveTemplate : null)
   // A section picked on the page (click-to-edit, App.jsx PageTargets) opens
@@ -716,6 +762,7 @@ function Repeater({ label, help, items, onChange, ctx, path, itemTitle, itemPart
   const heading = (
     <>
       <span className="eotm-fold-label">{label}</span>
+      {needs}
       <span className="eotm-class-count">{items.length}</span>
       {help && <Info label={`About ${label}`}>{help}</Info>}
     </>

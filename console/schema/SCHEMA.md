@@ -71,6 +71,20 @@ says what each key means.
 
 Every field also takes `label`, `help`, `required` and `default`.
 
+`optionsUrl` (1.37.0+), on a `select` or `text` field, is a site path (`/api/...`) or an `https` address
+answering `[{ value, label }]`. The editor fetches it when the field is drawn: a select offers those
+choices (keeping a saved value that is not among them), a text field suggests them as it is typed. A
+select's own `options` stand in while it loads or if it fails. The API cannot check a value against a
+list it never sees, so a select with `optionsUrl` accepts any text.
+
+`requiredBy` (1.37.0+) names the channels (below) that need the field, e.g. `["etsy", "ebay"]`. The
+editor marks the field with each channel's badge. It is a marker only: `required` still decides what
+publishing refuses.
+
+**Channels** (1.37.0+): `"channels": [{ "name", "label", "short", "color" }]` at the top of the schema,
+the places a site sells beyond itself. `short` is the badge's text (1 to 3 characters), `color` its
+`#rrggbb`. A site selling only on its own pages declares none.
+
 `when: { field, is }` (1.28.0+) shows a field, and checks it, only while the field beside it named `field` holds `is` (or one of `is`, a list). A value never saved counts as that field's `default`.
 
 ## The owner's own types

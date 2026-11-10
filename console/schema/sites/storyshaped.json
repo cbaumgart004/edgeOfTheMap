@@ -1,5 +1,9 @@
 {
   "site": "storyshaped",
+  "channels": [
+    { "name": "etsy", "label": "Etsy", "short": "Et", "color": "#f1641e" },
+    { "name": "ebay", "label": "eBay", "short": "eB", "color": "#0064d2" }
+  ],
   "sitemap": { "aliases": { "/home": "/" } },
   "robots": { "blockTraining": true },
   "structuredData": { "libraryArticle": { "type": "Article", "author": "Whitney Granger", "citations": "sources", "parent": { "name": "Library", "path": "/library" } } },
@@ -1250,6 +1254,7 @@
       "fields": [
         {
           "name": "title",
+          "requiredBy": ["etsy", "ebay"],
           "kind": "text",
           "label": "Title",
           "required": true,
@@ -1258,6 +1263,7 @@
         },
         {
           "name": "description",
+          "requiredBy": ["etsy", "ebay"],
           "kind": "textarea",
           "label": "Description",
           "required": true,
@@ -1265,6 +1271,7 @@
         },
         {
           "name": "photos",
+          "requiredBy": ["etsy", "ebay"],
           "kind": "photos",
           "label": "Photos",
           "required": true,
@@ -1305,6 +1312,7 @@
         },
         {
           "name": "section",
+          "optionsUrl": "/api/marketplace/etsy/sections",
           "kind": "select",
           "label": "Shop section",
           "required": true,
@@ -1390,6 +1398,8 @@
         },
         {
           "name": "etsyCategory",
+          "requiredBy": ["etsy"],
+          "optionsUrl": "/api/marketplace/etsy/categories",
           "kind": "text",
           "label": "Etsy category",
           "required": true,
@@ -1398,6 +1408,7 @@
         },
         {
           "name": "ebayCategoryId",
+          "requiredBy": ["ebay"],
           "kind": "text",
           "label": "eBay category id",
           "maxLength": 20,
@@ -1407,6 +1418,7 @@
         },
         {
           "name": "condition",
+          "requiredBy": ["ebay"],
           "kind": "select",
           "label": "Condition",
           "required": true,
@@ -1478,6 +1490,7 @@
         },
         {
           "name": "whoMade",
+          "requiredBy": ["etsy"],
           "kind": "select",
           "label": "Who made it",
           "required": true,
@@ -1499,6 +1512,7 @@
         },
         {
           "name": "whenMade",
+          "requiredBy": ["etsy"],
           "kind": "select",
           "label": "When it was made",
           "required": true,
@@ -1666,6 +1680,7 @@
         },
         {
           "name": "variations",
+          "requiredBy": ["etsy", "ebay"],
           "kind": "list",
           "label": "Variations",
           "required": true,
@@ -1681,6 +1696,7 @@
             },
             {
               "name": "sku",
+              "requiredBy": ["ebay"],
               "kind": "text",
               "label": "SKU",
               "required": true,
@@ -1690,6 +1706,7 @@
             },
             {
               "name": "price",
+              "requiredBy": ["etsy", "ebay"],
               "kind": "money",
               "label": "Price",
               "required": true
@@ -1726,6 +1743,7 @@
           "fields": [
             {
               "name": "shippingProfileId",
+              "requiredBy": ["etsy"],
               "kind": "text",
               "label": "Shipping profile id",
               "maxLength": 20,
@@ -1798,6 +1816,7 @@
             },
             {
               "name": "itemSpecifics",
+              "requiredBy": ["ebay"],
               "kind": "list",
               "label": "Item specifics",
               "itemLabel": "specific",
@@ -1828,6 +1847,7 @@
             },
             {
               "name": "fulfillmentPolicyId",
+              "requiredBy": ["ebay"],
               "kind": "text",
               "label": "Shipping policy id",
               "maxLength": 20,
@@ -1836,6 +1856,7 @@
             },
             {
               "name": "paymentPolicyId",
+              "requiredBy": ["ebay"],
               "kind": "text",
               "label": "Payment policy id",
               "maxLength": 20,
@@ -1844,6 +1865,7 @@
             },
             {
               "name": "returnPolicyId",
+              "requiredBy": ["ebay"],
               "kind": "text",
               "label": "Return policy id",
               "maxLength": 20,

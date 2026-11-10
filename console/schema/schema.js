@@ -128,6 +128,17 @@ export function checkSchema(schema) {
   for (const b of schema.buttonStyles ?? []) {
     if (!b?.value || !NAME.test(b.value) || !b.label || typeof b.className !== 'string') errors.push('buttonStyles: each needs a plain value, a label and its className')
   }
+  // Where the site sells beyond itself (1.37.0+): [{ name, label, short, color }].
+  // A field's `requiredBy` names some of them; the editor marks the field with
+  // each one's badge. A site that sells only on itself declares none.
+  const channels = new Set()
+  if (schema.channels != null && !Array.isArray(schema.channels)) errors.push('channels: must be a list')
+  for (const c of schema.channels ?? []) {
+    if (!c?.name || !NAME.test(c.name) || !c.label || typeof c.short !== 'string' || !c.short.trim() || c.short.length > 3 || (c.color != null && !/^#[0-9a-f]{6}$/i.test(c.color))) {
+      errors.push(`channels.${c?.name}: needs a plain name, a label, a short badge of 1 to 3 characters and, optionally, a #rrggbb color`)
+    } else if (channels.has(c.name)) errors.push(`channels.${c.name}: listed twice`)
+    else channels.add(c.name)
+  }
   // The site's named colours for style fields: [{ value, label, css }].
   for (const c of schema.styleColors ?? []) {
     if (!c?.value || !NAME.test(c.value) || !c.label || typeof c.css !== 'string') errors.push('styleColors: each needs a plain value, a label and its css')
@@ -168,7 +179,15 @@ export function checkSchema(schema) {
       if (seen.has(f.name)) errors.push(`${at}: duplicate field`)
       seen.add(f.name)
       if (!FIELD_KINDS.includes(f.kind)) errors.push(`${at}: unknown kind "${f.kind}"`)
-      if (f.kind === 'select' && f.optionsFrom) {
+      if ('requiredBy' in f && (!Array.isArray(f.requiredBy) || !f.requiredBy.length || f.requiredBy.some((n) => !channels.has(n)))) {
+        errors.push(`${at}: requiredBy is a list of names from the schema's channels`)
+      }
+      if ('optionsUrl' in f && (!['select', 'text'].includes(f.kind) || typeof f.optionsUrl !== 'string' || !/^(\/(?!\/)|https:\/\/)/.test(f.optionsUrl))) {
+        errors.push(`${at}: optionsUrl is a site path starting / or an https address, on a select or text field`)
+      }
+      if (f.kind === 'select' && f.optionsUrl) {
+        // Choices come from the site when the editor opens; options, if any, stand in until then.
+      } else if (f.kind === 'select' && f.optionsFrom) {
         if (f.optionsFrom !== 'classes' && !Array.isArray(schema[f.optionsFrom])) errors.push(`${at}: optionsFrom names no list at the top of the schema`)
       } else if (f.kind === 'select' && !(f.options?.length > 0)) errors.push(`${at}: select needs options`)
       if (f.kind === 'relation' && !types[f.to]) errors.push(`${at}: relation to unknown type "${f.to}"`)
@@ -480,7 +499,9 @@ function checkValue(field, value, at, schema, errors, opts) {
       if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) errors.push(`${at}: must be a colour like #1a2b3c`)
       break
     case 'select':
-      if (!optionsOf(schema, field).some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
+      // optionsUrl: the site answers the choices, which the API cannot see, so any text stands.
+      if (field.optionsUrl) { if (typeof value !== 'string') errors.push(`${at}: must be text`) }
+      else if (!optionsOf(schema, field).some((o) => o.value === value)) errors.push(`${at}: "${value}" is not an option`)
       break
     case 'image':
       checkImage(value, at, errors)

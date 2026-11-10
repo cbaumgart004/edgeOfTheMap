@@ -313,5 +313,10 @@
     "version": "1.36.0",
     "integrity": "sha384-8cQf525kntlk9+KwQE24augWl236OAo5Lfz+GH0hdkxfmBqqLIT3Bmz3z+BYxx0l",
     "releasedAt": "2026-11-09"
+  },
+  {
+    "version": "1.37.0",
+    "integrity": "sha384-3LZILGIcvtP7t88/OkeEH9CiMTHF6jFgeFnvlW4Fw1hzbyc/53XaZBQEEQfw2GZr",
+    "releasedAt": "2026-11-10"
   }
 ]

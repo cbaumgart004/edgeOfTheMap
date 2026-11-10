@@ -64,4 +64,33 @@ describe('StoryShaped Listing', () => {
     ] } } }
     expect(checkSchema(bad)).toHaveLength(3)
   })
+
+  it('marks fields with the channels that need them, and reads choices from the site', () => {
+    const channels = [{ name: 'etsy', label: 'Etsy', short: 'Et', color: '#f1641e' }, { name: 'ebay', label: 'eBay', short: 'eB' }]
+    const ok = { site: 'x', version: 1, channels, types: { t: { fields: [
+      { name: 'a', kind: 'text', requiredBy: ['etsy', 'ebay'] },
+      { name: 'b', kind: 'select', optionsUrl: '/api/choices', options: [] },
+      { name: 'c', kind: 'text', optionsUrl: 'https://example.com/choices' },
+    ] } } }
+    expect(checkSchema(ok)).toEqual([])
+    // A value the site offers today may not be in the schema's own list.
+    expect(checkDocument(ok, 't', { b: 'Anything the site offered' })).toEqual([])
+
+    const bad = { site: 'x', version: 1, channels: [...channels, { name: 'etsy', label: 'Again', short: 'toolong' }], types: { t: { fields: [
+      { name: 'a', kind: 'text', requiredBy: ['amazon'] },
+      { name: 'b', kind: 'number', optionsUrl: '/api/choices' },
+      { name: 'c', kind: 'text', optionsUrl: 'http://example.com' },
+    ] } } }
+    // The repeated channel and its short name, then one per field.
+    expect(checkSchema(bad).length).toBeGreaterThanOrEqual(4)
+    expect(checkSchema(bad)).toEqual(expect.arrayContaining([expect.stringContaining('requiredBy'), expect.stringContaining('optionsUrl')]))
+  })
+
+  it("marks what Etsy and eBay need, and offers the shop's own sections and categories", () => {
+    const field = (n) => schema.types.listing.fields.find((f) => f.name === n)
+    expect(schema.channels.map((c) => c.name)).toEqual(['etsy', 'ebay'])
+    expect(field('title').requiredBy).toEqual(['etsy', 'ebay'])
+    expect(field('section').optionsUrl).toBe('/api/marketplace/etsy/sections')
+    expect(field('etsyCategory').optionsUrl).toBe('/api/marketplace/etsy/categories')
+  })
 })

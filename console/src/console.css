@@ -582,6 +582,16 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 .eotm-root details.eotm-home-fold > summary { justify-content: flex-start; }
 .eotm-fold-label { flex: 1; }
 .eotm-class-count { font: 500 12px var(--eotm-font); color: var(--eotm-muted); }
+/* requiredBy (Fields.jsx Needs): one badge per channel that needs the field,
+   in the channel's color as outline and text, so it reads in either mode. */
+.eotm-needs { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: middle; }
+.eotm-needs-badge {
+  font: 700 10px/1 var(--eotm-font); letter-spacing: 0.02em;
+  padding: 2px 4px; border-radius: 3px;
+  color: var(--eotm-needs, var(--eotm-muted));
+  border: 1px solid var(--eotm-needs, var(--eotm-line));
+  background: color-mix(in srgb, var(--eotm-needs, transparent) 12%, transparent);
+}
 .eotm-plain { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; font: 14px var(--eotm-font); }
 .eotm-plain li { display: flex; justify-content: space-between; gap: 8px; }
 .eotm-sections .eotm-section-open { justify-content: space-between; }
