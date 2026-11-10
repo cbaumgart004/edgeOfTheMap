@@ -94,3 +94,19 @@ describe('StoryShaped Listing', () => {
     expect(field('etsyCategory').optionsUrl).toBe('/api/marketplace/etsy/categories')
   })
 })
+
+describe('Listing manager', () => {
+  it('searches title, tag and SKU, and checks its manage block', async () => {
+    const { matches, valuesAt } = await import('../src/Manage.jsx')
+    const m = schema.types.listing.manage
+    const doc = { data: LISTING }
+    expect(valuesAt(LISTING, 'tags.tag')).toEqual(['uranium glass ring', 'vaseline glass'])
+    expect(matches(m, doc, 'ring solitaire')).toBe(true)
+    expect(matches(m, doc, 'VASELINE')).toBe(true)
+    expect(matches(m, doc, 'blu-7')).toBe(true)
+    expect(matches(m, doc, 'necklace')).toBe(false)
+    const bad = structuredClone(schema)
+    bad.types.listing.manage = { ...m, groupBy: ['nope'], variations: { list: 'title', sku: 'sku', price: 'price' }, stock: { list: '/x', count: '/y' } }
+    expect(checkSchema(bad).join('\n')).toMatch(/groupBy[\s\S]*variations[\s\S]*stock/)
+  })
+})

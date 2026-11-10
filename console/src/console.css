@@ -536,17 +536,19 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 .eotm-sheet.is-loose.is-full { height: calc(100dvh - 16px); }
 /* The open panel's sizing edge (App.jsx, Sheet): along the bottom where the
    top stays put, along the top of a phone's bottom sheet. */
-.eotm-resize { position: absolute; left: 0; right: 0; height: 14px; z-index: 3; cursor: ns-resize; touch-action: none; }
+.eotm-resize { position: absolute; left: 0; right: 0; height: 14px; z-index: 5; cursor: ns-resize; touch-action: none; }
 /* Inside the panel: docked full height, an edge half past it was off the screen. */
 .eotm-resize.is-bottom { bottom: 0; }
 .eotm-resize.is-top { top: 0; }
-.eotm-resize::after { content: ''; position: absolute; left: 50%; top: 5px; width: 48px; height: 4px; margin-left: -24px; border-radius: 2px;
-  background: var(--eotm-muted); opacity: 0.5; transition: opacity 120ms; }
-.eotm-resize:hover::after, .eotm-resize:active::after { opacity: 1; }
+/* The whole edge sizes the panel, so its mark runs the whole width, not a
+   short grip in one place. */
+.eotm-resize::after { content: ''; position: absolute; left: 8px; right: 8px; top: 5px; height: 4px; border-radius: 2px;
+  background: var(--eotm-muted); opacity: 0.25; transition: opacity 120ms; }
+.eotm-resize:hover::after, .eotm-resize:active::after { opacity: 0.9; }
 .eotm-sheet.is-sized { transition: none; }
 .eotm-sheet.is-wide.is-sized:not(.is-loose) { border-bottom: 1px solid var(--eotm-line); border-radius: 0 0 0 12px; }
 /* The top edge lies over the grip, which is its handle; it draws no second bar. */
-.eotm-resize.is-top::after { display: none; }
+.eotm-resize.is-top::after { top: 1px; }
 .eotm-sheet.is-wide.is-sized:not(.is-loose)[style*="top"] { border-top: 1px solid var(--eotm-line); border-radius: 12px 0 0 12px; }
 .eotm-head { cursor: grab; touch-action: none; } /* a finger drags it rather than scrolling the page */
 .eotm-head:active { cursor: grabbing; }
@@ -738,3 +740,34 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 
 .eotm-fill { width: auto; max-width: 100%; }
 .eotm-item-body > .eotm-fill { margin-bottom: 8px; }
+
+/* A type's manager (Manage.jsx): search with Quick edit and Filter beside it,
+   headings by group, photo cards, and the selection's bar along the bottom. */
+.eotm-root .eotm-manage { display: grid; gap: 8px; padding-bottom: 56px; }
+.eotm-root .eotm-manage-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; align-items: center; padding: 6px 0; background: var(--eotm-surface); }
+.eotm-root .eotm-manage-bar .eotm-input { flex: 1; min-width: 0; }
+.eotm-root .eotm-manage-filters { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); }
+.eotm-root .eotm-manage-count { justify-content: space-between; align-items: center; }
+.eotm-root .eotm-manage-group > summary .eotm-fold-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.eotm-root .eotm-manage-group.is-depth-1 { margin-left: 10px; }
+.eotm-root .eotm-manage-cards { display: grid; gap: 6px; padding: 4px 0 8px; }
+.eotm-root .eotm-manage-card { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-surface); }
+.eotm-root .eotm-manage-card.is-picked { border-color: var(--eotm-accent); box-shadow: 0 0 0 1px var(--eotm-accent); }
+.eotm-root .eotm-manage-head { display: flex; align-items: center; gap: 6px; padding: 6px; }
+.eotm-root .eotm-manage-check { all: revert; width: 20px; height: 20px; flex: none; margin: 0 4px; accent-color: var(--eotm-accent); cursor: pointer; }
+.eotm-root .eotm-manage-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left; }
+.eotm-root .eotm-manage-open img, .eotm-root .eotm-manage-nophoto { width: 56px; height: 56px; flex: none; border-radius: 6px; object-fit: cover; background: var(--eotm-line); }
+.eotm-root .eotm-manage-nophoto { display: block; }
+.eotm-root .eotm-manage-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.eotm-root .eotm-manage-text strong { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.eotm-root .eotm-manage-quick { display: grid; gap: 6px; padding: 4px 8px 10px; border-top: 1px solid var(--eotm-line); }
+.eotm-root .eotm-manage-rows { width: 100%; border-collapse: collapse; font-size: 13px; }
+.eotm-root .eotm-manage-rows th { text-align: left; font-weight: 600; color: var(--eotm-muted); padding: 2px 4px; }
+.eotm-root .eotm-manage-rows td { padding: 2px 4px; vertical-align: middle; }
+.eotm-root .eotm-manage-rows td:first-child { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eotm-root .eotm-manage-rows .eotm-input { width: 100%; min-width: 4.5em; padding: 4px 6px; }
+.eotm-root .eotm-manage-picked { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px;
+  border-radius: var(--eotm-radius); background: var(--eotm-surface); box-shadow: 0 -2px 12px rgba(0,0,0,.18); }
+.eotm-root .eotm-manage-picked strong { margin-right: auto; }
+.eotm-root .eotm-manage-bulk { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--eotm-accent); border-radius: var(--eotm-radius); background: var(--eotm-surface); }
+.eotm-root .eotm-manage-bulk h3 { font: 600 16px var(--eotm-heading); }

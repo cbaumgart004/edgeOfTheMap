@@ -62,6 +62,31 @@ export function slugify(text) {
 
 // ---------------------------------------------------------------- schema itself
 
+// A type's manager (1.38.0+, src/Manage.jsx; SCHEMA.md "Managed lists").
+function checkManage(t, at) {
+  const errors = []
+  const m = t.manage
+  if (typeof m !== 'object' || Array.isArray(m)) return [`${at}: must be an object`]
+  const field = (n) => (t.fields ?? []).find((f) => f.name === n)
+  const top = (n) => !!field(n.split('.')[0])
+  for (const key of ['groupBy', 'quick', 'bulk']) {
+    if (m[key] == null) continue
+    if (!Array.isArray(m[key]) || m[key].some((n) => !field(n))) errors.push(`${at}.${key}: a list of this type's field names`)
+  }
+  if (m.search != null && (!Array.isArray(m.search) || m.search.some((p) => typeof p !== 'string' || !top(p)))) errors.push(`${at}.search: a list of field paths, e.g. "tags.tag"`)
+  if (m.photo != null && !field(m.photo)) errors.push(`${at}.photo: a field name`)
+  const v = m.variations
+  if (v != null) {
+    const list = field(v.list)
+    const sub = (n) => (list?.fields ?? []).some((f) => f.name === n)
+    if (list?.kind !== 'list' || !sub(v.sku) || !sub(v.price) || (v.option && !sub(v.option))) errors.push(`${at}.variations: { list, sku, price, option } naming a list field and its fields`)
+  }
+  if (m.stock != null && (typeof m.stock.list !== 'string' || typeof m.stock.count !== 'string' || !m.stock.count.includes('{id}') || !v)) {
+    errors.push(`${at}.stock: { list, count } addresses, count holding {id}, with variations set`)
+  }
+  return errors
+}
+
 // Returns a list of problems; empty means the schema is usable.
 export function checkSchema(schema) {
   const errors = []
@@ -253,6 +278,7 @@ export function checkSchema(schema) {
     const names = (t.fields ?? []).map((f) => f.name)
     if (t.titleField && !names.includes(t.titleField)) errors.push(`types.${name}: titleField "${t.titleField}" is not a field`)
     if (t.slugFrom && !names.includes(t.slugFrom)) errors.push(`types.${name}: slugFrom "${t.slugFrom}" is not a field`)
+    if (t.manage != null) errors.push(...checkManage(t, `types.${name}.manage`))
   }
   for (const [name, b] of Object.entries(blocks)) {
     if (!NAME.test(name)) errors.push(`block "${name}" is not a plain name`)

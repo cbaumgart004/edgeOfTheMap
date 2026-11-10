@@ -1252,6 +1252,16 @@
       "plural": "Listings",
       "titleField": "title",
       "slugFrom": "title",
+      "manage": {
+        "groupBy": ["section", "etsyCategory"],
+        "search": ["title", "tags.tag", "variations.sku"],
+        "searchLabel": "Search by title, tag or SKU",
+        "photo": "photos",
+        "quick": ["title", "section", "description"],
+        "bulk": ["section", "etsyCategory", "whoMade", "whenMade"],
+        "variations": { "list": "variations", "option": "option", "sku": "sku", "price": "price" },
+        "stock": { "list": "/api/inventory/stock", "count": "/api/inventory/stock/{id}/movements" }
+      },
       "fields": [
         {
           "name": "title",

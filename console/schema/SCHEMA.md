@@ -202,6 +202,27 @@ Each document is one row in the site's own Neon project (`api/migrations/site`):
 version is rejected with the current document, so two tabs cannot silently overwrite each other
 (platform plan §3.4). Publishing copies the draft; a published row is what visitors see.
 
+**Managed lists** (1.38.0+): a type with `manage` is listed on the editor home as a shop's
+manager (`src/Manage.jsx`) instead of a plain list:
+
+```jsonc
+"manage": {
+  "groupBy": ["section", "etsyCategory"],          // headings, outermost first
+  "search": ["title", "tags.tag", "variations.sku"], // paths; a list is stepped into
+  "searchLabel": "Search by title, tag or SKU",
+  "photo": "photos",                               // the card's picture: the first one
+  "quick": ["title", "section", "description"],    // Quick edit (✎), on each card
+  "bulk": ["section", "etsyCategory"],             // Edit together, for a selection
+  "variations": { "list": "variations", "option": "option", "sku": "sku", "price": "price" },
+  "stock": { "list": "/api/inventory/stock", "count": "/api/inventory/stock/{id}/movements" }
+}
+```
+
+`variations` adds each row's SKU and price to Quick edit, and a price for every row to Edit together.
+`stock` reads quantities from the site's own inventory by SKU, with the editor token, and writes a
+changed one back as `{ kind: "count", quantity }` to `count`. The quantity is never stored in the
+document. A SKU the inventory does not hold shows None.
+
 **Release** (1.37.1+): `"release": { "types": ["page", ...] }` names the types that **Review
 changes**, Publish all, Discard all and the leave prompt cover. Left out, every type is covered. A type
 not named is published one document at a time, from the Publish button on its own editor bar. Use it

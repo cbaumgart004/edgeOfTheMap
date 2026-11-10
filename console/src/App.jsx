@@ -3,6 +3,7 @@ import { checkDocument, warnDocument, titleOf, setItemField, sectionParts, newBl
 import { ELEMENT_LABELS } from '../schema/elements.js'
 import { previewPathFor } from './bridge.js'
 import { FieldList, Elements, RemoveButton } from './Fields.jsx'
+import ManageList from './Manage.jsx'
 import Arrange from './Arrange.jsx'
 import CustomTypes from './CustomTypes.jsx'
 import Images from './Images.jsx'
@@ -678,6 +679,8 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     if (!found) throw new Error('That is not an element of yours: only added elements can be saved as templates.')
     await saveElementTemplate(name, found)
   }
+  // The editor token, for the site's own admin routes a type's manager calls (Manage.jsx, stock).
+  const getToken = useCallback(async () => (await auth.getToken?.()) ?? null, [auth])
   const ctxBase = { schema, store, bridge, notify, upload: (blob, meta) => store.upload(blob, meta), overlay, setPeek, saveTemplate, addField, removeField, addClass, saveElementTemplate }
 
   // The page layout document for an address (a type with a `layout` field and a
@@ -817,7 +820,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     </div>)
   else if (user === undefined) body = <p className="eotm-empty">Loading…</p>
   else if (!user) body = <SignIn auth={auth} onSignedIn={setUser} />
-  else if (view.name === 'home') body = <Home schema={schema} store={store} notify={notify}
+  else if (view.name === 'home') body = <Home schema={schema} store={store} notify={notify} ctxBase={ctxBase} getToken={getToken}
     openDoc={(doc, item = null, field = null) => setView({ name: 'edit', type: doc.type, id: doc.id, title: titleOf(schema, doc), focus: item, focusField: field, focusAt: Date.now(), back: { name: 'home' } })}
     addClass={addClass} onAddElement={async ({ element, ...t }) => {
       await resizeTarget({ ...t, field: '_elements', value: (old) => [...(Array.isArray(old) ? old : []), element] })
@@ -1007,7 +1010,7 @@ const HOME_OPEN = 'eotm:home-open'
 // look: themes, layouts, settings, menus). The schema can say (`group`).
 export const isDesign = (name, t) => (t.group ? t.group === 'design' : /theme|layout|setting|menu/i.test(name))
 
-function Home({ schema, store, notify, openDoc, onView, onImages, onMedia, onTypes, onTemplates, onTool, addClass, onAddElement }) {
+function Home({ schema, store, notify, openDoc, onView, onImages, onMedia, onTypes, onTemplates, onTool, addClass, onAddElement, ctxBase, getToken }) {
   const [counts, setCounts] = useState({})
   useEffect(() => {
     for (const type of Object.keys(schema.types)) store.list(type).then((docs) => setCounts((c) => ({ ...c, [type]: docs.length }))).catch(() => {})
@@ -1077,6 +1080,8 @@ function Home({ schema, store, notify, openDoc, onView, onImages, onMedia, onTyp
         t.help ?? `There is one ${label}, used across the site. Tap a setting to change it.`)
     }
     const n = countOf(name)
+    if (t.manage) return fold(name, label, n == null ? '…' : String(n), <ManageList schema={schema} store={store} type={name} notify={notify} ctxBase={ctxBase} getToken={getToken} open={(doc) => openDoc(doc)} />,
+        t.help ?? `Every one of your ${label.toLowerCase()}, by ${(t.manage.groupBy ?? []).map((g) => (t.fields.find((f) => f.name === g)?.label ?? g).toLowerCase()).join(', then ') || 'name'}. ✎ edits the most-changed fields on each card; tick several to edit them together.`)
     return fold(name, label, n == null ? '…' : String(n), <DocList schema={schema} store={store} type={name} notify={notify} open={(doc, item) => openDoc(doc, item)} />,
         t.help ?? `Every one of your ${label.toLowerCase()}. Open one to change it, or add a new one.`)
   }
