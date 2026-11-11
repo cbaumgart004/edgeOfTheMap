@@ -57,7 +57,7 @@ function useStock(stock, getToken, notify) {
         if (!gone) setBySku(new Map((Array.isArray(rows) ? rows : []).filter((r) => r.sku).map((r) => [r.sku, r])))
       } catch (e) {
         console.warn('[manage] inventory not read:', e.message)
-        if (!gone) setBySku(new Map())
+        // Unreadable stays null: no Qty column, rather than None on every row.
       }
     })()
     return () => { gone = true }
@@ -224,7 +224,7 @@ function Card({ d, schema, manage, picked, onPick, onOpen, quick, store, notify,
   return (
     <li className={`eotm-manage-card${picked ? ' is-picked' : ''}`}>
       <div className="eotm-manage-head">
-        <input type="checkbox" className="eotm-manage-check" checked={picked} onChange={onPick} aria-label={`Select ${title}`} />
+        <label className="eotm-manage-pick"><input type="checkbox" className="eotm-manage-check" checked={picked} onChange={onPick} aria-label={`Select ${title}`} /></label>
         <button type="button" className="eotm-manage-open" onClick={onOpen} title="Open every field">
           {src ? <img src={src} alt="" loading="lazy" /> : <span className="eotm-manage-nophoto" aria-hidden="true" />}
           <span className="eotm-manage-text">
@@ -234,8 +234,8 @@ function Card({ d, schema, manage, picked, onPick, onOpen, quick, store, notify,
               {qty != null ? ` · ${qty} in stock` : ''}
               {v ? ` · ${rows.length} SKU${rows.length === 1 ? '' : 's'}` : ''}
             </span>
+            <span className={`eotm-chip is-${d.status}`}>{STATUS[d.status]}</span>
           </span>
-          <span className={`eotm-chip is-${d.status}`}>{STATUS[d.status]}</span>
         </button>
       </div>
       {quick && <QuickEdit d={d} schema={schema} manage={manage} store={store} notify={notify} ctxBase={ctxBase} onSaved={onSaved} bySku={bySku} setCount={setCount} />}

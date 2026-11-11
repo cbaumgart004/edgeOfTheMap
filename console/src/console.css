@@ -411,8 +411,8 @@ select.eotm-input[multiple] { min-height: 120px; }
 .eotm-root details.eotm-fold, .eotm-root details.is-fold { display: block; margin: 14px 0 0; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); padding: 0 12px; }
 .eotm-root details.eotm-fold > summary, .eotm-root details.is-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font: 600 16px var(--eotm-heading); list-style: none; }
 .eotm-root details.eotm-fold > summary::-webkit-details-marker, .eotm-root details.is-fold > summary::-webkit-details-marker { display: none; }
-.eotm-root details.eotm-fold > summary::before, .eotm-root details.is-fold > summary::before { content: 'B8'; color: var(--eotm-muted); }
-.eotm-root details[open].eotm-fold > summary::before, .eotm-root details[open].is-fold > summary::before { content: 'BE'; }
+.eotm-root details.eotm-fold > summary::before, .eotm-root details.is-fold > summary::before { content: '\25B8'; color: var(--eotm-muted); }
+.eotm-root details[open].eotm-fold > summary::before, .eotm-root details[open].is-fold > summary::before { content: '\25BE'; }
 .eotm-root details.eotm-fold[open], .eotm-root details.is-fold[open] { padding-bottom: 12px; }
 
 /* Typing on the page (Targets.jsx): the hint beside Edit, and the text being edited. */
@@ -745,16 +745,26 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
    headings by group, photo cards, and the selection's bar along the bottom. */
 .eotm-root .eotm-manage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding-bottom: 56px; }
 .eotm-root .eotm-manage-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; align-items: center; padding: 6px 0; background: var(--eotm-surface); }
-.eotm-root .eotm-manage-bar .eotm-input { flex: 1; min-width: 0; }
+.eotm-root .eotm-manage-bar .eotm-input { flex: 1; min-width: 0; min-height: 44px; }
+.eotm-root .eotm-manage-bar .eotm-icon { min-width: 44px; min-height: 44px; }
+.eotm-root .eotm-manage-count .eotm-btn { min-height: 40px; }
+.eotm-root .eotm-manage-text .eotm-chip { align-self: flex-start; margin-top: 4px; font-size: 11px; padding: 1px 8px; }
 .eotm-root .eotm-manage-filters { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); }
 .eotm-root .eotm-manage-count { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
 .eotm-root .eotm-manage-group > summary .eotm-fold-label { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.eotm-root .eotm-manage-group.is-depth-1 { margin-left: 10px; }
-.eotm-root .eotm-manage-cards { display: grid; gap: 6px; padding: 4px 0 8px; }
-.eotm-root .eotm-manage-card { display: block; border: 1px solid var(--eotm-line); border-radius: var(--eotm-radius); background: var(--eotm-surface); }
-.eotm-root .eotm-manage-card.is-picked { border-color: var(--eotm-accent); box-shadow: 0 0 0 1px var(--eotm-accent); }
-.eotm-root .eotm-manage-head { display: flex; align-items: center; gap: 6px; padding: 6px; }
-.eotm-root .eotm-manage-check { all: revert; width: 20px; height: 20px; flex: none; margin: 0 4px; accent-color: var(--eotm-accent); cursor: pointer; }
+/* Groups are headings, not boxes, so a row keeps the pane's whole width on a phone. */
+.eotm-root details.eotm-home-fold:has(> .eotm-manage) { padding-inline: 4px; }
+.eotm-root details.eotm-manage-group { margin: 0; border: 0; border-radius: 0; padding: 0; }
+.eotm-root details.eotm-manage-group[open] { padding-bottom: 0; }
+.eotm-root details.eotm-manage-group > summary { min-height: 48px; padding: 0 6px; border-bottom: 1px solid var(--eotm-line); font-size: 15px; }
+.eotm-root details.eotm-manage-group.is-depth-1 > summary { min-height: 44px; padding-left: 20px; font: 500 14px var(--eotm-font); color: var(--eotm-muted); }
+.eotm-root .eotm-manage-cards { display: grid; gap: 0; padding: 0; }
+.eotm-root .eotm-manage-card { display: block; border-bottom: 1px solid var(--eotm-line); }
+.eotm-root .eotm-manage-card.is-picked { background: color-mix(in srgb, var(--eotm-accent) 12%, transparent); }
+.eotm-root .eotm-manage-head { display: flex; align-items: center; gap: 2px; padding: 8px 4px 8px 0; }
+/* The box is small; the label around it is the 44px a thumb needs. */
+.eotm-root .eotm-manage-pick { display: grid; place-items: center; flex: none; width: 40px; min-height: 56px; cursor: pointer; }
+.eotm-root .eotm-manage-check { all: revert; width: 22px; height: 22px; margin: 0; accent-color: var(--eotm-accent); cursor: pointer; }
 .eotm-root .eotm-manage-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left; }
 .eotm-root .eotm-manage-open img, .eotm-root .eotm-manage-nophoto { width: 56px; height: 56px; flex: none; border-radius: 6px; object-fit: cover; background: var(--eotm-line); }
 .eotm-root .eotm-manage-nophoto { display: block; }
@@ -765,7 +775,14 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 .eotm-root .eotm-manage-rows th { text-align: left; font-weight: 600; color: var(--eotm-muted); padding: 2px 4px; }
 .eotm-root .eotm-manage-rows td { padding: 2px 4px; vertical-align: middle; }
 .eotm-root .eotm-manage-rows td:first-child { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.eotm-root .eotm-manage-rows .eotm-input { width: 100%; min-width: 4.5em; padding: 4px 6px; }
+.eotm-root .eotm-manage-rows .eotm-input { width: 100%; min-width: 0; min-height: 40px; padding: 4px 6px; }
+.eotm-root .eotm-manage-rows { table-layout: fixed; }
+.eotm-root .eotm-manage-rows th:nth-child(3) { width: 84px; }
+.eotm-root .eotm-manage-rows th:nth-child(4) { width: 64px; }
+/* Quick edit is the short form: the label alone, and a description a few lines tall. */
+.eotm-root .eotm-manage-quick .eotm-label-row > .eotm-needs, .eotm-root .eotm-manage-quick .eotm-label-row > .eotm-info { display: none; }
+.eotm-root .eotm-manage-quick textarea { max-height: 7.5em; }
+.eotm-root .eotm-manage-quick .eotm-input { min-height: 44px; font-size: 16px; }
 .eotm-root .eotm-manage-picked { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px;
   border-radius: var(--eotm-radius); background: var(--eotm-surface); box-shadow: 0 -2px 12px rgba(0,0,0,.18); }
 .eotm-root .eotm-manage-picked strong { margin-right: auto; }
