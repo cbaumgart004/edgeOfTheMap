@@ -1264,6 +1264,14 @@
       },
       "fields": [
         {
+          "name": "listingNumber",
+          "kind": "number",
+          "label": "Listing No.",
+          "integer": true,
+          "min": 1,
+          "help": "Given by the site, the next in order, when the Listing is first seen. Quote it to pair the Listing with its Etsy or eBay listing (Stock, Marketplaces). Do not change it: the site restores its own."
+        },
+        {
           "name": "title",
           "requiredBy": ["etsy", "ebay"],
           "kind": "text",
@@ -1753,6 +1761,20 @@
           "help": "What Etsy needs beyond the shared fields. A blank id uses the shop's default (set on the backend).",
           "fields": [
             {
+              "name": "title",
+              "kind": "text",
+              "label": "Etsy title",
+              "maxLength": 140,
+              "help": "Sent to Etsy instead of the title above. Blank: the title above, which the website shows."
+            },
+            {
+              "name": "description",
+              "kind": "textarea",
+              "label": "Etsy description",
+              "maxLength": 10000,
+              "help": "Sent to Etsy instead of the description above. Blank: the description above."
+            },
+            {
               "name": "shippingProfileId",
               "requiredBy": ["etsy"],
               "kind": "text",
@@ -1824,6 +1846,13 @@
               "label": "eBay title",
               "maxLength": 80,
               "help": "eBay allows 80 characters. Blank: the title above, cut at 80."
+            },
+            {
+              "name": "description",
+              "kind": "textarea",
+              "label": "eBay description",
+              "maxLength": 500000,
+              "help": "Sent to eBay instead of the description above; may be HTML. Blank: the description above."
             },
             {
               "name": "itemSpecifics",
