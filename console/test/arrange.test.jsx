@@ -89,6 +89,7 @@ afterEach(async () => { await act(async () => roots.splice(0).forEach((root) => 
 describe('Arrange on the page', () => {
   it('makes a section Free from where its parts are drawn, then moves a part', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const store = localStore({ schema })
     const doc = await store.create({ type: 'page', data: { title: 'Home', sections: [{ _id: 'sec1', _type: 'values', heading: 'Hello', items: [] }] } })
     // The site's markup for that section (Frame.jsx marks).
@@ -104,7 +105,7 @@ describe('Arrange on the page', () => {
     document.body.append(host)
     await act(async () => mount(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await act(async () => section.querySelector('[data-eotm-part="heading"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
     await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 300, clientY: 120, button: 0 })))
     await tick(20)
@@ -142,6 +143,7 @@ describe('Arrange on the page', () => {
 
   it('dragging a part of a Flow section makes the section Free where it is drawn, then moves the part', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const store = localStore({ schema })
     const doc = await store.create({ type: 'page', data: { title: 'Home', sections: [{ _id: 'sec1', _type: 'values', heading: 'Hello', items: [] }] } })
     const page = document.createElement('main')
@@ -155,7 +157,7 @@ describe('Arrange on the page', () => {
     document.body.append(host)
     await act(async () => mount(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     await tick()
-    await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     const heading = section.querySelector('[data-eotm-part="heading"]')
     const ev = (type, x) => new MouseEvent(type, { bubbles: true, clientX: x, clientY: 120, button: 0 })
     await act(async () => heading.dispatchEvent(ev('pointerdown', 300)))

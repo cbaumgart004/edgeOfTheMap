@@ -48,12 +48,12 @@ describe('View, Edit and Arrange', () => {
       const e = new MouseEvent('click', { bubbles: true, cancelable: true }); img.dispatchEvent(e); return e
     }
     let e
-    await act(async () => byText(host, '.eotm-modes button', 'Edit').click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await act(async () => { e = click() })
     await tick(20)
     expect(e.defaultPrevented).toBe(true)
     expect(host.querySelector('[data-eotm-item="b1"]')?.className).toContain('is-open')
-    await act(async () => byText(host, '.eotm-modes button', 'View').click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await act(async () => { e = click() })
     expect(e.defaultPrevented).toBe(false)
     expect(link.getAttribute('href')).toBe('/shop')
@@ -67,7 +67,7 @@ describe('View, Edit and Arrange', () => {
       rect(section, { left: 0, top: 0, width: 400, height: 300 })
       rect(page.querySelector('[data-eotm-part="tagline"]'), { left: 20, top: 20, width: 360, height: 40 })
       rect(page.querySelector('[data-eotm-part="buttons"]'), { left: 20, top: 100, width: 200, height: 40 })
-      await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
+      await act(async () => host.querySelector('.eotm-editbox input').click())
       expect(document.body.textContent).toContain('Edits on a phone change the phone view only')
       await act(async () => section.querySelector('p').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })))
       await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
@@ -85,33 +85,13 @@ describe('View, Edit and Arrange', () => {
       phone = false
     }
   })
-  it('Edit chooses and opens only; the move and size tools are Arrange’s', async () => {
-    const { page, host } = await mount()
-    const section = page.querySelector('section')
-    rect(section, { left: 0, top: 0, width: 400, height: 300 })
-    const press = async () => {
-      await act(async () => section.querySelector('p').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })))
-      await act(async () => window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 })))
-      await tick(20)
-    }
-    await act(async () => byText(host, '.eotm-modes button', 'Edit').click())
-    await press()
-    expect(document.querySelector('.eotm-arrange-panel [aria-label="Controls"]')).toBeNull()
-    expect(document.querySelector('.eotm-arrange-handle')).toBeNull()
-    expect(document.querySelector('.eotm-arrange-panel [aria-label="Edit"]')).toBeTruthy()
-    await act(async () => byText(host, '.eotm-modes button', 'Arrange').click())
-    await press()
-    expect(document.querySelector('.eotm-arrange-panel [aria-label="Controls"]')).toBeTruthy()
-    expect(document.querySelector('.eotm-arrange-handle')).toBeTruthy()
-  })
-
   it('an ⓘ shows what the modes do, and on a home heading it explains without folding', async () => {
     const { host } = await mount()
-    const modes = host.querySelector('.eotm-head > .eotm-info')
+    const modes = host.querySelector('.eotm-banner .eotm-info')
     await act(async () => modes.click())
-    expect(host.querySelector('.eotm-head .eotm-info-panel').textContent).toContain('Arrange')
+    expect(host.querySelector('.eotm-banner .eotm-info-panel').textContent).toContain('Edit')
     await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })))
-    expect(host.querySelector('.eotm-head .eotm-info-panel')).toBeNull()
+    expect(host.querySelector('.eotm-banner .eotm-info-panel')).toBeNull()
     const fold = host.querySelector('details.eotm-home-fold')
     const was = fold.open
     await act(async () => fold.querySelector('summary .eotm-info').click())

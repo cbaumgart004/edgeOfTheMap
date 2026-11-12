@@ -46,20 +46,3 @@ it('asks Save, Review changes, Discard all or Cancel before the dashboard link l
   await act(async () => [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Cancel').click())
   expect(host.querySelector('[role="alertdialog"]')).toBeNull()
 })
-
-it('▴ makes a moved editor on a phone full height, and ▾ half again', async () => {
-  localStorage.clear()
-  phone = true
-  localStorage.setItem('eotm:panel-pos', JSON.stringify({ x: 4, y: 40 }))
-  const host = await mount(localStore({ schema }))
-  const sheet = host.querySelector('.eotm-sheet')
-  expect(sheet.classList.contains('is-loose')).toBe(true)
-  expect(sheet.classList.contains('is-half')).toBe(true)
-  await act(async () => host.querySelector('button[aria-label="Expand editor"]').click())
-  expect(sheet.classList.contains('is-full')).toBe(true)
-  await act(async () => host.querySelector('button[aria-label="Shrink editor"]').click())
-  expect(sheet.classList.contains('is-half')).toBe(true)
-  // The rule that sizes a moved panel follows half and full.
-  const css = readFileSync('src/console.css', 'utf8')
-  expect(css).toMatch(/\.eotm-sheet\.is-loose\.is-full \{ height:/)
-})

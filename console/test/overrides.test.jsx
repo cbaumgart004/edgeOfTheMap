@@ -18,6 +18,7 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   document.body.innerHTML = ''
   localStorage.clear()
+  sessionStorage.clear()
   window.matchMedia = (q) => ({ matches: q.includes('min-width'), media: q, addEventListener() {}, removeEventListener() {} })
 })
 
@@ -36,7 +37,7 @@ describe('Edge of the Map: overrides of the site’s own elements', () => {
     document.body.append(host)
     await act(async () => createRoot(host).render(<App schema={schema} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     // The editor opens on View; these click the page in Edit.
-    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await tick()
     const h1 = page.querySelector('h1')
     await act(async () => h1.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true })))

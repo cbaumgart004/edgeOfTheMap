@@ -26,6 +26,7 @@ const unfold = (root, label) => act(async () => {
 describe('console in a page', () => {
   it('creates an event, pushes the draft to the page as it is typed, saves and publishes it', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const host = document.createElement('div')
     document.body.append(host)
     const bridge = createBridge()
@@ -67,6 +68,7 @@ describe('console in a page', () => {
 
   it('says who is signed in, and Sign out ends it on the admin page too', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const host = document.createElement('div')
     document.body.append(host)
     const calls = []
@@ -78,27 +80,9 @@ describe('console in a page', () => {
     expect(calls).toEqual(['signOut', { signout: true }])
   })
 
-  it('the minimised editor can be dragged anywhere, remembered, and a tap opens it', async () => {
-    localStorage.clear()
-    const host = document.createElement('div')
-    document.body.append(host)
-    await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
-    await tick()
-    const sheet = host.querySelector('.eotm-sheet')
-    await act(async () => host.querySelector('.eotm-title').click())
-    expect(sheet.classList.contains('is-bar')).toBe(true)
-    const grip = host.querySelector('.eotm-grip')
-    const fire = (type, x, y) => grip.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }))
-    await act(async () => { fire('pointerdown', 10, 10); fire('pointermove', 210, 110); fire('pointerup', 210, 110) })
-    expect(sheet.classList.contains('is-floating')).toBe(true)
-    expect(sheet.style.left).toBe('200px')
-    expect(JSON.parse(localStorage.getItem('eotm:bar-pos'))).toEqual({ x: 200, y: 100 })
-    await act(async () => { fire('pointerdown', 210, 110); fire('pointerup', 211, 111) })
-    expect(sheet.classList.contains('is-half')).toBe(true)
-  })
-
   it('links home to the dashboard and the account page', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const host = document.createElement('div')
     document.body.append(host)
     await act(async () => createRoot(host).render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()}
@@ -111,6 +95,7 @@ describe('console in a page', () => {
 
   it('orders and sizes the blocks the page marks, and writes the whole arrangement', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const story = JSON.parse(readFileSync('schema/sites/storyshaped.json', 'utf8'))
     const page = document.createElement('main')
     page.dataset.eotmLayout = ''
@@ -140,8 +125,10 @@ describe('console in a page', () => {
     page.remove()
   })
 
-  it('opens on View; ✕ in Arrange hides the pane and keeps arranging, and the Mode line opens it again', async () => {
+  it('opens on View under the Managing banner; ticking Edit arranges, ☰ folds the menu, ✕ closes', async () => {
     localStorage.clear()
+    sessionStorage.clear()
+    sessionStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
     const host = document.createElement('div')
@@ -150,21 +137,27 @@ describe('console in a page', () => {
     let closed = 0
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => { closed++ }} />))
     await tick()
-    const line = () => host.querySelector('.eotm-modeline').textContent
-    expect(line()).toContain('Mode: View')
-    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Arrange').click())
-    expect(line()).toContain('Mode: Arrange')
+    expect(host.querySelector('.eotm-banner-title').textContent).toBe('Managing Site Content')
+    expect(host.querySelector('.eotm-editbox input').checked).toBe(false)
+    expect(document.querySelector('.eotm-arrange')).toBe(null)
+    await act(async () => host.querySelector('.eotm-editbox input').click())
+    expect(host.querySelector('.eotm-editbox input').checked).toBe(true)
+    expect(document.querySelector('.eotm-arrange')).not.toBe(null)
+    const open = () => host.querySelector('.eotm-side').classList.contains('is-open')
+    const before = open()
+    await act(async () => host.querySelector('.eotm-banner-menu').click())
+    expect(open()).toBe(!before)
+    await act(async () => host.querySelector('.eotm-banner-menu').click())
+    expect(open()).toBe(before)
     await act(async () => host.querySelector('[aria-label="Close editor"]').click())
-    expect(host.querySelector('.eotm-sheet.is-hidden')).not.toBe(null) // mounted, so the open document takes Arrange's writes
-    expect(closed).toBe(0)
-    expect(host.querySelector('.eotm-arrange')).not.toBe(null)
-    await act(async () => [...host.querySelectorAll('.eotm-modeline button')].find((b) => b.textContent === 'Open editor').click())
-    expect(host.querySelector('.eotm-sheet.is-hidden')).toBe(null)
+    await tick()
+    expect(closed).toBe(1)
     await act(async () => root.unmount())
   })
 
   it('opens what is clicked on the page in the pane, that section expanded and the rest folded', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
     const doc = await store.create({ type: 'page', data: { title: 'Services', blocks: [
@@ -179,7 +172,7 @@ describe('console in a page', () => {
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     // The editor opens on View; these click the page in Edit.
-    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await tick()
     await act(async () => page.querySelector('h2').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })))
     await tick(50)
@@ -193,6 +186,7 @@ describe('console in a page', () => {
 
   it('a double-click on page text types it in place and opens that field; the pane and the page agree', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
     const doc = await store.create({ type: 'page', data: { title: 'Home', blocks: [
@@ -207,7 +201,7 @@ describe('console in a page', () => {
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     // The editor opens on View; these click the page in Edit.
-    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await tick()
 
     // A click on the heading does not follow its link; a double-click types it
@@ -241,6 +235,7 @@ describe('console in a page', () => {
 
   it('lists a page\'s sections with what is not live, opens one there, and shows Page › Section', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     const ss = JSON.parse(readFileSync('schema/sites/spiritseeds.json', 'utf8'))
     const store = localStore({ schema: ss })
     const doc = await store.create({ type: 'page', data: { title: 'Home', blocks: [
@@ -259,7 +254,7 @@ describe('console in a page', () => {
     const root = createRoot(host)
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
     // The editor opens on View; these click the page in Edit.
-    await act(async () => [...host.querySelectorAll('[role="radio"]')].find((b) => b.textContent === 'Edit')?.click())
+    await act(async () => host.querySelector('.eotm-editbox input').click())
     await tick()
 
     // Home: Site settings sits under Design, beside the templates.
@@ -286,82 +281,9 @@ describe('console in a page', () => {
     await act(async () => root.unmount())
   })
 
-  it('tucks the minimised editor against an edge, leaving a tab that brings it back', async () => {
-    localStorage.clear()
-    const host = document.createElement('div')
-    document.body.append(host)
-    const root = createRoot(host)
-    await act(async () => root.render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
-    await tick()
-    await act(async () => host.querySelector('.eotm-title').click())
-    await act(async () => host.querySelector('button[aria-label="Tuck the editor to the right edge"]').click())
-    expect(host.querySelector('.eotm-sheet:not(.is-hidden)')).toBeNull()
-    const tab = host.querySelector('button.eotm-tab.is-right')
-    expect(tab).toBeTruthy()
-    expect(localStorage.getItem('eotm:bar-tuck')).toBe('right')
-    await act(async () => tab.click())
-    expect(host.querySelector('.eotm-sheet.is-bar')).toBeTruthy()
-    expect(localStorage.getItem('eotm:bar-tuck')).toBeNull()
-    await act(async () => root.unmount())
-  })
-
-  it('moves the open editor by its header, the faded preview too, and sizes its height', async () => {
-    localStorage.clear()
-    const host = document.createElement('div')
-    document.body.append(host)
-    const root = createRoot(host)
-    await act(async () => root.render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
-    await tick()
-    const sheet = host.querySelector('.eotm-sheet')
-    const fire = (el, type, clientX, clientY) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }))
-    // The header drags the editor.
-    const head = host.querySelector('.eotm-head')
-    // A browser ends a drag with a click where it ended, which is swallowed.
-    await act(async () => { fire(head, 'pointerdown', 10, 10); fire(head, 'pointermove', 110, 210); fire(head, 'pointerup', 110, 210); head.click() })
-    expect(sheet.classList.contains('is-loose')).toBe(true)
-    expect(JSON.parse(localStorage.getItem('eotm:panel-pos'))).toEqual({ x: 100, y: 200 })
-    // Moved, its top stays put, so the bottom edge sizes it; double-click forgets.
-    const edge = host.querySelector('.eotm-resize.is-bottom')
-    await act(async () => { fire(edge, 'pointerdown', 0, 500); fire(edge, 'pointermove', 0, 400); fire(edge, 'pointerup', 0, 400) })
-    expect(sheet.style.height).toBe('140px') // 0 tall in jsdom, so the least it can be
-    expect(localStorage.getItem('eotm:panel-h')).toBe('140')
-    await act(async () => { fire(edge, 'pointerdown', 0, 400); fire(edge, 'pointermove', 0, 700); fire(edge, 'pointerup', 0, 700) })
-    expect(sheet.style.height).toBe('300px')
-    // Its top edge shrinks it from the top: the bottom stays where it was.
-    const top = host.querySelector('.eotm-resize.is-top')
-    await act(async () => { fire(top, 'pointerdown', 0, 0); fire(top, 'pointermove', 0, 0); fire(top, 'pointerup', 0, 0) })
-    expect(top).toBeTruthy()
-    await act(async () => edge.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })))
-    expect(sheet.style.height).toBe('')
-    expect(localStorage.getItem('eotm:panel-h')).toBeNull()
-    await act(async () => root.unmount())
-  })
-
-  it('drags the tucked tab up and down its edge without bringing the bar back', async () => {
-    localStorage.clear()
-    localStorage.setItem('eotm:bar-tuck', 'left')
-    const host = document.createElement('div')
-    document.body.append(host)
-    const root = createRoot(host)
-    await act(async () => root.render(<App schema={schema} store={localStore({ schema })} bridge={createBridge()} auth={localAuth()} onClose={() => {}} />))
-    await tick()
-    await act(async () => host.querySelector('.eotm-title').click())
-    const tab = host.querySelector('button.eotm-tab.is-left')
-    expect(tab.querySelector('svg')).toBeTruthy()
-    const fire = (type, clientX, clientY) => tab.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }))
-    await act(async () => { fire('pointerdown', 10, 100); fire('pointermove', 60, 300); fire('pointerup', 60, 300) })
-    expect(tab.style.top).toBe('200px')
-    expect(tab.style.left).toBe('')
-    expect(localStorage.getItem('eotm:tab-y')).toBe('200')
-    await act(async () => tab.click())
-    expect(host.querySelector('button.eotm-tab')).toBeTruthy()
-    await act(async () => host.querySelector('button.eotm-tab').click())
-    expect(host.querySelector('.eotm-sheet.is-bar')).toBeTruthy()
-    await act(async () => root.unmount())
-  })
-
   it('lets the owner design a section type and then place it on a page', async () => {
     localStorage.clear()
+    sessionStorage.clear()
     // A wide screen: on a phone more than six kinds become a dropdown.
     const phone = window.matchMedia
     window.matchMedia = (q) => ({ matches: q.includes('min-width'), media: q, addEventListener() {}, removeEventListener() {} })

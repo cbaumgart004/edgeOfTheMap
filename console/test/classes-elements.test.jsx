@@ -31,6 +31,7 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   document.body.innerHTML = ''
   localStorage.clear()
+  sessionStorage.clear()
   window.matchMedia = (q) => ({ matches: q.includes('min-width'), media: q, addEventListener() {}, removeEventListener() {} })
 })
 
@@ -160,7 +161,7 @@ describe('Elements from Arrange', () => {
     const section = page.querySelector('section')
     rect(section, { left: 0, top: 0, width: 1000, height: 400 })
     rect(section.querySelector('h2'), { left: 100, top: 50, width: 500, height: 60 })
-    await act(async () => byText(document.body, '.eotm-modes button', 'Arrange').click())
+    await act(async () => document.body.querySelector('.eotm-editbox input').click())
     await act(async () => section.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })))
     await tick(20)
     await act(async () => document.querySelector('.eotm-arrange-panel [aria-label="Controls"]').click())

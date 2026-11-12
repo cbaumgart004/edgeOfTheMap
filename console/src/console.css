@@ -550,10 +550,6 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 /* The top edge lies over the grip, which is its handle; it draws no second bar. */
 .eotm-resize.is-top::after { top: 1px; }
 .eotm-sheet.is-wide.is-sized:not(.is-loose)[style*="top"] { border-top: 1px solid var(--eotm-line); border-radius: 12px 0 0 12px; }
-.eotm-head { cursor: grab; touch-action: none; } /* a finger drags it rather than scrolling the page */
-.eotm-head:active { cursor: grabbing; }
-.eotm-head :is(button, a, input, select, label) { cursor: pointer; }
-.eotm-head .eotm-title { cursor: grab; }
 .eotm-dock { padding: 2px 10px; border-radius: 8px; font: 600 12px var(--eotm-font); color: var(--eotm-ink); border: 1px solid var(--eotm-line); cursor: pointer; }
 /* The page's width while editing on a narrow screen. */
 .eotm-pagewidth { display: inline-flex; align-items: center; gap: 4px; font: 600 12px var(--eotm-font); color: var(--eotm-muted); }
@@ -584,9 +580,8 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 .eotm-root details.eotm-home-fold > summary { justify-content: flex-start; }
 .eotm-fold-label { flex: 1; }
 .eotm-class-count { font: 500 12px var(--eotm-font); color: var(--eotm-muted); }
-/* requiredBy (Fields.jsx Needs): one badge per channel that needs the field,
-   in the channel's color as outline and text, so it reads in either mode. */
-.eotm-needs { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: middle; }
+/* requiredBy (Fields.jsx Needs): the channels that need the field, in words. */
+.eotm-needs { margin: 0 6px; font: 500 11px var(--eotm-font); color: var(--eotm-muted); vertical-align: middle; }
 .eotm-needs-badge {
   font: 700 10px/1 var(--eotm-font); letter-spacing: 0.02em;
   padding: 2px 4px; border-radius: 3px;
@@ -788,3 +783,68 @@ button.eotm-class-name { border: 0; background: none; padding: 0; font: inherit;
 .eotm-root .eotm-manage-picked strong { margin-right: auto; }
 .eotm-root .eotm-manage-bulk { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--eotm-accent); border-radius: var(--eotm-radius); background: var(--eotm-surface); }
 .eotm-root .eotm-manage-bulk h3 { font: 600 16px var(--eotm-heading); }
+
+/* ------------------------------------------------------------ manage (App.jsx Banner, Side)
+   A shop manager's layout: a banner across the top, and the editor as a menu
+   on the left that opens and folds. The old bottom sheet's rules above no
+   longer match anything the console draws. */
+.eotm-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 3;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  min-height: 48px; padding: 4px 10px; padding-top: max(4px, env(safe-area-inset-top));
+  background: var(--eotm-surface); color: var(--eotm-ink);
+  border-bottom: 1px solid var(--eotm-line); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  font: 14px var(--eotm-font);
+}
+.eotm-banner-menu { min-width: 40px; min-height: 40px; border-radius: 8px; font-size: 20px; line-height: 1; color: var(--eotm-ink); cursor: pointer; }
+.eotm-banner-menu:hover, .eotm-banner-menu[aria-expanded='true'] { background: color-mix(in srgb, var(--eotm-accent) 18%, transparent); }
+.eotm-banner-title { font: 600 16px var(--eotm-heading); white-space: nowrap; }
+.eotm-banner-gap { flex: 1; }
+/* Edit: an outlined box, ticked or not. */
+.eotm-editbox { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px;
+  border: 1.5px solid var(--eotm-accent); border-radius: 999px; font-weight: 600; cursor: pointer; user-select: none; }
+.eotm-editbox input { width: 16px; height: 16px; margin: 0; accent-color: var(--eotm-accent); cursor: pointer; }
+.eotm-editbox:has(input:checked) { background: color-mix(in srgb, var(--eotm-accent) 16%, transparent); }
+html.eotm-managing { padding-top: var(--eotm-banner, 48px); }
+
+.eotm-side {
+  position: fixed; left: 0; top: var(--eotm-banner, 48px); bottom: 0; z-index: 2;
+  width: min(360px, 88vw); display: flex; flex-direction: column;
+  background: var(--eotm-surface); color: var(--eotm-ink);
+  border-right: 1px solid var(--eotm-line); box-shadow: 8px 0 28px rgba(0, 0, 0, 0.22);
+  transform: translateX(-102%); visibility: hidden;
+  transition: transform 200ms ease, visibility 0s linear 200ms, opacity 160ms ease;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.eotm-side.is-open { transform: none; visibility: visible; transition: transform 200ms ease, opacity 160ms ease; }
+.eotm-side.is-wide { width: min(400px, 32vw); box-shadow: none; }
+/* Peek (a drag in a field): the page shows through. */
+.eotm-side.is-peek { opacity: 0.25; }
+.eotm-side .eotm-head { padding: 6px 8px; }
+.eotm-side .eotm-title { cursor: default; }
+html.eotm-side-docked body { margin-left: var(--eotm-side, 0px); }
+@media (prefers-reduced-motion: reduce) { .eotm-side, .eotm-side.is-open { transition: none; } }
+
+/* Pages outline (App.jsx PagesOutline): page kinds, pages, sections, elements. */
+.eotm-outline { list-style: none; margin: 0; padding: 0 0 0 14px; display: grid; gap: 1px; }
+.eotm-outline.is-root { padding-left: 0; }
+.eotm-outline-row { display: flex; align-items: center; gap: 4px; min-height: 34px; }
+.eotm-outline-twist { flex: none; width: 24px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; color: var(--eotm-muted); font-size: 12px; cursor: pointer; }
+.eotm-outline-twist:hover { background: color-mix(in srgb, var(--eotm-accent) 14%, transparent); }
+.eotm-outline-name { flex: 1; min-width: 0; text-align: left; padding: 4px 6px; border-radius: 6px; font: 14px var(--eotm-font); color: var(--eotm-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.eotm-outline-name:hover { background: color-mix(in srgb, var(--eotm-accent) 14%, transparent); }
+.eotm-outline-more { flex: none; padding: 2px 6px; border-radius: 6px; font: 500 11px var(--eotm-font); color: var(--eotm-accent); cursor: pointer; }
+.eotm-outline-more:hover { text-decoration: underline; }
+.eotm-outline-meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 2px 0 6px 30px; font: 12px var(--eotm-font); color: var(--eotm-muted); }
+.eotm-outline-meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- chips (a list of one text each, e.g. tags) */
+.eotm-chips { display: grid; gap: 6px; }
+.eotm-chip-list { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.eotm-chip { display: inline-flex; align-items: center; border: 1px solid var(--eotm-line); border-radius: 999px; background: var(--eotm-surface); font-size: 13px; }
+.eotm-chip-name, .eotm-chip-x { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 3px 4px 3px 10px; }
+.eotm-chip-x { padding: 3px 9px 3px 4px; opacity: .7; }
+.eotm-chip-x:hover, .eotm-chip-x:focus-visible { opacity: 1; }
+.eotm-chip-edit { border: 0; background: transparent; font: inherit; width: 14ch; padding: 3px 4px 3px 10px; }

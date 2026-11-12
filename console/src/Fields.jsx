@@ -103,20 +103,14 @@ function RemoveAdded({ onConfirm }) {
   )
 }
 
-// The badge of each channel that needs this field (`requiredBy`, the schema's
-// `channels`): "needed for Etsy", say. A marker only; `required` is what
-// publishing enforces.
+// The channels that need this field (`requiredBy`, the schema's `channels`),
+// in words: "Needed for Etsy, eBay". Two-letter codes read as noise. A marker
+// only; `required` is what publishing enforces.
 function Needs({ field, schema }) {
   const channels = (field.requiredBy ?? []).map((n) => schema?.channels?.find((c) => c.name === n)).filter(Boolean)
   if (!channels.length) return null
-  return (
-    <span className="eotm-needs">
-      {channels.map((c) => (
-        <span key={c.name} className="eotm-needs-badge" style={c.color ? { '--eotm-needs': c.color } : undefined}
-          title={`Needed for ${c.label}`} aria-label={`Needed for ${c.label}`}>{c.short}</span>
-      ))}
-    </span>
-  )
+  const names = channels.map((c) => c.label).join(', ')
+  return <span className="eotm-needs" title={`Needed for ${names}`}>Needed for {names}</span>
 }
 
 // `optionsUrl`: the choices the site answers, [{ value, label }], read once per
@@ -270,6 +264,10 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
           <FieldList fields={field.fields} value={value ?? {}} onChange={onChange} ctx={ctx} path={path} at={at && `${at}.${field.name}`} />
         </fieldset>)
     case 'list':
+      // A list of one text each (a listing's tags) edits inline as chips:
+      // type and Enter adds, × removes, a tap on a chip renames it.
+      if (field.fields?.length === 1 && field.fields[0].kind === 'text' && !field.presets?.length) return wrap(
+        <Chips id={id} field={field} items={value ?? []} onChange={onChange} make={() => newListItem(field, ctx.schema)} />)
       return (
         <Repeater label={label} needs={needs} help={field.help} items={value ?? []} onChange={onChange} ctx={ctx} path={path}
           itemTitle={(item, i) => (field.itemLabel && item[field.itemLabel]) || `${field.itemLabel ?? 'Item'} ${i + 1}`}
@@ -294,6 +292,57 @@ function Field({ field, value, onChange, ctx, path, at, owner = null }) {
     default:
       return wrap(<p className="eotm-help">Unsupported field kind “{field.kind}”.</p>)
   }
+}
+
+function Chips({ id, field, items, onChange, make }) {
+  const sub = field.fields[0]
+  const [draft, setDraft] = useState('')
+  const [editing, setEditing] = useState(-1)
+  const [error, setError] = useState('')
+  const pattern = sub.pattern ? new RegExp(`^(?:${sub.pattern})$`, 'u') : null
+  const full = field.maxItems != null && items.length >= field.maxItems
+  const check = (text) => {
+    if (!text) return 'Type something first.'
+    if (sub.maxLength && text.length > sub.maxLength) return `${sub.maxLength} characters at most.`
+    if (pattern && !pattern.test(text)) return `Use ${sub.patternHelp ?? 'the allowed characters'}.`
+    if (items.some((it, i) => i !== editing && String(it[sub.name] ?? '').toLowerCase() === text.toLowerCase())) return 'Already there.'
+    return ''
+  }
+  const commit = (text, at) => {
+    const t = text.trim()
+    const why = check(t)
+    if (why) { setError(why); return false }
+    setError('')
+    if (at >= 0) onChange(items.map((it, i) => (i === at ? { ...it, [sub.name]: t } : it)))
+    else onChange([...items, { ...make(), [sub.name]: t }])
+    return true
+  }
+  const key = (e, at) => {
+    if (e.key === 'Enter' || (e.key === ',' && at < 0)) {
+      e.preventDefault()
+      if (at >= 0) { if (commit(e.currentTarget.value, at)) setEditing(-1) } else if (commit(draft, -1)) setDraft('')
+    } else if (e.key === 'Escape' && at >= 0) { setEditing(-1); setError('') }
+  }
+  return (
+    <div className="eotm-chips">
+      <ul className="eotm-chip-list">
+        {items.map((it, i) => (
+          <li key={it._id ?? i} className="eotm-chip">
+            {editing === i
+              ? <input className="eotm-chip-edit" defaultValue={it[sub.name] ?? ''} maxLength={sub.maxLength} autoFocus aria-label={`Rename ${it[sub.name]}`}
+                  onKeyDown={(e) => key(e, i)} onBlur={(e) => { if (commit(e.currentTarget.value, i)) setEditing(-1) }} />
+              : <button type="button" className="eotm-chip-name" onClick={() => setEditing(i)} title="Tap to rename">{it[sub.name]}</button>}
+            <button type="button" className="eotm-chip-x" aria-label={`Remove ${it[sub.name]}`}
+              onClick={() => { setEditing(-1); onChange(items.filter((_, j) => j !== i)) }}>×</button>
+          </li>
+        ))}
+      </ul>
+      {!full && <input id={id} className="eotm-input eotm-chip-add" value={draft} maxLength={sub.maxLength}
+        placeholder={`Add ${field.itemLabel ?? sub.label.toLowerCase()}, then Enter`} aria-label={`Add ${field.itemLabel ?? sub.label}`}
+        onChange={(e) => { setDraft(e.target.value); setError('') }} onKeyDown={(e) => key(e, -1)} />}
+      <p className="eotm-help">{error || `${items.length}${field.maxItems != null ? ` of ${field.maxItems}` : ''}`}</p>
+    </div>
+  )
 }
 
 // <input type="datetime-local"> has no zone; store the owner's local offset with it.
