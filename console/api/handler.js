@@ -7,6 +7,7 @@
 // a member of that site in the control project, and only then is the site's own
 // project opened. The Origin must be one of the site's allowed origins.
 
+import { gzipSync } from 'node:zlib'
 import { createService, ServiceError } from '../core/service.js'
 import { createPgRepo } from './repo-pg.js'
 import { createPgMediaRepo, pgUses, pgUsage } from './media-pg.js'
@@ -31,6 +32,18 @@ const VIDEO_TYPES = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime
 
 function json(status, body, headers = {}) {
   return { statusCode: status, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }
+}
+
+// A Lambda answers with at most 6 MB. A site's whole Listing list passed that
+// (413, RequestEntityTooLarge), so a large text answer goes gzipped when the
+// browser accepts it: JSON shrinks about tenfold, base64 adds a third back.
+const GZIP_OVER = 256 * 1024
+function compress(event, res) {
+  if (!res || res.isBase64Encoded || typeof res.body !== 'string' || res.body.length < GZIP_OVER) return res
+  const h = event.headers ?? {}
+  if (!/\bgzip\b/.test(h['accept-encoding'] ?? h['Accept-Encoding'] ?? '')) return res
+  const vary = res.headers?.vary ? `${res.headers.vary}, Accept-Encoding` : 'Accept-Encoding'
+  return { ...res, headers: { ...res.headers, 'content-encoding': 'gzip', vary }, isBase64Encoded: true, body: gzipSync(res.body).toString('base64') }
 }
 
 function cors(origin, site) {
@@ -668,7 +681,7 @@ ${pushed}`, page: body.page })
   // logged; the old snapshot keeps serving until the next change.
   const PUBLISHES = /^\/(custom-schema|release(\/discard)?|documents\/[^/]+\/(publish|unpublish|discard))$/
   return async function handle(event) {
-    const res = await route(event)
+    const res = compress(event, await route(event))
     if (!published) return res
     const method = event.requestContext?.http?.method ?? event.httpMethod
     const m = (event.rawPath ?? event.path ?? '').replace(/\/+$/, '').match(/^\/api\/sites\/([a-z0-9-]+)(\/.*)?$/)

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
 import { JSDOM } from 'jsdom'
 import createDOMPurify from 'dompurify'
 import { createHandler } from '../api/handler.js'
@@ -70,7 +71,7 @@ function setup({ member = true, operator = false, site = SITE, media, monitors, 
   const call = (method, path, { body, token = 'good', origin = ORIGIN, query, headers = {} } = {}) =>
     handle({ requestContext: { http: { method } }, rawPath: path, queryStringParameters: query,
       headers: { ...(origin ? { origin } : {}), ...headers, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body && JSON.stringify(body) })
-      .then((r) => ({ ...r, json: r.body && /json/.test(r.headers?.['content-type'] ?? '') ? JSON.parse(r.body) : null }))
+      .then((r) => ({ ...r, json: r.body && !r.isBase64Encoded && /json/.test(r.headers?.['content-type'] ?? '') ? JSON.parse(r.body) : null }))
   return { call }
 }
 
@@ -111,6 +112,20 @@ describe('console API', () => {
     expect(r.statusCode).toBe(403)
     const ok = await setup().call('GET', `${base}/documents`, { query: { type: 'event' } })
     expect(ok.headers['access-control-allow-origin']).toBe(ORIGIN)
+  })
+
+  it('gzips a large list when the browser accepts it, under the Lambda 6 MB answer limit', async () => {
+    const { call } = setup()
+    const long = { ...event, description: '<p>' + 'Uranium glass glows. '.repeat(20000) + '</p>' }
+    expect((await call('POST', `${base}/documents`, { body: { type: 'event', data: long } })).statusCode).toBe(201)
+    const plain = await call('GET', `${base}/documents`, { query: { type: 'event' } })
+    expect(plain.headers['content-encoding']).toBeUndefined()
+    const zipped = await call('GET', `${base}/documents`, { query: { type: 'event' }, headers: { 'accept-encoding': 'gzip, deflate, br' } })
+    expect(zipped.headers['content-encoding']).toBe('gzip')
+    expect(zipped.headers.vary).toMatch(/Accept-Encoding/)
+    expect(zipped.isBase64Encoded).toBe(true)
+    expect(zipped.body.length).toBeLessThan(plain.body.length / 5)
+    expect(JSON.parse(gunzipSync(Buffer.from(zipped.body, 'base64')).toString('utf8'))).toEqual(plain.json)
   })
 
   it('needs a valid login that is a member of the site', async () => {
