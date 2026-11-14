@@ -137,7 +137,7 @@ describe('console in a page', () => {
     let closed = 0
     await act(async () => root.render(<App schema={ss} store={store} bridge={createBridge()} auth={localAuth()} onClose={() => { closed++ }} />))
     await tick()
-    expect(host.querySelector('.eotm-banner-title').textContent).toBe('Managing Site Content')
+    expect(host.querySelector('.eotm-banner-title').textContent).toMatch(/^(Edit|View) Mode: Preview$/)
     expect(host.querySelector('.eotm-editbox input').checked).toBe(false)
     expect(document.querySelector('.eotm-arrange')).toBe(null)
     await act(async () => host.querySelector('.eotm-editbox input').click())

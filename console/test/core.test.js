@@ -214,14 +214,35 @@ describe('publish', () => {
   })
 
   it('leaves a type outside release.types out of Review changes', async () => {
-    expect(storyshaped.release.types).not.toContain('listing')
-    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const schema = { ...storyshaped, release: { types: storyshaped.release.types.filter((t) => t !== 'listing') } }
+    const s = createService({ schema, repo: createMemoryRepo() })
     const listing = await s.create({ type: 'listing', data: { title: 'A vase' } })
     const page = await s.create({ type: 'page', data: { title: 'Policies' } })
     expect((await s.pending()).map((d) => d.id)).toEqual([page.id])
     expect((await s.discardAll()).kept.map((d) => d.id)).toEqual([page.id])
     expect((await s.get(listing.id)).status).toBe('draft')
     expect(checkSchema({ ...storyshaped, release: { types: ['nope'] } }).join()).toMatch(/release\.types/)
+  })
+})
+
+describe('Review changes: what changed, where, and which Marketplaces', () => {
+  it('names changed fields and the page, ignores filled-in empties and row ids, and offers where a listing is posted', async () => {
+    const s = createService({ schema: storyshaped, repo: createMemoryRepo() })
+    const art = await s.create({ type: 'libraryArticle', data: { title: 'Vaseline glass', body: '<p>Glows.</p>' } })
+    const live = await s.publish(art.id, { baseVersion: art.version })
+    // Opening it fills in empties: no change.
+    const opened = await s.save(art.id, { baseVersion: live.version, data: { ...live.data, summary: '', related: [] } })
+    expect(opened.status).toBe('published')
+    expect(await s.pending()).toEqual([])
+    const edited = await s.save(art.id, { baseVersion: opened.version, data: { ...opened.data, title: 'Vaseline glass, a history' } })
+    const [d] = await s.pending()
+    expect(d.id).toBe(edited.id)
+    expect(d.page).toBe('Library')
+    expect(d.changes.map((c) => c.name)).toEqual(['title'])
+    const listing = await s.create({ type: 'listing', data: { title: 'A vase', variations: [{ option: 'One', sku: 'V1', ebayItemId: '123' }] } })
+    const row = (await s.pending()).find((x) => x.id === listing.id)
+    expect(row.page).toBe('Listings')
+    expect(row.markets).toEqual(['ebay'])
   })
 })
 

@@ -21,10 +21,57 @@ export class ConflictError extends ServiceError {
   }
 }
 
-// Equal content, whatever order its keys were written in.
-const canon = (v) => (Array.isArray(v) ? v.map(canon)
-  : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v)
-const sameData = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b))
+// Equal content, whatever order its keys were written in. An empty value
+// (null, '', [] or {}) counts as no value, and a row's _id is not content: the
+// editor fills both in when a document is opened, which left documents
+// (Library entries) showing as changed though no one had changed them.
+const empty = (v) => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)
+const canon = (v) => {
+  if (Array.isArray(v)) return v.map(canon)
+  if (!v || typeof v !== 'object') return v
+  const out = {}
+  for (const k of Object.keys(v).sort()) {
+    if (k === '_id') continue
+    const c = canon(v[k])
+    if (!empty(c)) out[k] = c
+  }
+  return out
+}
+const sameData = (a, b) => JSON.stringify(canon(a ?? {})) === JSON.stringify(canon(b ?? {}))
+
+// The fields whose value differs from what is live, by name and label, for
+// Review changes. A draft never published names every field it has.
+export function changedFields(schema, type, data, live) {
+  const fields = schema.types[type]?.fields ?? []
+  const a = canon(data ?? {})
+  const b = live ? canon(live) : {}
+  const names = [...new Set([...Object.keys(a), ...Object.keys(b)])]
+    .filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+  return names.map((name) => ({ name, label: fields.find((f) => f.name === name)?.label ?? name }))
+}
+
+// The Marketplaces a document is posted on (schema types.<type>.release.push
+// .targets: a field holding its id there, at the top or in any row), offered
+// when it is published.
+export function marketsOf(schema, type, data) {
+  const targets = schema.types[type]?.release?.push?.targets ?? []
+  const has = (field) => Boolean(data?.[field]) || Object.values(data ?? {}).some((v) => Array.isArray(v) && v.some((r) => r && r[field]))
+  return targets.filter((t) => has(t.field)).map((t) => t.key)
+}
+
+// Where a document shows, for grouping Review changes by page: an every-page
+// singleton, a type with no page of its own (Listings), or its preview path's
+// first segment (Home, Library, Meet the artist).
+export function pageOf(schema, type, doc) {
+  const t = schema.types[type] ?? {}
+  if (t.singleton) return 'Every page'
+  if (!t.previewPath) return t.plural ?? t.label ?? type
+  const path = t.previewPath.replace('{slug}', doc.slug ?? '').replace('{path}', doc.data?.path ?? '')
+  const first = path.split('/').filter(Boolean)[0]
+  if (!first) return 'Home'
+  const words = decodeURIComponent(first).replace(/[-_]+/g, ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
 
 // Status: 'draft' (never published), 'published' (live equals draft),
 // 'changed' (live, with unpublished edits). A save that leaves the draft as it
@@ -191,6 +238,8 @@ export function createService({ schema, repo, sanitize = (type, data) => data, n
           if (doc.status === 'published') continue
           out.push({
             id: doc.id, type, slug: doc.slug, title: titleOf(schema, doc), status: doc.status, version: doc.version,
+            page: pageOf(schema, type, doc), changes: changedFields(schema, type, doc.data, doc.publishedData),
+            markets: marketsOf(schema, type, doc.data),
             errors: await publishErrors(doc), warnings: warnDocument(schema, type, doc.data),
           })
         }

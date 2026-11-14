@@ -205,7 +205,7 @@ function Banner({ children }) {
       root.style.removeProperty('--eotm-banner')
     }
   }, [])
-  return <div ref={bar} className="eotm-banner" role="region" aria-label="Managing Site Content">{children}</div>
+  return <div ref={bar} className="eotm-banner" role="region" aria-label="Edit Mode: Preview">{children}</div>
 }
 
 // ---------------------------------------------------------------- app
@@ -339,7 +339,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
     <Banner>
       <button type="button" className="eotm-banner-menu" aria-expanded={sideOpen} aria-label={sideOpen ? 'Fold the editor menu' : 'Open the editor menu'}
         title={sideOpen ? 'Fold the editor menu' : 'Open the editor menu'} onClick={() => setSideOpen((o) => !o)}>☰</button>
-      <strong className="eotm-banner-title">Managing Site Content</strong>
+      <strong className="eotm-banner-title" title="Your edits show here, in preview, until you publish them in Review changes.">{editing ? 'Edit Mode' : 'View Mode'}: Preview</strong>
       <label className="eotm-editbox" title="Ticked: tap anything on the page to pick it, drag to move it, size it with its handles, and open it with its Edit icon. Unticked: the page works as visitors see it.">
         <input type="checkbox" checked={editing} onChange={(e) => setEditing(e.target.checked)} />
         <span>Edit</span>
@@ -577,7 +577,7 @@ export default function App({ schema: shipped, store, bridge, auth, dashboard, o
 
   let body
   if (publishing) body = (
-    <PublishDialog schema={schema} store={store} bridge={bridge} notify={notify} save={() => editorApi.current?.save?.()}
+    <PublishDialog schema={schema} store={store} bridge={bridge} notify={notify} getToken={getToken} save={() => editorApi.current?.save?.()}
       onClose={() => setPublishing(false)} onChanged={() => setPublished((n) => n + 1)} />
   )
   else if (leaving) body = (
@@ -1471,17 +1471,30 @@ function AddClass({ onAdd, notify }) {
   )
 }
 
-// Review changes: every change not yet live, one row each, with Publish and
-// Discard for that one, plus Publish all and Discard all. The open document is
-// saved first, so what was just typed is listed too. A draft with a problem
-// cannot publish and says why; a never-published draft cannot be discarded
-// (there is nothing live to go back to) and is deleted from its own page.
-// The page is updated after each action (bridge.push), and the list reloads.
-// Visitors get a publish once the public API's 30 s cache refreshes.
-function PublishDialog({ schema, store, bridge, notify, save, onClose, onChanged }) {
+// Review changes: every change not yet live, grouped by the page it shows on
+// (collapsed until opened), each document's changed fields listed under it.
+// Approving is reviewing, not publishing: a tick per change, Approve all for a
+// document (a listing's card) and Approve all on this page. Ticks are kept in
+// this browser against the document's version, so a later edit asks again.
+// Publish puts a document live; Publish approved puts every fully approved
+// one live. A listing posted on a Marketplace (schema release.push) offers it
+// there too, ticked where it is posted, and sends through the site's push
+// gate once live. A draft with a problem cannot publish and says why; a
+// never-published draft cannot be discarded. The page is updated after each
+// action (bridge.push). Visitors get a publish once the public API's 30 s
+// cache refreshes.
+const REVIEWED = 'eotm:reviewed'
+const readReviewed = () => { try { return new Set(JSON.parse(localStorage.getItem(REVIEWED) ?? '[]')) } catch { return new Set() } }
+const keepReviewed = (set) => { try { localStorage.setItem(REVIEWED, JSON.stringify([...set].slice(-2000))) } catch { /* private mode: kept for this dialog */ } }
+const changeKey = (d, name) => `${d.id}@${d.version}:${name}`
+const changesOf = (d) => (d.changes?.length ? d.changes : [{ name: '*', label: d.status === 'draft' ? 'New' : 'Changed' }])
+
+function PublishDialog({ schema, store, bridge, notify, save, onClose, onChanged, getToken }) {
   const [pending, setPending] = useState(null)
   const [busy, setBusy] = useState(null) // the id being acted on, or 'all'
   const [armed, setArmed] = useState(null) // a Discard waiting for its second tap
+  const [reviewed, setReviewed] = useState(readReviewed)
+  const [markets, setMarkets] = useState({}) // doc id -> Marketplace keys to send to
   const reload = () => store.pending().then((r) => setPending(r.pending))
   useEffect(() => {
     let active = true
@@ -1489,9 +1502,28 @@ function PublishDialog({ schema, store, bridge, notify, save, onClose, onChanged
     return () => { active = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (armed) { const t = setTimeout(() => setArmed(null), 4000); return () => clearTimeout(t) } }, [armed])
-  const label = (d) => `${schema.types[d.type]?.label ?? d.type}: ${d.title}`
   const isHeld = (d) => d.errors.length > 0 || d.warnings.length > 0
-  const ready = (pending ?? []).filter((d) => !isHeld(d))
+  const isApproved = (d) => changesOf(d).every((c) => reviewed.has(changeKey(d, c.name)))
+  const mark = (pairs, on) => setReviewed((prev) => {
+    const next = new Set(prev)
+    for (const [d, name] of pairs) {
+      if (on) next.add(changeKey(d, name))
+      else next.delete(changeKey(d, name))
+    }
+    keepReviewed(next)
+    return next
+  })
+  const allOf = (docs) => docs.flatMap((d) => changesOf(d).map((c) => [d, c.name]))
+  const chosen = (d) => markets[d.id] ?? d.markets ?? []
+  const toggleMarket = (d, key) => setMarkets((m) => ({ ...m, [d.id]: chosen(d).includes(key) ? chosen(d).filter((k) => k !== key) : [...chosen(d), key] }))
+  const groups = []
+  for (const d of pending ?? []) {
+    const name = d.page ?? schema.types[d.type]?.label ?? d.type
+    let g = groups.find((x) => x.name === name)
+    if (!g) { g = { name, docs: [] }; groups.push(g) }
+    g.docs.push(d)
+  }
+  const ready = (pending ?? []).filter((d) => !isHeld(d) && isApproved(d))
   const changed = (pending ?? []).filter((d) => d.status === 'changed')
   const plural = (k, one, many) => `${k} ${k === 1 ? one : many}`
   const run = async (key, fn) => {
@@ -1502,22 +1534,47 @@ function PublishDialog({ schema, store, bridge, notify, save, onClose, onChanged
     onChanged()
     setBusy(null)
   }
+  // Sends a published listing to the Marketplaces ticked for it. The site's
+  // push gate decides; its refusal (sync off, no link yet) is shown as said.
+  const sendOn = async (d) => {
+    const push = schema.types[d.type]?.release?.push
+    const only = chosen(d)
+    if (!push?.url || !only.length) return ''
+    const names = only.map((k) => push.targets.find((t) => t.key === k)?.label ?? k).join(' and ')
+    try {
+      const token = await getToken?.()
+      const res = await fetch(push.url.replace('{id}', encodeURIComponent(d.id)), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ only, confirm: true }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) return ` Not sent to ${names}: ${body.error ?? `the site answered ${res.status}`}.`
+      return ` Sent to ${names}.`
+    } catch (e) {
+      return ` Not sent to ${names}: ${e.message}.`
+    }
+  }
   const publishOne = (d) => run(d.id, async () => {
     bridge.push(await store.publish(d.id, d.version))
-    notify(`Published ${d.title}; visitors see it within about a minute.`)
+    notify(`Published ${d.title}; visitors see it within about a minute.${await sendOn(d)}`)
   })
   const discardOne = (d) => run(d.id, async () => {
     bridge.push(await store.discard(d.id, d.version))
     notify(`${d.title} is back to what is live.`)
   })
-  const publishAll = () => run('all', async () => {
-    const r = await store.pushRelease({})
-    const done = r.published?.length ?? 0
-    const parts = [`Published ${plural(done, 'change', 'changes')}; visitors see ${done === 1 ? 'it' : 'them'} within about a minute.`]
-    if (r.held?.length) parts.push(`${plural(r.held.length, 'draft stays', 'drafts stay')} unpublished until fixed.`)
-    if (r.failed?.length) parts.push(`${plural(r.failed.length, 'was', 'were')} changed in another tab meanwhile and stayed as drafts.`)
-    for (const p of r.published ?? []) store.get(p.id).then((d) => bridge.push(d)).catch(() => {})
-    notify(parts.join(' '))
+  const publishApproved = () => run('all', async () => {
+    const done = []
+    const sent = []
+    for (const d of ready) {
+      try {
+        bridge.push(await store.publish(d.id, d.version))
+        done.push(d)
+        const said = await sendOn(d)
+        if (said) sent.push(said.trim())
+      } catch (e) { notify(`${d.title}: ${e.message}`) }
+    }
+    notify([`Published ${plural(done.length, 'change', 'changes')}; visitors see ${done.length === 1 ? 'it' : 'them'} within about a minute.`, ...sent].join(' '))
   })
   const discardAll = () => run('all', async () => {
     const r = await store.discardAll()
@@ -1525,33 +1582,73 @@ function PublishDialog({ schema, store, bridge, notify, save, onClose, onChanged
     notify(r.kept?.length ? `Discarded. ${plural(r.kept.length, 'never-published draft was', 'never-published drafts were')} kept.` : 'Discarded. The site is back to what is live.')
   })
   const tapDiscard = (key, go) => (armed === key ? go() : setArmed(key))
-  const row = (d) => (
-    <li key={d.id} className="eotm-review-row">
-      <div>
-        <span>{label(d)}</span> <span className={`eotm-chip is-${d.status}`}>{d.status === 'draft' ? 'New' : 'Changed'}</span>
-        {[...d.errors, ...d.warnings].map((m) => <p key={m} className="eotm-error">{m}</p>)}
-      </div>
-      <div className="eotm-row">
-        <button type="button" className="eotm-btn is-primary" disabled={!!busy || isHeld(d)} onClick={() => publishOne(d)}
-          title={isHeld(d) ? 'Fix what is named here first' : 'Put this change on the live site'}>{busy === d.id ? 'Working…' : 'Publish'}</button>
-        {d.status === 'changed' && (
-          <button type="button" className={`eotm-btn ${armed === d.id ? 'is-danger' : ''}`} disabled={!!busy} onClick={() => tapDiscard(d.id, () => discardOne(d))}
-            title="Put this back to what is live">{armed === d.id ? 'Tap again to discard' : 'Discard'}</button>
-        )}
-      </div>
-    </li>
-  )
+  const tick = (d, c) => {
+    const on = reviewed.has(changeKey(d, c.name))
+    return (
+      <label key={c.name} className="eotm-review-change">
+        <input type="checkbox" checked={on} onChange={() => mark([[d, c.name]], !on)} />
+        <span>{c.label}</span>
+        <span className={`eotm-chip ${on ? 'is-published' : 'is-changed'}`}>{on ? 'Approved' : 'To review'}</span>
+      </label>
+    )
+  }
+  const row = (d) => {
+    const push = schema.types[d.type]?.release?.push
+    const approved = isApproved(d)
+    return (
+      <li key={d.id} className="eotm-review-row">
+        <div>
+          <span>{d.title}</span> <span className={`eotm-chip is-${d.status}`}>{d.status === 'draft' ? 'New' : 'Changed'}</span>
+          <div className="eotm-review-changes">{changesOf(d).map((c) => tick(d, c))}</div>
+          {push && d.markets?.length > 0 && (
+            <div className="eotm-review-markets">
+              <span>When published, also send to</span>
+              {push.targets.filter((t) => d.markets.includes(t.key)).map((t) => (
+                <label key={t.key}><input type="checkbox" checked={chosen(d).includes(t.key)} onChange={() => toggleMarket(d, t.key)} /> {t.label}</label>
+              ))}
+            </div>
+          )}
+          {[...d.errors, ...d.warnings].map((m) => <p key={m} className="eotm-error">{m}</p>)}
+        </div>
+        <div className="eotm-row">
+          <button type="button" className="eotm-btn" disabled={!!busy} onClick={() => mark(allOf([d]), !approved)}>{approved ? 'Unapprove' : 'Approve all'}</button>
+          <button type="button" className="eotm-btn is-primary" disabled={!!busy || isHeld(d) || !approved} onClick={() => publishOne(d)}
+            title={isHeld(d) ? 'Fix what is named here first' : !approved ? 'Approve each change first' : 'Put this change on the live site'}>{busy === d.id ? 'Working…' : 'Publish'}</button>
+          {d.status === 'changed' && (
+            <button type="button" className={`eotm-btn ${armed === d.id ? 'is-danger' : ''}`} disabled={!!busy} onClick={() => tapDiscard(d.id, () => discardOne(d))}
+              title="Put this back to what is live">{armed === d.id ? 'Tap again to discard' : 'Discard'}</button>
+          )}
+        </div>
+      </li>
+    )
+  }
   return (
     <div className="eotm-warn eotm-publish-dialog" role="alertdialog" aria-label="Review changes">
       <h2 className="eotm-review-title">Review changes</h2>
       {pending === null ? <p>Checking what has changed…</p> : !pending.length ? <p>Everything is live. There is nothing to review.</p> : (
         <>
-          <p>{plural(pending.length, 'change is', 'changes are')} not live yet. Your edits show on this page; visitors see them only once published.</p>
-          <ul className="eotm-dev-list">{pending.map(row)}</ul>
+          <p>{plural(pending.length, 'change is', 'changes are')} not live yet. Your edits show on this page; visitors see them only once published. Approve each change, then publish.</p>
+          <div className="eotm-dev-list">
+            {groups.map((g) => {
+              const done = g.docs.filter(isApproved).length
+              return (
+                <details key={g.name} className="eotm-review-group">
+                  <summary>
+                    <span>{g.name}</span>
+                    <span className="eotm-review-count">{done} of {g.docs.length} approved</span>
+                  </summary>
+                  <button type="button" className="eotm-btn is-quiet" disabled={!!busy} onClick={() => mark(allOf(g.docs), done < g.docs.length)}>
+                    {done < g.docs.length ? 'Approve all on this page' : 'Unapprove all on this page'}
+                  </button>
+                  <ul>{g.docs.map(row)}</ul>
+                </details>
+              )
+            })}
+          </div>
         </>
       )}
       <div className="eotm-row">
-        {ready.length > 1 && <button type="button" className="eotm-btn is-primary" disabled={!!busy} onClick={publishAll}>{busy === 'all' ? 'Working…' : `Publish all ${ready.length}`}</button>}
+        {ready.length > 0 && <button type="button" className="eotm-btn is-primary" disabled={!!busy} onClick={publishApproved}>{busy === 'all' ? 'Working…' : `Publish approved (${ready.length})`}</button>}
         {changed.length > 1 && (
           <button type="button" className={`eotm-btn ${armed === 'all' ? 'is-danger' : ''}`} disabled={!!busy} onClick={() => tapDiscard('all', discardAll)}>
             {armed === 'all' ? 'Tap again to discard all' : `Discard all ${changed.length}`}

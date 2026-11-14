@@ -29,6 +29,8 @@ import React, { useEffect, useRef, useState } from 'react'
 //
 //   data-eotm-text="<field>"               a text field, edited as plain text
 //   data-eotm-richtext="<field>"           a rich text field, edited as HTML
+//   data-eotm-multiline                    optional: Enter starts a new line (a
+//                                          description) instead of finishing
 //   data-eotm-in="<_id>"                   optional: the row the field belongs to
 //                                          (a value inside a Values grid), when
 //                                          it is not the marked element's item
@@ -125,7 +127,7 @@ export function startTyping(node, onText) {
     onText({ ...target, value: read(), done: true })
   }
   const onKey = (e) => {
-    if (e.key === 'Escape' || (e.key === 'Enter' && !rich)) { e.preventDefault(); node.blur() }
+    if (e.key === 'Escape' || (e.key === 'Enter' && !rich && !e.shiftKey && !node.hasAttribute('data-eotm-multiline'))) { e.preventDefault(); node.blur() }
   }
   node.addEventListener('input', onInput)
   node.addEventListener('blur', stop)

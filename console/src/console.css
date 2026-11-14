@@ -564,6 +564,13 @@ html[data-eotm-dragging='se'], html[data-eotm-dragging='se'] * { cursor: nwse-re
 .eotm-review-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--eotm-line); }
 .eotm-review-row > div:first-child { flex: 1 1 14rem; min-width: 0; }
 .eotm-review-row .eotm-row { flex: 0 0 auto; gap: 6px; }
+.eotm-review-group { border-bottom: 1px solid var(--eotm-line); padding: 6px 0; }
+.eotm-review-group > summary { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; font-weight: 600; min-height: 32px; align-items: center; }
+.eotm-review-group > ul { list-style: none; margin: 0; padding: 0; }
+.eotm-review-count { font-weight: 400; font-size: 12px; opacity: .75; }
+.eotm-review-changes { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.eotm-review-change, .eotm-review-markets label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; min-height: 28px; }
+.eotm-review-markets { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 4px; font-size: 13px; }
 
 /* A photo with no description yet (Fields.jsx, AltText). */
 .eotm-input.is-needed {
